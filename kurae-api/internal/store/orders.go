@@ -12,6 +12,7 @@ import (
 )
 
 var ErrSoldOut = errors.New("sold out")
+var ErrInvalidTransition = errors.New("invalid status transition")
 
 type OrderRepository struct {
 	store *Store
@@ -466,6 +467,57 @@ func (r *OrderRepository) MarkPaymentPaid(ctx context.Context, orderID, provider
 
 	if err := r.insertAudit(ctx, tx, "order", orderID, "paid", map[string]any{
 		"providerPaymentId": providerPaymentID,
+	}); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
+}
+
+type PaymentRecord struct {
+	ProviderPaymentID string
+	Status            string
+}
+
+func (r *OrderRepository) GetPaymentByOrderID(ctx context.Context, orderID string) (PaymentRecord, error) {
+	var p PaymentRecord
+	err := r.store.pool.QueryRow(ctx, `
+		SELECT provider_payment_id, status
+		FROM payments
+		WHERE order_id = $1
+	`, orderID).Scan(&p.ProviderPaymentID, &p.Status)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return PaymentRecord{}, ErrNotFound
+	}
+	return p, err
+}
+
+func (r *OrderRepository) MarkOrderRefunded(ctx context.Context, orderID string, from domain.OrderStatus) error {
+	tx, err := r.store.pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+
+	tag, err := tx.Exec(ctx, `
+		UPDATE orders SET status = $3, updated_at = now()
+		WHERE id = $1 AND status = $2
+	`, orderID, from, domain.OrderRefunded)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrInvalidTransition
+	}
+
+	if _, err := tx.Exec(ctx, `
+		UPDATE payments SET status = 'refunded', updated_at = now()
+		WHERE order_id = $1
+	`, orderID); err != nil {
+		return err
+	}
+
+	if err := r.insertAudit(ctx, tx, "order", orderID, "refunded", map[string]any{
+		"from": string(from),
 	}); err != nil {
 		return err
 	}

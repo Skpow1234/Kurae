@@ -12,6 +12,8 @@ import (
 	"github.com/kurae/kurae-api/internal/store"
 )
 
+var ErrInvalidOrderAction = errors.New("invalid order action")
+
 type OrderService struct {
 	orders   *store.OrderRepository
 	drops    *store.DropRepository
@@ -202,6 +204,65 @@ func (o *OrderService) GetForSeller(ctx context.Context, sellerID, orderID strin
 		UpdatedAt:   r.UpdatedAt.UTC().Format(time.RFC3339),
 		Events:      events,
 	}, nil
+}
+
+func (o *OrderService) UpdateForSeller(ctx context.Context, sellerID, orderID, action string) (domain.SellerOrder, error) {
+	switch action {
+	case "fulfill":
+		return o.fulfillForSeller(ctx, sellerID, orderID)
+	case "refund":
+		return o.refundForSeller(ctx, sellerID, orderID)
+	default:
+		return domain.SellerOrder{}, ErrInvalidOrderAction
+	}
+}
+
+func (o *OrderService) fulfillForSeller(ctx context.Context, sellerID, orderID string) (domain.SellerOrder, error) {
+	record, err := o.orders.GetByIDForSeller(ctx, orderID, sellerID)
+	if err != nil {
+		return domain.SellerOrder{}, err
+	}
+	if record.Status != domain.OrderPaid {
+		return domain.SellerOrder{}, store.ErrInvalidTransition
+	}
+
+	if err := o.orders.TransitionStatus(ctx, orderID, domain.OrderPaid, domain.OrderFulfilled, map[string]any{
+		"by": "seller",
+	}); err != nil {
+		return domain.SellerOrder{}, err
+	}
+
+	return o.GetForSeller(ctx, sellerID, orderID)
+}
+
+func (o *OrderService) refundForSeller(ctx context.Context, sellerID, orderID string) (domain.SellerOrder, error) {
+	record, err := o.orders.GetByIDForSeller(ctx, orderID, sellerID)
+	if err != nil {
+		return domain.SellerOrder{}, err
+	}
+	if record.Status != domain.OrderPaid && record.Status != domain.OrderFulfilled {
+		return domain.SellerOrder{}, store.ErrInvalidTransition
+	}
+
+	payment, err := o.orders.GetPaymentByOrderID(ctx, orderID)
+	if err != nil {
+		return domain.SellerOrder{}, err
+	}
+	if payment.Status != "paid" {
+		return domain.SellerOrder{}, store.ErrInvalidTransition
+	}
+
+	if payment.ProviderPaymentID != "" && !strings.HasPrefix(payment.ProviderPaymentID, "pi_dev_") {
+		if err := o.provider.RefundPayment(ctx, payment.ProviderPaymentID); err != nil {
+			return domain.SellerOrder{}, err
+		}
+	}
+
+	if err := o.orders.MarkOrderRefunded(ctx, orderID, record.Status); err != nil {
+		return domain.SellerOrder{}, err
+	}
+
+	return o.GetForSeller(ctx, sellerID, orderID)
 }
 
 func (o *OrderService) ExpireReservations(ctx context.Context) (int, error) {

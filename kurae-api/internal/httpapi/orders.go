@@ -64,6 +64,43 @@ func (h *OrderHandler) Get(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{"order": order})
 }
 
+func (h *OrderHandler) Update(w http.ResponseWriter, r *http.Request) {
+	claims, ok := claimsFromContext(r.Context())
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+
+	id := chi.URLParam(r, "id")
+	var body struct {
+		Action string `json:"action"`
+	}
+	if err := decodeJSON(r, &body); err != nil {
+		writeError(w, http.StatusBadRequest, "Invalid JSON")
+		return
+	}
+
+	order, err := h.orders.UpdateForSeller(r.Context(), claims.SellerID, id, strings.TrimSpace(body.Action))
+	if errors.Is(err, store.ErrNotFound) {
+		writeError(w, http.StatusNotFound, "Not found")
+		return
+	}
+	if errors.Is(err, service.ErrInvalidOrderAction) {
+		writeError(w, http.StatusBadRequest, "Invalid action; use fulfill or refund")
+		return
+	}
+	if errors.Is(err, store.ErrInvalidTransition) {
+		writeError(w, http.StatusConflict, "Order cannot be updated in its current status")
+		return
+	}
+	if err != nil {
+		writeError(w, http.StatusBadGateway, "Could not update order")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]any{"order": order})
+}
+
 func (h *OrderHandler) Checkout(w http.ResponseWriter, r *http.Request) {
 	var body struct {
 		DropID         string `json:"dropId"`

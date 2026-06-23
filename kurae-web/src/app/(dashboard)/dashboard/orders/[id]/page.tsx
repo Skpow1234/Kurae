@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
+import { OrderActions } from "@/components/dashboard/order-actions";
 import { OrderStatusBadge } from "@/components/dashboard/order-status-badge";
 import { OrderTimeline } from "@/components/dashboard/order-timeline";
 import { fetchSellerOrder } from "@/lib/api/orders";
@@ -71,22 +72,7 @@ export default async function OrderDetailPage({ params }: PageProps) {
               </dd>
             </div>
           </dl>
-          <div className="mt-6 flex flex-wrap gap-2">
-            <button
-              type="button"
-              className="rounded-md border border-sakura-petal px-3 py-1.5 text-xs font-medium text-sakura-stone"
-              disabled
-            >
-              Mark fulfilled
-            </button>
-            <button
-              type="button"
-              className="rounded-md border border-sakura-petal px-3 py-1.5 text-xs font-medium text-sakura-stone"
-              disabled
-            >
-              Issue refund
-            </button>
-          </div>
+          <OrderActions orderId={order.id} status={order.status} />
         </section>
 
         <section className="rounded-lg border border-sakura-petal bg-sakura-surface/50 p-5">

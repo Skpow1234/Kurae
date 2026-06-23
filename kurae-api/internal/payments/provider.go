@@ -16,5 +16,6 @@ type IntentResult struct {
 
 type Provider interface {
 	CreatePaymentIntent(ctx context.Context, in IntentInput) (IntentResult, error)
+	RefundPayment(ctx context.Context, providerPaymentID string) error
 	VerifyWebhook(payload []byte, signature string) (eventID string, orderID string, paid bool, err error)
 }

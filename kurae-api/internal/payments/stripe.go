@@ -9,6 +9,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/stripe/stripe-go/v81"
 	"github.com/stripe/stripe-go/v81/paymentintent"
+	"github.com/stripe/stripe-go/v81/refund"
 	"github.com/stripe/stripe-go/v81/webhook"
 )
 
@@ -47,6 +48,14 @@ func (s *StripeProvider) CreatePaymentIntent(ctx context.Context, in IntentInput
 	}, nil
 }
 
+func (s *StripeProvider) RefundPayment(ctx context.Context, providerPaymentID string) error {
+	_ = ctx
+	_, err := refund.New(&stripe.RefundParams{
+		PaymentIntent: stripe.String(providerPaymentID),
+	})
+	return err
+}
+
 func (s *StripeProvider) VerifyWebhook(payload []byte, signature string) (string, string, bool, error) {
 	event, err := webhook.ConstructEvent(payload, signature, s.webhookSecret)
 	if err != nil {
@@ -81,6 +90,12 @@ func (n *NoopProvider) CreatePaymentIntent(ctx context.Context, in IntentInput) 
 		ID:           id,
 		ClientSecret: fmt.Sprintf("%s_secret_dev", id),
 	}, nil
+}
+
+func (n *NoopProvider) RefundPayment(ctx context.Context, providerPaymentID string) error {
+	_ = ctx
+	_ = providerPaymentID
+	return nil
 }
 
 func (n *NoopProvider) VerifyWebhook(payload []byte, signature string) (string, string, bool, error) {

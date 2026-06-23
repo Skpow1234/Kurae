@@ -232,6 +232,36 @@ paths:
       responses:
         "200":
           description: OK
+    patch:
+      tags: [orders]
+      summary: Update order status (fulfill or refund)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [action]
+              properties:
+                action:
+                  type: string
+                  enum: [fulfill, refund]
+      responses:
+        "200":
+          description: Updated order
+        "400":
+          $ref: "#/components/responses/Error"
+        "409":
+          $ref: "#/components/responses/Error"
   /dashboard/stats:
     get:
       tags: [orders]
