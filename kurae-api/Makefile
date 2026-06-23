@@ -25,4 +25,5 @@ run-api:
 run-worker:
 	go run ./cmd/worker
 
+# Swagger UI: http://localhost:8080/swagger/ (spec at /openapi.yaml)
 dev: deps migrate-up run-api

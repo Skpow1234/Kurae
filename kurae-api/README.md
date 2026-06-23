@@ -73,6 +73,10 @@ Required coverage: inventory reservation, checkout lifecycle, webhook idempotenc
 
 ## API contract
 
+OpenAPI 3 spec: [`internal/httpapi/openapi.yaml`](internal/httpapi/openapi.yaml)
+
+**Swagger UI:** `http://localhost:8080/swagger/` (serves `/openapi.yaml`)
+
 Base URL: `http://localhost:8080` (configurable via `PORT`).
 
 | Method | Path | Auth | Notes |
