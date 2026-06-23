@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { fetchDashboardStats } from "@/lib/api/orders";
 import { listSellerDrops } from "@/lib/api/drops-server";
 import { getSession } from "@/lib/auth/session";
+import { getStorefrontPreview } from "@/lib/storefront-preview";
 import { formatPrice } from "@/lib/utils";
 
 export default async function DashboardPage() {
@@ -15,6 +16,7 @@ export default async function DashboardPage() {
   const liveDrops = drops.filter(
     (d) => d.publishStatus === "published",
   ).length;
+  const storefrontPreview = getStorefrontPreview(drops);
 
   return (
     <div className="space-y-8">
@@ -68,12 +70,23 @@ export default async function DashboardPage() {
             </Link>
           </li>
           <li>
-            <Link
-              href={`/${session.sellerSlug}/sakura-hoodie`}
-              className="text-sakura-dusk hover:underline"
-            >
-              Preview storefront
-            </Link>
+            {storefrontPreview ? (
+              <Link
+                href={storefrontPreview.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sakura-dusk hover:underline"
+              >
+                {storefrontPreview.label} — {storefrontPreview.dropTitle}
+              </Link>
+            ) : (
+              <Link
+                href="/dashboard/drops/new"
+                className="text-sakura-dusk hover:underline"
+              >
+                Create a drop to preview your storefront
+              </Link>
+            )}
           </li>
         </ul>
       </div>

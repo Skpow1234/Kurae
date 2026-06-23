@@ -3,13 +3,18 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
+import type { StorefrontPreview } from "@/lib/storefront-preview";
 import type { SellerSession } from "@/lib/types";
 
 type DashboardHeaderActionsProps = {
   session: SellerSession;
+  storefrontPreview: StorefrontPreview | null;
 };
 
-export function DashboardHeaderActions({ session }: DashboardHeaderActionsProps) {
+export function DashboardHeaderActions({
+  session,
+  storefrontPreview,
+}: DashboardHeaderActionsProps) {
   const router = useRouter();
 
   async function handleSignOut() {
@@ -30,12 +35,16 @@ export function DashboardHeaderActions({ session }: DashboardHeaderActionsProps)
       >
         Sign out
       </button>
-      <Link
-        href={`/${session.sellerSlug}/sakura-hoodie`}
-        className="hidden text-sm text-sakura-mist hover:text-sakura-dusk sm:inline"
-      >
-        View storefront
-      </Link>
+      {storefrontPreview && (
+        <Link
+          href={storefrontPreview.href}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="hidden text-sm text-sakura-mist hover:text-sakura-dusk sm:inline"
+        >
+          View storefront
+        </Link>
+      )}
     </div>
   );
 }

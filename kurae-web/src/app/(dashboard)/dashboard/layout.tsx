@@ -1,7 +1,9 @@
 import Link from "next/link";
 
 import { DashboardHeaderActions } from "@/components/dashboard/dashboard-header-actions";
+import { listSellerDrops } from "@/lib/api/drops-server";
 import { getSession } from "@/lib/auth/session";
+import { getStorefrontPreview } from "@/lib/storefront-preview";
 
 const mainNav = [
   { href: "/dashboard", label: "Overview" },
@@ -23,6 +25,8 @@ export default async function DashboardLayout({
   children: React.ReactNode;
 }) {
   const session = await getSession();
+  const drops = session ? await listSellerDrops(session.sellerSlug) : [];
+  const storefrontPreview = getStorefrontPreview(drops);
 
   return (
     <div className="min-h-screen bg-sakura-paper">
@@ -49,7 +53,10 @@ export default async function DashboardLayout({
             ))}
           </nav>
           {session ? (
-            <DashboardHeaderActions session={session} />
+            <DashboardHeaderActions
+              session={session}
+              storefrontPreview={storefrontPreview}
+            />
           ) : (
             <Link
               href="/dashboard/login"
