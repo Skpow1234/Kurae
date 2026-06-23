@@ -200,11 +200,13 @@ func (r *OrderRepository) GetByIDForSeller(ctx context.Context, id, sellerID str
 }
 
 type ListOrdersFilter struct {
-	SellerID string
-	Status   string
-	Limit    int
-	Offset   int
-	SortAsc  bool
+	SellerID      string
+	Status        string
+	Limit         int
+	Offset        int
+	SortAsc       bool
+	CreatedAfter  *time.Time
+	CreatedBefore *time.Time
 }
 
 func (r *OrderRepository) ListForSeller(ctx context.Context, f ListOrdersFilter) ([]OrderRecord, int, error) {
@@ -217,9 +219,21 @@ func (r *OrderRepository) ListForSeller(ctx context.Context, f ListOrdersFilter)
 
 	countQuery := `SELECT COUNT(*) FROM orders WHERE seller_id = $1`
 	args := []any{f.SellerID}
+	argN := 2
 	if f.Status != "" {
-		countQuery += ` AND status = $2`
+		countQuery += fmt.Sprintf(` AND status = $%d`, argN)
 		args = append(args, f.Status)
+		argN++
+	}
+	if f.CreatedAfter != nil {
+		countQuery += fmt.Sprintf(` AND created_at >= $%d`, argN)
+		args = append(args, *f.CreatedAfter)
+		argN++
+	}
+	if f.CreatedBefore != nil {
+		countQuery += fmt.Sprintf(` AND created_at < $%d`, argN)
+		args = append(args, *f.CreatedBefore)
+		argN++
 	}
 
 	var total int
@@ -229,10 +243,20 @@ func (r *OrderRepository) ListForSeller(ctx context.Context, f ListOrdersFilter)
 
 	listQuery := orderSelect + ` WHERE o.seller_id = $1`
 	listArgs := []any{f.SellerID}
-	argN := 2
+	argN = 2
 	if f.Status != "" {
 		listQuery += fmt.Sprintf(` AND o.status = $%d`, argN)
 		listArgs = append(listArgs, f.Status)
+		argN++
+	}
+	if f.CreatedAfter != nil {
+		listQuery += fmt.Sprintf(` AND o.created_at >= $%d`, argN)
+		listArgs = append(listArgs, *f.CreatedAfter)
+		argN++
+	}
+	if f.CreatedBefore != nil {
+		listQuery += fmt.Sprintf(` AND o.created_at < $%d`, argN)
+		listArgs = append(listArgs, *f.CreatedBefore)
 		argN++
 	}
 	listQuery += fmt.Sprintf(` ORDER BY o.created_at %s LIMIT $%d OFFSET $%d`, orderDir(f.SortAsc), argN, argN+1)

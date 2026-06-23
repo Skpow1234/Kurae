@@ -83,3 +83,34 @@ func TestReserveInventorySoldOutRace(t *testing.T) {
 		t.Fatalf("want 1 success and 1 sold out, got success=%d soldOut=%d", successes, soldOut)
 	}
 }
+
+func TestWebhookEventIdempotency(t *testing.T) {
+	databaseURL := os.Getenv("DATABASE_URL")
+	if databaseURL == "" {
+		t.Skip("DATABASE_URL not set")
+	}
+
+	ctx := context.Background()
+	s, err := store.New(ctx, databaseURL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer s.Close()
+
+	payload := []byte(`{"id":"evt_test_123","type":"payment_intent.succeeded"}`)
+	inserted, err := s.Orders().SaveWebhookEvent(ctx, "stripe", "evt_test_123", payload)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !inserted {
+		t.Fatal("expected first webhook insert")
+	}
+
+	inserted, err = s.Orders().SaveWebhookEvent(ctx, "stripe", "evt_test_123", payload)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if inserted {
+		t.Fatal("expected duplicate webhook to be ignored")
+	}
+}
