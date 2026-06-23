@@ -11,22 +11,44 @@ Frontend for [Kurae](https://github.com/your-org/kurae) — public drop pages, b
 
 ## Development
 
-With API (recommended):
+**Prerequisites:** kurae-api running on port 8080 (see kurae-api README).
+
+`NEXT_PUBLIC_API_URL` defaults to `http://localhost:8080` in development if unset. You can also copy `.env.example` to `.env.local`.
 
 ```bash
-# kurae-api: docker compose up -d && make migrate-up && make seed && make run-api
-cp .env.example .env.local   # NEXT_PUBLIC_API_URL=http://localhost:8080
+# Terminal 1 — API
+cd ../kurae-api
+docker compose up -d
+cp .env.example .env   # or use the included .env
+make migrate-up && make seed && make run-api
+
+# Terminal 2 — Web
+cp .env.example .env.local   # optional; localhost default works in dev
 npm install
 npm run dev
 ```
 
-Sign in at `/dashboard/login` with `demo@hana.studio` / `demo1234` after seeding the API.
+### Demo seller account (after `make seed`)
 
-Without `NEXT_PUBLIC_API_URL`, the app falls back to in-memory mock stores.
+| | |
+|--|--|
+| **Login** | `demo@hana.studio` / `demo1234` |
+| **Dashboard** | http://localhost:3000/dashboard |
+| **Drops** | 4 seeded drops (live, upcoming, sold out, expired) |
+| **Orders** | 6 sample orders on Sakura Hoodie |
+
+### Buyer storefront
+
+| Drop | URL | State |
+|------|-----|--------|
+| Sakura Hoodie | `/hana-studio/sakura-hoodie` | Live (checkout) |
+| Sakura Tee | `/hana-studio/sakura-tee` | Upcoming |
+| Sakura Cap | `/hana-studio/sakura-cap` | Sold out |
+| Winter Bloom | `/hana-studio/winter-bloom` | Expired |
+
+You can also **sign up** at `/dashboard/signup` to create your own seller account.
 
 Open [http://localhost:3000](http://localhost:3000).
-
-API docs (when kurae-api is running): [http://localhost:8080/swagger/](http://localhost:8080/swagger/)
 
 ## Mock views (all routes)
 

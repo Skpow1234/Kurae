@@ -1,5 +1,15 @@
+const DEV_API_DEFAULT = "http://localhost:8080";
+
 export function getApiBase(): string {
-  return (process.env.NEXT_PUBLIC_API_URL ?? "").replace(/\/$/, "");
+  const fromEnv = (process.env.NEXT_PUBLIC_API_URL ?? "").replace(/\/$/, "");
+  if (fromEnv) return fromEnv;
+
+  // Local dev fallback so the app runs without .env.local
+  if (process.env.NODE_ENV === "development") {
+    return DEV_API_DEFAULT;
+  }
+
+  return "";
 }
 
 export function isApiConfigured(): boolean {

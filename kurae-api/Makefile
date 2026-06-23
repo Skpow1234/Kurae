@@ -1,5 +1,10 @@
 .PHONY: dev deps migrate-up migrate-down test build run-api run-worker seed
 
+ifneq (,$(wildcard ./.env))
+include .env
+export
+endif
+
 deps:
 	go mod tidy
 
