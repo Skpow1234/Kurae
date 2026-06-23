@@ -46,13 +46,20 @@ Copy `.env.example` to `.env` when available.
 ## Development
 
 ```bash
-# Run migrations (command TBD at scaffold)
-# make migrate
+# Start Postgres + Redis
+docker compose up -d
+
+# Copy env and run migrations
+cp .env.example .env
+make migrate-up
+
+# Optional: seed demo seller + drops (matches kurae-web mocks)
+make seed
 
 # Start API server
 go run ./cmd/api
 
-# Start worker (separate process)
+# Start worker (reservation expiry)
 go run ./cmd/worker
 ```
 
@@ -66,7 +73,21 @@ Required coverage: inventory reservation, checkout lifecycle, webhook idempotenc
 
 ## API contract
 
-OpenAPI spec will be published from this repo for `kurae-web` to consume.
+Base URL: `http://localhost:8080` (configurable via `PORT`).
+
+| Method | Path | Auth | Notes |
+|--------|------|------|-------|
+| GET | `/health` | — | Liveness |
+| POST | `/auth/register` | — | Returns `{ session, token }` |
+| POST | `/auth/login` | — | Returns `{ session, token }` |
+| GET | `/public/{seller}/{drop}` | — | `PublicDrop` JSON (camelCase) |
+| POST | `/drops/{id}/waitlist` | — | `{ email }` — 429 when rate limited |
+| POST | `/checkout` | — | Atomic reservation + payment intent |
+| POST | `/webhooks/stripe` | Stripe sig | Idempotent payment events |
+| GET/PATCH | `/drops`, `/drops/{id}` | Bearer JWT | Seller drop CRUD |
+| GET | `/orders`, `/orders/{id}` | Bearer JWT | Paginated seller orders |
+
+Set `NEXT_PUBLIC_API_URL` in `kurae-web` to point at this API. Seller routes expect `Authorization: Bearer <token>` from login/register.
 
 ## Design
 

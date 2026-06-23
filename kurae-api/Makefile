@@ -1,4 +1,4 @@
-.PHONY: dev deps migrate-up migrate-down test build run-api run-worker
+.PHONY: dev deps migrate-up migrate-down test build run-api run-worker seed
 
 deps:
 	go mod tidy
@@ -8,6 +8,9 @@ migrate-up:
 
 migrate-down:
 	go run ./cmd/migrate down
+
+seed:
+	go run ./cmd/seed
 
 test:
 	go test ./...
