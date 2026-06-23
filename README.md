@@ -39,13 +39,3 @@ Kurae is split into two independent repos.
 1. Clone or initialize each repo separately (`kurae-web`, `kurae-api`).
 2. Follow the README in each repo for setup and environment variables.
 3. API exposes OpenAPI; web consumes it via generated client or typed fetch wrapper.
-
-## Project rules
-
-See [.cursorrules](./.cursorrules) for architecture, security, and agent guidelines shared across both repos.
-
-## Success criteria
-
-- A seller can launch a polished limited drop in under 10 minutes.
-- Buyers can join, share, and purchase with minimal friction.
-- Inventory and payments are reliable under traffic spikes.
