@@ -3,8 +3,8 @@ import { notFound, redirect } from "next/navigation";
 
 import { OrderStatusBadge } from "@/components/dashboard/order-status-badge";
 import { OrderTimeline } from "@/components/dashboard/order-timeline";
+import { fetchSellerOrder } from "@/lib/api/orders";
 import { getSession } from "@/lib/auth/session";
-import { getOrderById } from "@/lib/mock/order-store";
 import { formatPrice } from "@/lib/utils";
 
 type PageProps = {
@@ -16,9 +16,9 @@ export default async function OrderDetailPage({ params }: PageProps) {
   if (!session) redirect("/dashboard/login");
 
   const { id } = await params;
-  const order = getOrderById(id);
+  const order = await fetchSellerOrder(session.sellerSlug, id);
 
-  if (!order || order.sellerSlug !== session.sellerSlug) {
+  if (!order) {
     notFound();
   }
 

@@ -1,24 +1,5 @@
-import type { PublicDrop } from "@/lib/types";
-import { isApiConfigured, apiFetch } from "@/lib/api/client";
-import { getPublicDrop } from "@/lib/mock/drop-store";
-
-export async function fetchPublicDrop(
-  sellerSlug: string,
-  dropSlug: string,
-  options?: { allowDraft?: boolean },
-): Promise<PublicDrop | null> {
-  if (isApiConfigured()) {
-    try {
-      return await apiFetch<PublicDrop>(
-        `/public/${sellerSlug}/${dropSlug}`,
-      );
-    } catch {
-      return null;
-    }
-  }
-
-  return getPublicDrop(sellerSlug, dropSlug, options);
-}
+import { isApiConfigured } from "@/lib/api/config";
+import { apiFetch } from "@/lib/api/client";
 
 export async function joinWaitlist(
   dropId: string,

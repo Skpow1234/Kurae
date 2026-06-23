@@ -8,6 +8,7 @@ import { StripePaymentMock } from "@/components/checkout/stripe-payment-mock";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useCart } from "@/contexts/cart-context";
+import { createCheckout } from "@/lib/api/checkout";
 import type { PublicDrop } from "@/lib/types";
 import { formatPrice } from "@/lib/utils";
 
@@ -18,6 +19,7 @@ function CheckoutContent() {
   const [loadingDrop, setLoadingDrop] = useState(true);
   const [email, setEmail] = useState("");
   const [state, setState] = useState<"idle" | "reserving">("idle");
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!line) {
@@ -25,7 +27,7 @@ function CheckoutContent() {
       return;
     }
 
-    fetch(`/api/mock/public/${line.sellerSlug}/${line.dropSlug}`)
+    fetch(`/api/public/${line.sellerSlug}/${line.dropSlug}`)
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
         setDrop(data?.drop ?? null);
@@ -67,15 +69,34 @@ function CheckoutContent() {
   }
 
   async function handlePay() {
-    if (!email.trim()) return;
+    if (!email.trim() || !drop) return;
     setState("reserving");
-    await new Promise((r) => setTimeout(r, 900));
-    const params = new URLSearchParams({
-      drop: line!.dropSlug,
-      size: line!.sizeLabel,
-      email,
-    });
-    router.push(`/checkout/pending?${params.toString()}`);
+    setError(null);
+
+    try {
+      const idempotencyKey =
+        typeof crypto !== "undefined" && crypto.randomUUID
+          ? crypto.randomUUID()
+          : `checkout-${Date.now()}`;
+
+      const result = await createCheckout({
+        dropId: drop.id,
+        buyerEmail: email.trim(),
+        sizeLabel: line!.sizeLabel,
+        idempotencyKey,
+      });
+
+      const params = new URLSearchParams({
+        order: result.orderId,
+        drop: line!.dropSlug,
+        size: line!.sizeLabel,
+        email,
+      });
+      router.push(`/checkout/pending?${params.toString()}`);
+    } catch {
+      setError("Could not reserve inventory. The drop may have sold out.");
+      setState("idle");
+    }
   }
 
   return (
@@ -100,6 +121,12 @@ function CheckoutContent() {
         onEmailChange={setEmail}
         disabled={state !== "idle"}
       />
+
+      {error && (
+        <p className="text-sm text-sakura-warning" role="alert">
+          {error}
+        </p>
+      )}
 
       <Button
         className="w-full bg-sakura-blush text-sakura-ink hover:bg-sakura-bloom"

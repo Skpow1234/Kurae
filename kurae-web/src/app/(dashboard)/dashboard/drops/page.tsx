@@ -1,17 +1,15 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
+import { listSellerDrops } from "@/lib/api/drops-server";
 import { getSession } from "@/lib/auth/session";
-import {
-  listDropsBySeller,
-  toPublicDrop,
-} from "@/lib/mock/drop-store";
+import { toPublicDrop } from "@/lib/mock/drop-store";
 
 export default async function DropsPage() {
   const session = await getSession();
   if (!session) redirect("/dashboard/login");
 
-  const drops = listDropsBySeller(session.sellerSlug);
+  const drops = await listSellerDrops(session.sellerSlug);
 
   return (
     <div className="space-y-6">

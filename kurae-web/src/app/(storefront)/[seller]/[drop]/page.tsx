@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import { DropPageView } from "@/components/drop/drop-page-view";
-import { fetchPublicDrop } from "@/lib/api/drops";
+import { fetchPublicDrop } from "@/lib/api/drops-server";
 import { getSession } from "@/lib/auth/session";
 
 type PageProps = {

@@ -13,7 +13,7 @@ export function DashboardHeaderActions({ session }: DashboardHeaderActionsProps)
   const router = useRouter();
 
   async function handleSignOut() {
-    await fetch("/api/mock/auth/logout", { method: "POST" });
+    await fetch("/api/auth/logout", { method: "POST" });
     router.push("/dashboard/login");
     router.refresh();
   }

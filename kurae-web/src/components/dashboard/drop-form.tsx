@@ -152,12 +152,12 @@ export function DropForm({ session, drop }: DropFormProps) {
 
     try {
       const res = drop
-        ? await fetch(`/api/mock/drops/${drop.id}`, {
+        ? await fetch(`/api/drops/${drop.id}`, {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload),
           })
-        : await fetch("/api/mock/drops", {
+        : await fetch("/api/drops", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload),

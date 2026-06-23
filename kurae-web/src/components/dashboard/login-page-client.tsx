@@ -10,8 +10,8 @@ import { Input } from "@/components/ui/input";
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [email, setEmail] = useState("seller@hanastudio.com");
-  const [password, setPassword] = useState("password");
+  const [email, setEmail] = useState("demo@hana.studio");
+  const [password, setPassword] = useState("demo1234");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -20,7 +20,7 @@ function LoginForm() {
     setLoading(true);
     setError(null);
 
-    const res = await fetch("/api/mock/auth/login", {
+    const res = await fetch("/api/auth/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email, password }),
@@ -78,7 +78,7 @@ function LoginForm() {
         {loading ? "Signing in…" : "Sign in"}
       </Button>
       <p className="text-center text-xs text-sakura-mist">
-        Mock auth — any password works for demo.
+        Demo: demo@hana.studio / demo1234 (after seed).
       </p>
     </form>
   );
@@ -90,7 +90,7 @@ export function LoginPageClient() {
       <div>
         <h1 className="text-2xl font-semibold text-sakura-ink">Sign in</h1>
         <p className="mt-1 text-sm text-sakura-mist">
-          Seller accounts — session via cookie until kurae-api ships.
+          Seller accounts — session via secure cookie.
         </p>
       </div>
       <Suspense fallback={<p className="text-sm text-sakura-mist">Loading…</p>}>

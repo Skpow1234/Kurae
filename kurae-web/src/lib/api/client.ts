@@ -1,4 +1,8 @@
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "";
+import { getApiBase, isApiConfigured } from "@/lib/api/config";
+
+export { isApiConfigured };
+
+const API_BASE = getApiBase();
 
 export class ApiError extends Error {
   constructor(
@@ -27,8 +31,4 @@ export async function apiFetch<T>(
   }
 
   return res.json() as Promise<T>;
-}
-
-export function isApiConfigured(): boolean {
-  return Boolean(API_BASE);
 }

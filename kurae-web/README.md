@@ -11,14 +11,22 @@ Frontend for [Kurae](https://github.com/your-org/kurae) — public drop pages, b
 
 ## Development
 
-Sign in at `/dashboard/login` with any password (demo: `seller@hanastudio.com`).
+With API (recommended):
 
 ```bash
+# kurae-api: docker compose up -d && make migrate-up && make seed && make run-api
+cp .env.example .env.local   # NEXT_PUBLIC_API_URL=http://localhost:8080
 npm install
 npm run dev
 ```
 
+Sign in at `/dashboard/login` with `demo@hana.studio` / `demo1234` after seeding the API.
+
+Without `NEXT_PUBLIC_API_URL`, the app falls back to in-memory mock stores.
+
 Open [http://localhost:3000](http://localhost:3000).
+
+API docs (when kurae-api is running): [http://localhost:8080/swagger/](http://localhost:8080/swagger/)
 
 ## Mock views (all routes)
 
