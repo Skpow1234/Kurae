@@ -15,7 +15,7 @@ const SWATCHES = [
 export default function BrandingPage() {
   const [accent, setAccent] = useState("blush");
   const [bio, setBio] = useState(
-    "Japanese-inspired streetwear. Limited drops only.",
+    "Japanese-inspired clothing. Limited drops only.",
   );
 
   return (

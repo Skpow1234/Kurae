@@ -1,6 +1,6 @@
 # Kurae
 
-Social commerce platform for launching limited product drops, countdowns, waitlists, checkout, inventory limits, referrals, and campaign analytics. Japanese-inspired streetwear: scarce, visual, culture-forward.
+Social commerce platform for launching limited product drops, countdowns, waitlists, checkout, inventory limits, referrals, and campaign analytics. Japanese-inspired clothing — scarce, visual, culture-forward.
 
 ## Repositories
 

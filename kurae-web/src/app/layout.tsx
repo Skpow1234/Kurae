@@ -19,7 +19,7 @@ export const metadata: Metadata = {
     template: "%s · Kurae",
   },
   description:
-    "Launch limited drops with countdowns, waitlists, and checkout.",
+    "Limited drops for Japanese-inspired clothing brands.",
 };
 
 export default function RootLayout({

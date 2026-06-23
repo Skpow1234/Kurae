@@ -18,8 +18,7 @@ export default function HomePage() {
           Limited drops, done right
         </h1>
         <p className="mt-4 text-sakura-stone">
-          Japanese-inspired streetwear commerce. Sakura-toned, scarce, and
-          mobile-first.
+          Small batches. Timeless Japanese style.
         </p>
         <div className="mt-8 flex flex-col gap-3">
           {demos.map((demo) => (
