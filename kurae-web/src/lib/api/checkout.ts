@@ -1,3 +1,4 @@
+import { ApiError } from "@/lib/api/client";
 import { requireApiBase } from "@/lib/api/config";
 
 export type CheckoutResult = {
@@ -33,7 +34,7 @@ export async function createCheckout(input: {
     }),
   });
   if (!res.ok) {
-    throw new Error(await res.text());
+    throw new ApiError(await res.text(), res.status);
   }
   return res.json() as Promise<CheckoutResult>;
 }

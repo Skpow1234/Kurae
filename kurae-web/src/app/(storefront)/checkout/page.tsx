@@ -2,6 +2,7 @@
 
 import { Elements } from "@stripe/react-stripe-js";
 import NextLink from "next/link";
+import { useRouter } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 
 import { StripePaymentForm } from "@/components/checkout/stripe-payment-form";
@@ -9,7 +10,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useCart } from "@/contexts/cart-context";
+import { ApiError } from "@/lib/api/client";
 import { createCheckout } from "@/lib/api/checkout";
+import {
+  buildCheckoutFailedUrl,
+  checkoutFailureFromHttpStatus,
+} from "@/lib/checkout-failure";
 import {
   getStripe,
   isDevPaymentIntent,
@@ -24,6 +30,7 @@ type CheckoutSession = {
 };
 
 function CheckoutContent() {
+  const router = useRouter();
   const { line } = useCart();
   const [drop, setDrop] = useState<PublicDrop | null>(null);
   const [loadingDrop, setLoadingDrop] = useState(true);
@@ -111,8 +118,13 @@ function CheckoutContent() {
       });
 
       if (isDevPaymentIntent(result.clientSecret)) {
-        setError(
-          "API is using the dev payment provider. Set STRIPE_SECRET_KEY on kurae-api to enable card payments.",
+        router.push(
+          buildCheckoutFailedUrl({
+            reason: "stripe_not_configured",
+            seller: line!.sellerSlug,
+            drop: line!.dropSlug,
+            size: line!.sizeLabel,
+          }),
         );
         return;
       }
@@ -121,7 +133,20 @@ function CheckoutContent() {
         orderId: result.orderId,
         clientSecret: result.clientSecret,
       });
-    } catch {
+    } catch (err) {
+      if (err instanceof ApiError) {
+        router.push(
+          buildCheckoutFailedUrl({
+            reason: checkoutFailureFromHttpStatus(err.status),
+            seller: line!.sellerSlug,
+            drop: line!.dropSlug,
+            size: line!.sizeLabel,
+            message:
+              err.status >= 500 ? "Checkout is temporarily unavailable." : undefined,
+          }),
+        );
+        return;
+      }
       setError("Could not reserve inventory. The drop may have sold out.");
     } finally {
       setReserving(false);

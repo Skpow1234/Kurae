@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
 import { OrderTimeline } from "@/components/dashboard/order-timeline";
+import { buildCheckoutFailedUrl, normalizeFailureReason } from "@/lib/checkout-failure";
 import { requireApiBase } from "@/lib/api/config";
 import type { BuyerOrderStatus } from "@/lib/types/buyer-order";
 import { formatPrice } from "@/lib/utils";
@@ -58,7 +59,13 @@ export default async function OrderConfirmationPage({
 
   if (order.status === "cancelled" || order.status === "refunded") {
     redirect(
-      `/checkout/failed?order=${orderId}&drop=${order.dropSlug}&size=${order.sizeLabel}&reason=${order.status}`,
+      buildCheckoutFailedUrl({
+        reason: normalizeFailureReason(order.status),
+        order: orderId,
+        seller: order.sellerSlug,
+        drop: order.dropSlug,
+        size: order.sizeLabel,
+      }),
     );
   }
 

@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 
 import { useCart } from "@/contexts/cart-context";
+import { buildCheckoutFailedUrl, normalizeFailureReason } from "@/lib/checkout-failure";
 import type { BuyerOrderStatus } from "@/lib/types/buyer-order";
 import type { OrderStatus } from "@/lib/types/orders";
 
@@ -25,8 +26,25 @@ function PendingContent() {
   const size = searchParams.get("size") ?? "";
   const email = searchParams.get("email") ?? "";
 
-  const [timedOut, setTimedOut] = useState(false);
   const [lastStatus, setLastStatus] = useState<BuyerOrderStatus | null>(null);
+
+  useEffect(() => {
+    const redirectStatus = searchParams.get("redirect_status");
+    if (redirectStatus === "failed") {
+      router.replace(
+        buildCheckoutFailedUrl({
+          reason: "payment_failed",
+          order: orderId || undefined,
+          seller: seller || undefined,
+          drop: drop || undefined,
+          size: size || undefined,
+          message:
+            "Your bank declined the payment or authentication did not complete.",
+        }),
+      );
+      return;
+    }
+  }, [drop, orderId, router, searchParams, seller, size]);
 
   useEffect(() => {
     if (!orderId || !email) return;
@@ -37,7 +55,15 @@ function PendingContent() {
     async function poll() {
       while (!cancelled) {
         if (Date.now() - started > TIMEOUT_MS) {
-          setTimedOut(true);
+          router.replace(
+            buildCheckoutFailedUrl({
+              reason: "timeout",
+              order: orderId,
+              seller: seller || undefined,
+              drop: drop || undefined,
+              size: size || undefined,
+            }),
+          );
           return;
         }
 
@@ -66,7 +92,13 @@ function PendingContent() {
 
             if (FAILED_STATUSES.includes(status.status)) {
               router.replace(
-                `/checkout/failed?order=${orderId}&drop=${drop}&size=${size}&reason=${status.status}`,
+                buildCheckoutFailedUrl({
+                  reason: normalizeFailureReason(status.status),
+                  order: orderId,
+                  seller: status.sellerSlug,
+                  drop: status.dropSlug,
+                  size: status.sizeLabel,
+                }),
               );
               return;
             }
@@ -83,7 +115,7 @@ function PendingContent() {
     return () => {
       cancelled = true;
     };
-  }, [clear, drop, email, orderId, router, size]);
+  }, [clear, drop, email, orderId, router, seller, size]);
 
   if (!orderId || !email) {
     return (
@@ -95,25 +127,6 @@ function PendingContent() {
         >
           Back to checkout
         </NextLink>
-      </div>
-    );
-  }
-
-  if (timedOut) {
-    return (
-      <div className="text-center">
-        <p className="text-xs uppercase tracking-widest text-sakura-bloom">
-          Still processing
-        </p>
-        <h1 className="mt-2 text-xl font-semibold text-sakura-ink">
-          Payment confirmation is taking longer than expected
-        </h1>
-        <p className="mt-2 text-sm text-sakura-mist">
-          {lastStatus
-            ? `Current status: ${lastStatus.status.replace("_", " ")}`
-            : "We will email you when your order is confirmed."}
-        </p>
-        <p className="mt-4 font-mono text-xs text-sakura-mist">{orderId}</p>
       </div>
     );
   }
