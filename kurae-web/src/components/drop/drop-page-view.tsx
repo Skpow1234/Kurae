@@ -11,14 +11,20 @@ import { PurchaseSection } from "@/components/drop/purchase-section";
 import { ShareButton } from "@/components/drop/share-button";
 import { StickyCtaBar } from "@/components/drop/sticky-cta-bar";
 import { WaitlistForm } from "@/components/drop/waitlist-form";
+import { useCart } from "@/contexts/cart-context";
 import { useDropInventory } from "@/lib/hooks/use-drop-inventory";
 import type { PublicDrop } from "@/lib/types";
 
 type DropPageViewProps = {
   drop: PublicDrop;
+  isPreview?: boolean;
 };
 
-export function DropPageView({ drop: initialDrop }: DropPageViewProps) {
+export function DropPageView({
+  drop: initialDrop,
+  isPreview = false,
+}: DropPageViewProps) {
+  const { count } = useCart();
   const inventory = useDropInventory({
     initialRemaining: initialDrop.inventoryRemaining,
     total: initialDrop.inventoryTotal,
@@ -39,11 +45,6 @@ export function DropPageView({ drop: initialDrop }: DropPageViewProps) {
     drop.status === "upcoming" || drop.status === "sold_out";
   const isLive = drop.status === "live";
 
-  const checkoutHref =
-    selectedSize && isLive
-      ? `/checkout?seller=${drop.sellerSlug}&drop=${drop.slug}&size=${selectedSize}`
-      : undefined;
-
   const scrollToWaitlist = useCallback(() => {
     waitlistRef.current?.scrollIntoView({ behavior: "smooth" });
   }, []);
@@ -54,11 +55,16 @@ export function DropPageView({ drop: initialDrop }: DropPageViewProps) {
 
   return (
     <div className="min-h-screen bg-sakura-paper pb-24 sm:pb-0">
+      {isPreview && (
+        <div className="bg-sakura-petal px-4 py-2 text-center text-xs font-medium text-sakura-dusk">
+          Draft preview — only visible to you
+        </div>
+      )}
       {drop.promoMessage && <PromoStrip message={drop.promoMessage} />}
       <PublicNav
         sellerName={drop.sellerName}
         dropTitle={drop.title}
-        cartCount={0}
+        cartCount={count}
       />
 
       <DropHero drop={drop} />
@@ -73,14 +79,10 @@ export function DropPageView({ drop: initialDrop }: DropPageViewProps) {
         {isLive && (
           <div ref={purchaseRef}>
             <PurchaseSection
-              sizes={drop.sizes}
+              drop={drop}
               selectedSizeId={selectedSize}
               onSelectSize={setSelectedSize}
-              priceCents={drop.priceCents}
-              currency={drop.currency}
               inventoryRemaining={drop.inventoryRemaining}
-              sellerSlug={drop.sellerSlug}
-              dropSlug={drop.slug}
             />
           </div>
         )}
@@ -116,6 +118,7 @@ export function DropPageView({ drop: initialDrop }: DropPageViewProps) {
                   fill
                   className="object-cover"
                   sizes="(max-width: 768px) 50vw, 25vw"
+                  unoptimized={url.startsWith("data:")}
                 />
               </div>
             ))}
@@ -140,7 +143,6 @@ export function DropPageView({ drop: initialDrop }: DropPageViewProps) {
       <StickyCtaBar
         status={drop.status}
         inventoryRemaining={drop.inventoryRemaining}
-        checkoutHref={checkoutHref}
         onWaitlistClick={scrollToWaitlist}
         onBuyWithoutSize={scrollToPurchase}
       />

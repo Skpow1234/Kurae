@@ -1,5 +1,7 @@
 export type DropStatus = "upcoming" | "live" | "sold_out" | "expired";
 
+export type PublishStatus = "draft" | "published";
+
 export type DropSize = {
   id: string;
   label: string;
@@ -28,8 +30,39 @@ export type PublicDrop = {
   sizes: DropSize[];
 };
 
-export type CartItem = {
+export type SellerDrop = Omit<PublicDrop, "status"> & {
+  publishStatus: PublishStatus;
+};
+
+export type SellerSession = {
+  email: string;
+  sellerSlug: string;
+  sellerName: string;
+};
+
+export type CartLine = {
   dropId: string;
+  sellerSlug: string;
+  dropSlug: string;
+  dropTitle: string;
   sizeId: string;
-  quantity: number;
+  sizeLabel: string;
+  priceCents: number;
+  currency: string;
+  heroImageUrl: string;
+};
+
+export type DropFormValues = {
+  title: string;
+  slug: string;
+  description: string;
+  story: string;
+  priceDollars: string;
+  inventory: string;
+  startsAt: string;
+  endsAt: string;
+  promoMessage: string;
+  heroImageUrl: string;
+  galleryImageUrls: string[];
+  publishStatus: PublishStatus;
 };

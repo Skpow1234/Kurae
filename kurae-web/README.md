@@ -32,6 +32,8 @@ Copy `.env.example` to `.env.local` when available.
 
 ## Development
 
+Sign in at `/dashboard/login` with any password (demo: `seller@hanastudio.com`).
+
 ```bash
 npm install
 npm run dev

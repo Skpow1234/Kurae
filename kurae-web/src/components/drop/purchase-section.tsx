@@ -1,41 +1,38 @@
 "use client";
 
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 import { SizePicker } from "@/components/drop/size-picker";
 import { Button } from "@/components/ui/button";
-import type { DropSize } from "@/lib/types";
-import { formatPrice } from "@/lib/utils";
-import { cn } from "@/lib/utils";
+import { useCart } from "@/contexts/cart-context";
+import type { PublicDrop } from "@/lib/types";
+import { formatPrice, cn } from "@/lib/utils";
 
 type PurchaseSectionProps = {
   id?: string;
-  sizes: DropSize[];
+  drop: PublicDrop;
   selectedSizeId: string | null;
   onSelectSize: (id: string) => void;
-  priceCents: number;
-  currency: string;
   inventoryRemaining: number;
-  sellerSlug: string;
-  dropSlug: string;
   className?: string;
 };
 
 export function PurchaseSection({
   id = "purchase",
-  sizes,
+  drop,
   selectedSizeId,
   onSelectSize,
-  priceCents,
-  currency,
   inventoryRemaining,
-  sellerSlug,
-  dropSlug,
   className,
 }: PurchaseSectionProps) {
-  const checkoutHref = selectedSizeId
-    ? `/checkout?seller=${sellerSlug}&drop=${dropSlug}&size=${selectedSizeId}`
-    : undefined;
+  const router = useRouter();
+  const { addItem } = useCart();
+
+  function handleBuy() {
+    if (!selectedSizeId) return;
+    addItem(drop, selectedSizeId);
+    router.push("/checkout");
+  }
 
   return (
     <section
@@ -49,7 +46,7 @@ export function PurchaseSection({
         <div>
           <h2 className="text-lg font-semibold text-sakura-ink">Select size</h2>
           <p className="mt-1 font-mono text-xl font-semibold tabular-nums text-sakura-dusk">
-            {formatPrice(priceCents, currency)}
+            {formatPrice(drop.priceCents, drop.currency)}
           </p>
         </div>
         <p className="font-mono text-sm font-medium tabular-nums text-sakura-bloom">
@@ -58,7 +55,7 @@ export function PurchaseSection({
       </div>
 
       <SizePicker
-        sizes={sizes}
+        sizes={drop.sizes}
         selectedId={selectedSizeId}
         onSelect={onSelectSize}
       />
@@ -67,18 +64,14 @@ export function PurchaseSection({
         <p className="text-sm text-sakura-mist">Choose a size to continue</p>
       )}
 
-      {checkoutHref ? (
-        <Link
-          href={checkoutHref}
-          className="inline-flex h-12 w-full items-center justify-center rounded-md bg-sakura-blush text-base font-medium text-sakura-ink transition-colors hover:bg-sakura-bloom sm:w-auto sm:px-8"
-        >
-          Buy now
-        </Link>
-      ) : (
-        <Button className="w-full sm:w-auto" size="lg" disabled>
-          Buy now
-        </Button>
-      )}
+      <Button
+        className="w-full bg-sakura-blush text-sakura-ink hover:bg-sakura-bloom sm:w-auto"
+        size="lg"
+        disabled={!selectedSizeId}
+        onClick={handleBuy}
+      >
+        Buy now
+      </Button>
     </section>
   );
 }

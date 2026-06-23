@@ -1,3 +1,7 @@
+import { redirect } from "next/navigation";
+
+import { DashboardHeaderActions } from "@/components/dashboard/dashboard-header-actions";
+import { getSession } from "@/lib/auth/session";
 import Link from "next/link";
 
 const navItems = [
@@ -6,11 +10,13 @@ const navItems = [
   { href: "/dashboard/orders", label: "Orders" },
 ];
 
-export default function DashboardLayout({
+export default async function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const session = await getSession();
+
   return (
     <div className="min-h-screen bg-sakura-paper">
       <header className="border-b border-sakura-petal bg-sakura-paper">
@@ -29,12 +35,16 @@ export default function DashboardLayout({
               </Link>
             ))}
           </nav>
-          <Link
-            href="/dashboard/login"
-            className="text-sm text-sakura-mist hover:text-sakura-dusk"
-          >
-            Sign in
-          </Link>
+          {session ? (
+            <DashboardHeaderActions session={session} />
+          ) : (
+            <Link
+              href="/dashboard/login"
+              className="text-sm text-sakura-mist hover:text-sakura-dusk"
+            >
+              Sign in
+            </Link>
+          )}
         </div>
       </header>
       <main className="mx-auto max-w-5xl px-4 py-8">{children}</main>

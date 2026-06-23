@@ -3,7 +3,7 @@ import Image from "next/image";
 import { Countdown } from "@/components/drop/countdown";
 import { InventoryBar } from "@/components/drop/inventory-bar";
 import { Badge } from "@/components/ui/badge";
-import { getStatusLabel } from "@/lib/mock/drops";
+import { getStatusLabel } from "@/lib/mock/drop-store";
 import { formatPrice } from "@/lib/utils";
 import type { DropStatus, PublicDrop } from "@/lib/types";
 
@@ -39,6 +39,7 @@ export function DropHero({ drop }: DropHeroProps) {
         priority
         className="object-cover opacity-60"
         sizes="100vw"
+        unoptimized={drop.heroImageUrl.startsWith("data:")}
       />
       <div className="absolute inset-0 bg-gradient-to-t from-sakura-dusk via-sakura-dusk/75 to-sakura-blush/20" />
 

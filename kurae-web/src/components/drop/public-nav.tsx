@@ -20,7 +20,7 @@ export function PublicNav({
   const [open, setOpen] = useState(false);
 
   return (
-    <header className="sticky top-0 z-40 border-b border-border bg-sakura-paper/95 backdrop-blur">
+    <header className="sticky top-0 z-40 border-b border-sakura-petal bg-sakura-paper/95 backdrop-blur">
       <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4">
         <div className="min-w-0">
           <p className="truncate text-xs uppercase tracking-widest text-sakura-mist">
@@ -58,7 +58,7 @@ export function PublicNav({
       </div>
 
       {open && (
-        <nav className="border-t border-border px-4 py-3 sm:hidden">
+        <nav className="border-t border-sakura-petal px-4 py-3 sm:hidden">
           <ul className="space-y-2 text-sm">
             <li>
               <Link href="/checkout" className="block py-2" onClick={() => setOpen(false)}>

@@ -1,27 +1,18 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 
-const drops = [
-  {
-    title: "Sakura Hoodie — Drop 001",
-    slug: "sakura-hoodie",
-    status: "Live",
-    inventory: "47 / 120",
-  },
-  {
-    title: "Sakura Tee — Drop 002",
-    slug: "sakura-tee",
-    status: "Upcoming",
-    inventory: "200 / 200",
-  },
-  {
-    title: "Sakura Cap — Drop 000",
-    slug: "sakura-cap",
-    status: "Sold out",
-    inventory: "0 / 80",
-  },
-];
+import { getSession } from "@/lib/auth/session";
+import {
+  listDropsBySeller,
+  toPublicDrop,
+} from "@/lib/mock/drop-store";
 
-export default function DropsPage() {
+export default async function DropsPage() {
+  const session = await getSession();
+  if (!session) redirect("/dashboard/login");
+
+  const drops = listDropsBySeller(session.sellerSlug);
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -34,39 +25,73 @@ export default function DropsPage() {
         </Link>
       </div>
 
-      <div className="overflow-hidden rounded-lg border border-sakura-petal">
-        <table className="w-full text-left text-sm">
-          <thead className="border-b border-sakura-petal bg-sakura-surface text-xs uppercase tracking-wide text-sakura-mist">
-            <tr>
-              <th className="px-4 py-3 font-medium">Title</th>
-              <th className="px-4 py-3 font-medium">Status</th>
-              <th className="px-4 py-3 font-medium">Inventory</th>
-              <th className="px-4 py-3 font-medium" />
-            </tr>
-          </thead>
-          <tbody>
-            {drops.map((drop) => (
-              <tr key={drop.slug} className="border-b border-sakura-petal last:border-0">
-                <td className="px-4 py-3 font-medium text-sakura-ink">
-                  {drop.title}
-                </td>
-                <td className="px-4 py-3 text-sakura-stone">{drop.status}</td>
-                <td className="px-4 py-3 font-mono text-sakura-stone">
-                  {drop.inventory}
-                </td>
-                <td className="px-4 py-3 text-right">
-                  <Link
-                    href={`/hana-studio/${drop.slug}`}
-                    className="text-sakura-dusk hover:underline"
-                  >
-                    Preview
-                  </Link>
-                </td>
+      {drops.length === 0 ? (
+        <div className="rounded-lg border border-dashed border-sakura-petal p-10 text-center">
+          <p className="text-sakura-stone">No drops yet.</p>
+          <Link
+            href="/dashboard/drops/new"
+            className="mt-3 inline-block text-sm font-medium text-sakura-dusk hover:underline"
+          >
+            Create your first drop
+          </Link>
+        </div>
+      ) : (
+        <div className="overflow-hidden rounded-lg border border-sakura-petal">
+          <table className="w-full text-left text-sm">
+            <thead className="border-b border-sakura-petal bg-sakura-surface text-xs uppercase tracking-wide text-sakura-mist">
+              <tr>
+                <th className="px-4 py-3 font-medium">Title</th>
+                <th className="px-4 py-3 font-medium">Publish</th>
+                <th className="px-4 py-3 font-medium">State</th>
+                <th className="px-4 py-3 font-medium">Inventory</th>
+                <th className="px-4 py-3 font-medium" />
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody>
+              {drops.map((drop) => {
+                const publicDrop = toPublicDrop(drop);
+                return (
+                  <tr
+                    key={drop.id}
+                    className="border-b border-sakura-petal last:border-0"
+                  >
+                    <td className="px-4 py-3 font-medium text-sakura-ink">
+                      <Link
+                        href={`/dashboard/drops/${drop.id}`}
+                        className="hover:text-sakura-dusk"
+                      >
+                        {drop.title}
+                      </Link>
+                    </td>
+                    <td className="px-4 py-3 capitalize text-sakura-stone">
+                      {drop.publishStatus}
+                    </td>
+                    <td className="px-4 py-3 capitalize text-sakura-stone">
+                      {publicDrop.status.replace("_", " ")}
+                    </td>
+                    <td className="px-4 py-3 font-mono text-sakura-stone">
+                      {drop.inventoryRemaining} / {drop.inventoryTotal}
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <Link
+                        href={
+                          drop.publishStatus === "published"
+                            ? `/${drop.sellerSlug}/${drop.slug}`
+                            : `/${drop.sellerSlug}/${drop.slug}?preview=1`
+                        }
+                        className="text-sakura-dusk hover:underline"
+                        target="_blank"
+                      >
+                        Preview
+                      </Link>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,10 +1,11 @@
 import type { PublicDrop } from "@/lib/types";
 import { isApiConfigured, apiFetch } from "@/lib/api/client";
-import { getMockDrop } from "@/lib/mock/drops";
+import { getPublicDrop } from "@/lib/mock/drop-store";
 
 export async function fetchPublicDrop(
   sellerSlug: string,
   dropSlug: string,
+  options?: { allowDraft?: boolean },
 ): Promise<PublicDrop | null> {
   if (isApiConfigured()) {
     try {
@@ -16,7 +17,7 @@ export async function fetchPublicDrop(
     }
   }
 
-  return getMockDrop(sellerSlug, dropSlug);
+  return getPublicDrop(sellerSlug, dropSlug, options);
 }
 
 export async function joinWaitlist(

@@ -1,68 +1,89 @@
 "use client";
 
-import { useRouter, useSearchParams } from "next/navigation";
-import Link from "next/link";
-import { Suspense, useState } from "react";
+import NextLink from "next/link";
+import { useRouter } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { getMockDrop } from "@/lib/mock/drops";
+import { useCart } from "@/contexts/cart-context";
+import type { PublicDrop } from "@/lib/types";
 import { formatPrice } from "@/lib/utils";
 
 function CheckoutContent() {
-  const searchParams = useSearchParams();
   const router = useRouter();
-  const seller = searchParams.get("seller") ?? "hana-studio";
-  const dropSlug = searchParams.get("drop") ?? "sakura-hoodie";
-  const size = searchParams.get("size");
-
-  const drop = getMockDrop(seller, dropSlug);
+  const { line, clear } = useCart();
+  const [drop, setDrop] = useState<PublicDrop | null>(null);
+  const [loadingDrop, setLoadingDrop] = useState(true);
   const [state, setState] = useState<
     "idle" | "reserving" | "pending" | "failed"
   >("idle");
+
+  useEffect(() => {
+    if (!line) {
+      setLoadingDrop(false);
+      return;
+    }
+
+    fetch(`/api/mock/public/${line.sellerSlug}/${line.dropSlug}`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        setDrop(data?.drop ?? null);
+        setLoadingDrop(false);
+      })
+      .catch(() => setLoadingDrop(false));
+  }, [line]);
+
+  if (!line) {
+    return (
+      <div className="text-center">
+        <p className="text-sakura-stone">Your cart is empty.</p>
+        <NextLink
+          href="/"
+          className="mt-4 inline-block text-sm text-sakura-dusk hover:underline"
+        >
+          Browse drops
+        </NextLink>
+      </div>
+    );
+  }
+
+  if (loadingDrop) {
+    return <Skeleton className="h-64 w-full" />;
+  }
 
   if (!drop || drop.status !== "live") {
     return (
       <div className="text-center">
         <p className="text-sakura-stone">This drop isn&apos;t available for checkout.</p>
-        <Link href="/" className="mt-4 inline-block text-sm text-sakura-dusk hover:underline">
-          Back home
-        </Link>
-      </div>
-    );
-  }
-
-  if (!size) {
-    return (
-      <div className="text-center">
-        <p className="text-sakura-stone">Select a size on the drop page first.</p>
-        <Link
-          href={`/${seller}/${dropSlug}#purchase`}
+        <NextLink
+          href={`/${line.sellerSlug}/${line.dropSlug}`}
           className="mt-4 inline-block text-sm text-sakura-dusk hover:underline"
         >
           Back to drop
-        </Link>
+        </NextLink>
       </div>
     );
   }
-
-  const sizeLabel = drop.sizes.find((s) => s.id === size)?.label ?? size.toUpperCase();
 
   async function handlePay() {
     setState("reserving");
     await new Promise((r) => setTimeout(r, 800));
     setState("pending");
     await new Promise((r) => setTimeout(r, 1200));
-    router.push(`/orders/demo-ord-001/confirmation?drop=${dropSlug}`);
+    clear();
+    router.push(
+      `/orders/demo-ord-001/confirmation?drop=${line!.dropSlug}&size=${line!.sizeLabel}`,
+    );
   }
 
   return (
     <div className="space-y-6">
       <section className="rounded-lg border border-sakura-petal bg-sakura-surface p-4">
-        <h1 className="font-semibold text-sakura-ink">{drop.title}</h1>
-        <p className="mt-1 text-sm text-sakura-mist">Size {sizeLabel}</p>
+        <h1 className="font-semibold text-sakura-ink">{line.dropTitle}</h1>
+        <p className="mt-1 text-sm text-sakura-mist">Size {line.sizeLabel}</p>
         <p className="mt-3 font-mono text-lg font-semibold text-sakura-dusk">
-          {formatPrice(drop.priceCents, drop.currency)}
+          {formatPrice(line.priceCents, line.currency)}
         </p>
       </section>
 
@@ -110,9 +131,9 @@ export default function CheckoutPage() {
     <main className="min-h-screen bg-sakura-paper">
       <header className="border-b border-sakura-petal px-4 py-4">
         <div className="mx-auto flex max-w-lg items-center justify-between">
-          <Link href="/hana-studio/sakura-hoodie" className="text-sm text-sakura-mist hover:text-sakura-dusk">
+          <NextLink href="/" className="text-sm text-sakura-mist hover:text-sakura-dusk">
             ← Back
-          </Link>
+          </NextLink>
           <p className="text-sm font-medium text-sakura-ink">Checkout</p>
         </div>
       </header>

@@ -3,16 +3,22 @@ import { notFound } from "next/navigation";
 
 import { DropPageView } from "@/components/drop/drop-page-view";
 import { fetchPublicDrop } from "@/lib/api/drops";
+import { getSession } from "@/lib/auth/session";
 
 type PageProps = {
   params: Promise<{ seller: string; drop: string }>;
+  searchParams: Promise<{ preview?: string }>;
 };
 
 export async function generateMetadata({
   params,
+  searchParams,
 }: PageProps): Promise<Metadata> {
   const { seller, drop: dropSlug } = await params;
-  const drop = await fetchPublicDrop(seller, dropSlug);
+  const { preview } = await searchParams;
+  const session = await getSession();
+  const allowDraft = preview === "1" && session?.sellerSlug === seller;
+  const drop = await fetchPublicDrop(seller, dropSlug, { allowDraft });
 
   if (!drop) {
     return { title: "Drop not found" };
@@ -36,13 +42,19 @@ export async function generateMetadata({
   };
 }
 
-export default async function PublicDropPage({ params }: PageProps) {
+export default async function PublicDropPage({
+  params,
+  searchParams,
+}: PageProps) {
   const { seller, drop: dropSlug } = await params;
-  const drop = await fetchPublicDrop(seller, dropSlug);
+  const { preview } = await searchParams;
+  const session = await getSession();
+  const allowDraft = preview === "1" && session?.sellerSlug === seller;
+  const drop = await fetchPublicDrop(seller, dropSlug, { allowDraft });
 
   if (!drop) {
     notFound();
   }
 
-  return <DropPageView drop={drop} />;
+  return <DropPageView drop={drop} isPreview={allowDraft} />;
 }

@@ -41,6 +41,12 @@ export default function HomePage() {
           >
             Seller dashboard
           </Link>
+          <Link
+            href="/dashboard/signup"
+            className="inline-flex h-10 items-center justify-center rounded-md border border-sakura-petal px-4 text-sm font-medium hover:bg-sakura-surface"
+          >
+            Create seller account
+          </Link>
         </div>
       </div>
     </main>
