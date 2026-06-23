@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { getApiBase } from "@/lib/api/config";
+import { requireApiBase } from "@/lib/api/config";
 import { SESSION_COOKIE, TOKEN_COOKIE } from "@/lib/auth/constants";
 import { serializeSession } from "@/lib/auth/session";
 import type { SellerSession } from "@/lib/types";
@@ -12,21 +12,14 @@ const COOKIE_OPTS = {
   maxAge: 60 * 60 * 24 * 7,
 };
 
-type AuthPayload = {
-  ok: boolean;
-  session: SellerSession;
-  token: string;
-};
+type AuthPayload = { ok: boolean; session: SellerSession; token: string };
 
 export async function proxyToApi(
   path: string,
   init?: RequestInit,
   token?: string,
 ): Promise<Response> {
-  const base = getApiBase();
-  if (!base) {
-    return NextResponse.json({ error: "API not configured" }, { status: 503 });
-  }
+  const base = requireApiBase();
 
   const headers = new Headers(init?.headers);
   if (!headers.has("Content-Type") && init?.body) {

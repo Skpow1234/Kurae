@@ -1,12 +1,17 @@
 import Link from "next/link";
 
 import { OrderTimeline } from "@/components/dashboard/order-timeline";
-import { getPublicDrop } from "@/lib/mock/drop-store";
+import { fetchPublicDrop } from "@/lib/api/drops-server";
 import { formatPrice } from "@/lib/utils";
 
 type PageProps = {
   params: Promise<{ orderId: string }>;
-  searchParams: Promise<{ drop?: string; size?: string; email?: string }>;
+  searchParams: Promise<{
+    drop?: string;
+    seller?: string;
+    size?: string;
+    email?: string;
+  }>;
 };
 
 export default async function OrderConfirmationPage({
@@ -15,11 +20,16 @@ export default async function OrderConfirmationPage({
 }: PageProps) {
   const { orderId } = await params;
   const {
-    drop: dropSlug = "sakura-hoodie",
+    drop: dropSlug,
+    seller: sellerSlug,
     size,
     email,
   } = await searchParams;
-  const drop = getPublicDrop("hana-studio", dropSlug);
+
+  const drop =
+    sellerSlug && dropSlug
+      ? await fetchPublicDrop(sellerSlug, dropSlug)
+      : null;
 
   const confirmedAt = new Date().toISOString();
 
@@ -69,19 +79,20 @@ export default async function OrderConfirmationPage({
                   id: "3",
                   label: "Payment confirmed",
                   at: confirmedAt,
-                  detail: "Stripe webhook (mock)",
                 },
               ]}
             />
           </div>
         </div>
 
-        <Link
-          href={`/hana-studio/${dropSlug}`}
-          className="mt-8 flex h-10 w-full items-center justify-center rounded-md bg-sakura-blush text-sm font-medium text-sakura-ink hover:bg-sakura-bloom"
-        >
-          Back to drop
-        </Link>
+        {sellerSlug && dropSlug && (
+          <Link
+            href={`/${sellerSlug}/${dropSlug}`}
+            className="mt-8 flex h-10 w-full items-center justify-center rounded-md bg-sakura-blush text-sm font-medium text-sakura-ink hover:bg-sakura-bloom"
+          >
+            Back to drop
+          </Link>
+        )}
       </div>
     </main>
   );

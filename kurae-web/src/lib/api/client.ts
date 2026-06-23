@@ -1,8 +1,6 @@
-import { getApiBase, isApiConfigured } from "@/lib/api/config";
+import { requireApiBase } from "@/lib/api/config";
 
-export { isApiConfigured };
-
-const API_BASE = getApiBase();
+export { isApiConfigured } from "@/lib/api/config";
 
 export class ApiError extends Error {
   constructor(
@@ -18,7 +16,9 @@ export async function apiFetch<T>(
   path: string,
   init?: RequestInit,
 ): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`, {
+  const base = requireApiBase();
+
+  const res = await fetch(`${base}${path}`, {
     ...init,
     headers: {
       "Content-Type": "application/json",

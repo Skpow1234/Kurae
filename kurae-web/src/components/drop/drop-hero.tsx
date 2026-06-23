@@ -3,7 +3,7 @@ import Image from "next/image";
 import { Countdown } from "@/components/drop/countdown";
 import { InventoryBar } from "@/components/drop/inventory-bar";
 import { Badge } from "@/components/ui/badge";
-import { getStatusLabel } from "@/lib/mock/drop-store";
+import { getStatusLabel } from "@/lib/drop-status";
 import { formatPrice } from "@/lib/utils";
 import type { DropStatus, PublicDrop } from "@/lib/types";
 

@@ -1,10 +1,8 @@
 import { NextResponse } from "next/server";
 
-import { isApiConfigured } from "@/lib/api/config";
+import { requireApiBase } from "@/lib/api/config";
 import { getAuthToken } from "@/lib/api/server";
 import { getSession } from "@/lib/auth/session";
-import { getPublicDrop } from "@/lib/mock/drop-store";
-import { getApiBase } from "@/lib/api/config";
 
 type RouteContext = {
   params: Promise<{ seller: string; drop: string }>;
@@ -16,28 +14,20 @@ export async function GET(request: Request, context: RouteContext) {
   const session = await getSession();
   const allowDraft = preview && session?.sellerSlug === seller;
 
-  if (isApiConfigured()) {
-    const base = getApiBase();
-    const headers: HeadersInit = {};
-    if (allowDraft) {
-      const token = await getAuthToken();
-      if (token) headers.Authorization = `Bearer ${token}`;
-    }
-    const qs = allowDraft ? "?preview=1" : "";
-    const res = await fetch(`${base}/public/${seller}/${dropSlug}${qs}`, {
-      headers,
-      cache: "no-store",
-    });
-    if (!res.ok) {
-      return NextResponse.json({ error: "Not found" }, { status: res.status });
-    }
-    const drop = await res.json();
-    return NextResponse.json({ drop });
+  const base = requireApiBase();
+  const headers: HeadersInit = {};
+  if (allowDraft) {
+    const token = await getAuthToken();
+    if (token) headers.Authorization = `Bearer ${token}`;
   }
-
-  const drop = getPublicDrop(seller, dropSlug, { allowDraft });
-  if (!drop) {
-    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  const qs = allowDraft ? "?preview=1" : "";
+  const res = await fetch(`${base}/public/${seller}/${dropSlug}${qs}`, {
+    headers,
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    return NextResponse.json({ error: "Not found" }, { status: res.status });
   }
+  const drop = await res.json();
   return NextResponse.json({ drop });
 }

@@ -1,17 +1,14 @@
 import { cookies } from "next/headers";
 
 import { TOKEN_COOKIE } from "@/lib/auth/constants";
-import { getApiBase } from "@/lib/api/config";
+import { requireApiBase } from "@/lib/api/config";
 import { ApiError } from "@/lib/api/client";
 
 export async function apiServerFetch<T>(
   path: string,
   init?: RequestInit,
 ): Promise<T> {
-  const base = getApiBase();
-  if (!base) {
-    throw new ApiError("API not configured", 503);
-  }
+  const base = requireApiBase();
 
   const cookieStore = await cookies();
   const token = cookieStore.get(TOKEN_COOKIE)?.value;

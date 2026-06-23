@@ -1,4 +1,4 @@
-import { getApiBase, isApiConfigured } from "@/lib/api/config";
+import { requireApiBase } from "@/lib/api/config";
 
 export type CheckoutResult = {
   orderId: string;
@@ -22,30 +22,18 @@ export async function createCheckout(input: {
     headers["Idempotency-Key"] = input.idempotencyKey;
   }
 
-  if (isApiConfigured()) {
-    const res = await fetch(`${getApiBase()}/checkout`, {
-      method: "POST",
-      headers,
-      body: JSON.stringify({
-        dropId: input.dropId,
-        buyerEmail: input.buyerEmail,
-        sizeLabel: input.sizeLabel,
-        idempotencyKey: input.idempotencyKey,
-      }),
-    });
-    if (!res.ok) {
-      throw new Error(await res.text());
-    }
-    return res.json() as Promise<CheckoutResult>;
-  }
-
-  const res = await fetch("/api/checkout", {
+  const res = await fetch(`${requireApiBase()}/checkout`, {
     method: "POST",
     headers,
-    body: JSON.stringify(input),
+    body: JSON.stringify({
+      dropId: input.dropId,
+      buyerEmail: input.buyerEmail,
+      sizeLabel: input.sizeLabel,
+      idempotencyKey: input.idempotencyKey,
+    }),
   });
   if (!res.ok) {
-    throw new Error("Checkout failed");
+    throw new Error(await res.text());
   }
   return res.json() as Promise<CheckoutResult>;
 }

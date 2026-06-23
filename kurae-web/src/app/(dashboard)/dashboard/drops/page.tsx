@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 
 import { listSellerDrops } from "@/lib/api/drops-server";
 import { getSession } from "@/lib/auth/session";
-import { toPublicDrop } from "@/lib/mock/drop-store";
+import { toPublicDrop } from "@/lib/drop-status";
 
 export default async function DropsPage() {
   const session = await getSession();
