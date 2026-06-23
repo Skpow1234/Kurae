@@ -39,6 +39,15 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000).
 
+### Demo routes
+
+| Route | Description |
+|-------|-------------|
+| `/hana-studio/sakura-hoodie` | Live drop page (countdown, inventory bar, buy CTA) |
+| `/hana-studio/sakura-tee` | Upcoming drop (waitlist) |
+| `/dashboard` | Seller dashboard shell |
+| `/checkout` | Checkout placeholder |
+
 ## Design
 
 Feature specifications live in `docs/design.md` (local only, gitignored).
