@@ -18,8 +18,11 @@ import (
 
 var (
 	ErrUploadsDisabled = errors.New("uploads not configured")
-	ErrInvalidMIME    = errors.New("invalid content type")
+	ErrInvalidMIME     = errors.New("invalid content type")
+	ErrFileTooLarge    = errors.New("file too large")
 )
+
+const MaxImageUploadBytes int64 = 5 * 1024 * 1024
 
 var allowedMIME = map[string]bool{
 	"image/jpeg": true,
@@ -66,7 +69,13 @@ func NewS3Storage(cfg config.Config) (*S3Storage, error) {
 	}, nil
 }
 
-func (s *S3Storage) PresignUpload(ctx context.Context, sellerID, filename, contentType string) (PresignResult, error) {
+func (s *S3Storage) PresignUpload(ctx context.Context, sellerID, filename, contentType string, sizeBytes int64) (PresignResult, error) {
+	if sizeBytes <= 0 {
+		return PresignResult{}, errors.New("sizeBytes is required")
+	}
+	if sizeBytes > MaxImageUploadBytes {
+		return PresignResult{}, ErrFileTooLarge
+	}
 	if !allowedMIME[contentType] {
 		return PresignResult{}, ErrInvalidMIME
 	}

@@ -2,6 +2,7 @@ package httpapi
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -9,6 +10,7 @@ import (
 	"github.com/kurae/kurae-api/internal/config"
 	"github.com/kurae/kurae-api/internal/payments"
 	"github.com/kurae/kurae-api/internal/queue"
+	"github.com/kurae/kurae-api/internal/ratelimit"
 	"github.com/kurae/kurae-api/internal/service"
 	"github.com/kurae/kurae-api/internal/storage"
 	"github.com/kurae/kurae-api/internal/store"
@@ -21,9 +23,14 @@ type Server struct {
 func NewServer(cfg config.Config, s *store.Store, q *queue.RedisQueue) *Server {
 	authSvc := service.NewAuthService(s, cfg.JWTSecret)
 	dropSvc := service.NewDropService(s)
+
+	authLimiter := ratelimit.NewIP(10, time.Minute)
+	checkoutLimiter := ratelimit.NewIP(20, time.Minute)
+	waitlistLimiter := ratelimit.NewIP(config.DefaultWaitlistRatePerMinute, time.Minute)
+
 	waitlistSvc := service.NewWaitlistService(s)
 	dashboardSvc := service.NewDashboardService(s)
-	provider := payments.NewFromConfig(cfg.StripeSecretKey, cfg.StripeWebhook)
+	provider := payments.NewFromConfig(cfg.StripeSecretKey, cfg.StripeWebhook, cfg.IsProduction())
 	orderSvc := service.NewOrderService(s, provider, q, cfg.ReservationTTL)
 
 	s3Storage, _ := storage.NewS3Storage(cfg)
@@ -41,6 +48,8 @@ func NewServer(cfg config.Config, s *store.Store, q *queue.RedisQueue) *Server {
 	r.Use(middleware.RealIP)
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
+	r.Use(SecurityHeaders)
+	r.Use(LimitRequestBody)
 
 	r.Use(cors.Handler(cors.Options{
 		AllowedOrigins:   cfg.CORSOrigins,
@@ -57,13 +66,13 @@ func NewServer(cfg config.Config, s *store.Store, q *queue.RedisQueue) *Server {
 		writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 	})
 
-	r.Post("/auth/register", authH.Register)
-	r.Post("/auth/login", authH.Login)
+	r.With(RateLimit(authLimiter)).Post("/auth/register", authH.Register)
+	r.With(RateLimit(authLimiter)).Post("/auth/login", authH.Login)
 	r.Post("/auth/logout", authH.Logout)
 
 	r.Get("/public/{seller}/{drop}", publicH.GetDrop)
-	r.Post("/drops/{id}/waitlist", publicH.JoinWaitlist)
-	r.Post("/checkout", orderH.Checkout)
+	r.With(RateLimit(waitlistLimiter)).Post("/drops/{id}/waitlist", publicH.JoinWaitlist)
+	r.With(RateLimit(checkoutLimiter)).Post("/checkout", orderH.Checkout)
 	r.Get("/checkout/orders/{id}/status", orderH.BuyerStatus)
 	r.Post("/webhooks/stripe", webhookH.Stripe)
 
@@ -73,6 +82,7 @@ func NewServer(cfg config.Config, s *store.Store, q *queue.RedisQueue) *Server {
 		protected.Post("/drops", dropH.Create)
 		protected.Get("/drops/{id}", dropH.Get)
 		protected.Patch("/drops/{id}", dropH.Update)
+		protected.Delete("/drops/{id}", dropH.Delete)
 		protected.Get("/orders", orderH.List)
 		protected.Get("/orders/{id}", orderH.Get)
 		protected.Patch("/orders/{id}", orderH.Update)

@@ -3,7 +3,6 @@ package httpapi
 import (
 	"errors"
 	"net/http"
-	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/kurae/kurae-api/internal/service"
@@ -56,12 +55,7 @@ func (h *PublicHandler) JoinWaitlist(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ip := clientIP(r)
-	err := h.waitlist.Join(r.Context(), dropID, body.Email, ip)
-	if errors.Is(err, service.ErrRateLimited) {
-		writeError(w, http.StatusTooManyRequests, "Rate limited")
-		return
-	}
+	count, err := h.waitlist.Join(r.Context(), dropID, body.Email)
 	if errors.Is(err, store.ErrNotFound) {
 		writeError(w, http.StatusNotFound, "Not found")
 		return
@@ -71,13 +65,5 @@ func (h *PublicHandler) JoinWaitlist(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
-}
-
-func clientIP(r *http.Request) string {
-	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
-		parts := strings.Split(xff, ",")
-		return strings.TrimSpace(parts[0])
-	}
-	return strings.TrimSpace(r.RemoteAddr)
+	writeJSON(w, http.StatusOK, map[string]any{"ok": true, "waitlistCount": count})
 }

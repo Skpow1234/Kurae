@@ -162,7 +162,44 @@ func (r *DropRepository) ListBySellerID(ctx context.Context, sellerID string) ([
 	return drops, rows.Err()
 }
 
+var ErrDropHasOrders = errors.New("drop has orders and cannot be deleted")
+
+func (r *DropRepository) DeleteForSeller(ctx context.Context, id, sellerID string) error {
+	var orderCount int
+	if err := r.store.pool.QueryRow(ctx, `
+		SELECT COUNT(*)::int FROM orders WHERE drop_id = $1
+	`, id).Scan(&orderCount); err != nil {
+		return err
+	}
+	if orderCount > 0 {
+		return ErrDropHasOrders
+	}
+
+	tag, err := r.store.pool.Exec(ctx, `
+		DELETE FROM drops WHERE id = $1 AND seller_id = $2
+	`, id, sellerID)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
 func (r *DropRepository) Update(ctx context.Context, in UpdateDropInput) (domain.DropRecord, error) {
+	existing, err := r.GetByIDForSeller(ctx, in.ID, in.SellerID)
+	if err != nil {
+		return domain.DropRecord{}, err
+	}
+
+	newRemaining, err := ReconcileInventoryRemaining(
+		existing.InventoryTotal, existing.InventoryRemaining, in.InventoryTotal,
+	)
+	if err != nil {
+		return domain.DropRecord{}, err
+	}
+
 	gallery, _ := json.Marshal(in.GalleryImageURLs)
 	sizes, _ := json.Marshal(in.Sizes)
 
@@ -170,11 +207,11 @@ func (r *DropRepository) Update(ctx context.Context, in UpdateDropInput) (domain
 		UPDATE drops SET
 			slug = $3, title = $4, description = $5, story = $6, promo_message = $7,
 			price_cents = $8, hero_image_url = $9, gallery_image_urls = $10,
-			inventory_total = $11, sizes = $12, starts_at = $13, ends_at = $14,
-			publish_status = $15, updated_at = now()
+			inventory_total = $11, inventory_remaining = $12, sizes = $13, starts_at = $14, ends_at = $15,
+			publish_status = $16, updated_at = now()
 		WHERE id = $1 AND seller_id = $2
 	`, in.ID, in.SellerID, in.Slug, in.Title, in.Description, in.Story, in.PromoMessage,
-		in.PriceCents, in.HeroImageURL, gallery, in.InventoryTotal, sizes,
+		in.PriceCents, in.HeroImageURL, gallery, in.InventoryTotal, newRemaining, sizes,
 		in.StartsAt, in.EndsAt, in.PublishStatus)
 	if err != nil {
 		if isUniqueViolation(err) {

@@ -57,6 +57,12 @@ func (s *StripeProvider) RefundPayment(ctx context.Context, providerPaymentID st
 }
 
 func (s *StripeProvider) VerifyWebhook(payload []byte, signature string) (string, string, bool, error) {
+	if s.webhookSecret == "" {
+		return "", "", false, errors.New("webhook secret not configured")
+	}
+	if signature == "" {
+		return "", "", false, errors.New("missing stripe signature")
+	}
 	event, err := webhook.ConstructEvent(payload, signature, s.webhookSecret)
 	if err != nil {
 		return "", "", false, err
@@ -104,8 +110,12 @@ func (n *NoopProvider) VerifyWebhook(payload []byte, signature string) (string, 
 	return "", "", false, errors.New("noop provider does not process webhooks")
 }
 
-func NewFromConfig(secretKey, webhookSecret string) Provider {
+func NewFromConfig(secretKey, webhookSecret string, production bool) Provider {
 	if secretKey == "" {
+		if production {
+			// Config.Validate should prevent reaching production without Stripe keys.
+			return NewNoopProvider()
+		}
 		return NewNoopProvider()
 	}
 	return NewStripeProvider(secretKey, webhookSecret)

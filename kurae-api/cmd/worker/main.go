@@ -32,7 +32,7 @@ func main() {
 	defer db.Close()
 
 	orderSvc := service.NewOrderService(db, payments.NewNoopProvider(), nil, cfg.ReservationTTL)
-	emailSender := jobs.NewEmailSender()
+	emailSender := jobs.NewEmailSender(cfg)
 
 	var redisQueue *queue.RedisQueue
 	if cfg.RedisURL != "" {

@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/kurae/kurae-api/internal/service"
@@ -30,8 +31,18 @@ func (h *OrderHandler) List(w http.ResponseWriter, r *http.Request) {
 	pageSize, _ := strconv.Atoi(r.URL.Query().Get("pageSize"))
 	status := r.URL.Query().Get("status")
 	sortAsc := r.URL.Query().Get("sort") == "oldest"
+	createdAfter, err := parseOrderTimeFilter(r.URL.Query().Get("from"), false)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "Invalid from date")
+		return
+	}
+	createdBefore, err := parseOrderTimeFilter(r.URL.Query().Get("to"), true)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "Invalid to date")
+		return
+	}
 
-	orders, total, err := h.orders.ListForSeller(r.Context(), claims.SellerID, status, page, pageSize, sortAsc)
+	orders, total, err := h.orders.ListForSeller(r.Context(), claims.SellerID, status, page, pageSize, sortAsc, createdAfter, createdBefore)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "Could not list orders")
 		return
@@ -165,4 +176,22 @@ func max(a, b int) int {
 		return a
 	}
 	return b
+}
+
+func parseOrderTimeFilter(raw string, endExclusive bool) (*time.Time, error) {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return nil, nil
+	}
+	if t, err := time.Parse(time.RFC3339, raw); err == nil {
+		return &t, nil
+	}
+	t, err := time.Parse("2006-01-02", raw)
+	if err != nil {
+		return nil, err
+	}
+	if endExclusive {
+		t = t.Add(24 * time.Hour)
+	}
+	return &t, nil
 }

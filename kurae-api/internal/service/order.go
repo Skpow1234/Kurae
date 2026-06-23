@@ -10,6 +10,7 @@ import (
 	"github.com/kurae/kurae-api/internal/payments"
 	"github.com/kurae/kurae-api/internal/queue"
 	"github.com/kurae/kurae-api/internal/store"
+	"github.com/kurae/kurae-api/internal/validate"
 )
 
 var ErrInvalidOrderAction = errors.New("invalid order action")
@@ -49,6 +50,12 @@ type CheckoutResponse struct {
 }
 
 func (o *OrderService) Checkout(ctx context.Context, req CheckoutRequest) (CheckoutResponse, error) {
+	buyerEmail, err := validate.NormalizeEmail(req.BuyerEmail)
+	if err != nil {
+		return CheckoutResponse{}, err
+	}
+	req.BuyerEmail = buyerEmail
+
 	if req.IdempotencyKey != "" {
 		existing, err := o.orders.GetByIdempotencyKey(ctx, req.IdempotencyKey)
 		if err == nil {
@@ -141,7 +148,7 @@ func (o *OrderService) MarkPaid(ctx context.Context, orderID, paymentIntentID st
 	return nil
 }
 
-func (o *OrderService) ListForSeller(ctx context.Context, sellerID, status string, page, pageSize int, sortAsc bool) ([]domain.SellerOrder, int, error) {
+func (o *OrderService) ListForSeller(ctx context.Context, sellerID, status string, page, pageSize int, sortAsc bool, createdAfter, createdBefore *time.Time) ([]domain.SellerOrder, int, error) {
 	if page < 1 {
 		page = 1
 	}
@@ -151,11 +158,13 @@ func (o *OrderService) ListForSeller(ctx context.Context, sellerID, status strin
 	offset := (page - 1) * pageSize
 
 	records, total, err := o.orders.ListForSeller(ctx, store.ListOrdersFilter{
-		SellerID: sellerID,
-		Status:   status,
-		Limit:    pageSize,
-		Offset:   offset,
-		SortAsc:  sortAsc,
+		SellerID:      sellerID,
+		Status:        status,
+		Limit:         pageSize,
+		Offset:        offset,
+		SortAsc:       sortAsc,
+		CreatedAfter:  createdAfter,
+		CreatedBefore: createdBefore,
 	})
 	if err != nil {
 		return nil, 0, err

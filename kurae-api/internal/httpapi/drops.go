@@ -111,11 +111,39 @@ func (h *DropHandler) Update(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusConflict, "Slug already in use")
 		return
 	}
+	if errors.Is(err, store.ErrInvalidInventory) {
+		writeError(w, http.StatusBadRequest, "Inventory total cannot be less than units already sold or reserved")
+		return
+	}
 	if err != nil {
 		writeError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"drop": drop})
+}
+
+func (h *DropHandler) Delete(w http.ResponseWriter, r *http.Request) {
+	claims, ok := claimsFromContext(r.Context())
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+
+	id := chi.URLParam(r, "id")
+	err := h.drops.Delete(r.Context(), claims.SellerID, id)
+	if errors.Is(err, store.ErrNotFound) {
+		writeError(w, http.StatusNotFound, "Not found")
+		return
+	}
+	if errors.Is(err, store.ErrDropHasOrders) {
+		writeError(w, http.StatusConflict, "Drop has orders and cannot be deleted")
+		return
+	}
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "Could not delete drop")
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 type dropBody struct {

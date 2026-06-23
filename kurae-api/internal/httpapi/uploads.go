@@ -31,15 +31,20 @@ func (h *UploadHandler) Presign(w http.ResponseWriter, r *http.Request) {
 	var body struct {
 		Filename    string `json:"filename"`
 		ContentType string `json:"contentType"`
+		SizeBytes   int64  `json:"sizeBytes"`
 	}
 	if err := decodeJSON(r, &body); err != nil {
 		writeError(w, http.StatusBadRequest, "Invalid JSON")
 		return
 	}
 
-	result, err := h.storage.PresignUpload(r.Context(), claims.SellerID, strings.TrimSpace(body.Filename), body.ContentType)
+	result, err := h.storage.PresignUpload(r.Context(), claims.SellerID, strings.TrimSpace(body.Filename), body.ContentType, body.SizeBytes)
 	if errors.Is(err, storage.ErrInvalidMIME) {
 		writeError(w, http.StatusBadRequest, "Only jpeg, png, and webp images are allowed")
+		return
+	}
+	if errors.Is(err, storage.ErrFileTooLarge) {
+		writeError(w, http.StatusBadRequest, "Image must be 5MB or smaller")
 		return
 	}
 	if err != nil {

@@ -9,6 +9,7 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/kurae/kurae-api/internal/domain"
 	"github.com/kurae/kurae-api/internal/store"
+	"github.com/kurae/kurae-api/internal/validate"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -40,6 +41,15 @@ type RegisterInput struct {
 }
 
 func (a *AuthService) Register(ctx context.Context, in RegisterInput) (domain.SellerSession, string, error) {
+	if len(in.Password) < minPasswordLength {
+		return domain.SellerSession{}, "", ErrWeakPassword
+	}
+
+	email, err := validate.NormalizeEmail(in.Email)
+	if err != nil {
+		return domain.SellerSession{}, "", err
+	}
+
 	hash, err := bcrypt.GenerateFromPassword([]byte(in.Password), bcrypt.DefaultCost)
 	if err != nil {
 		return domain.SellerSession{}, "", err
@@ -49,8 +59,12 @@ func (a *AuthService) Register(ctx context.Context, in RegisterInput) (domain.Se
 	if slug == "" {
 		slug = strings.ToLower(strings.ReplaceAll(strings.TrimSpace(in.Name), " ", "-"))
 	}
+	slug, err = validate.NormalizeSlug(slug)
+	if err != nil {
+		return domain.SellerSession{}, "", err
+	}
 
-	seller, err := a.sellers.Create(ctx, in.Email, string(hash), strings.TrimSpace(in.Name), slug)
+	seller, err := a.sellers.Create(ctx, email, string(hash), validate.Trim(in.Name), slug)
 	if err != nil {
 		return domain.SellerSession{}, "", err
 	}
@@ -64,7 +78,11 @@ func (a *AuthService) Register(ctx context.Context, in RegisterInput) (domain.Se
 }
 
 func (a *AuthService) Login(ctx context.Context, email, password string) (domain.SellerSession, string, error) {
-	seller, err := a.sellers.GetByEmail(ctx, email)
+	normalized, err := validate.NormalizeEmail(email)
+	if err != nil {
+		return domain.SellerSession{}, "", ErrInvalidCredentials
+	}
+	seller, err := a.sellers.GetByEmail(ctx, normalized)
 	if errors.Is(err, store.ErrNotFound) {
 		return domain.SellerSession{}, "", ErrInvalidCredentials
 	}

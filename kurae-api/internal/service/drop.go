@@ -3,11 +3,11 @@ package service
 import (
 	"context"
 	"errors"
-	"strings"
 	"time"
 
 	"github.com/kurae/kurae-api/internal/domain"
 	"github.com/kurae/kurae-api/internal/store"
+	"github.com/kurae/kurae-api/internal/validate"
 )
 
 type DropService struct {
@@ -42,14 +42,18 @@ func (d *DropService) Create(ctx context.Context, req CreateDropRequest) (domain
 	if !req.EndsAt.After(req.StartsAt) {
 		return domain.SellerDrop{}, errors.New("ends_at must be after starts_at")
 	}
+	slug, err := validate.NormalizeSlug(req.Slug)
+	if err != nil {
+		return domain.SellerDrop{}, err
+	}
 	if len(req.Sizes) == 0 {
 		req.Sizes = defaultSizes()
 	}
 
 	record, err := d.drops.Create(ctx, store.CreateDropInput{
 		SellerID:         req.SellerID,
-		Slug:             strings.TrimSpace(req.Slug),
-		Title:            strings.TrimSpace(req.Title),
+		Slug:             slug,
+		Title:            validate.Trim(req.Title),
 		Description:      req.Description,
 		Story:            req.Story,
 		PromoMessage:     req.PromoMessage,
@@ -73,6 +77,10 @@ func (d *DropService) Update(ctx context.Context, req CreateDropRequest, dropID 
 	if !req.EndsAt.After(req.StartsAt) {
 		return domain.SellerDrop{}, errors.New("ends_at must be after starts_at")
 	}
+	slug, err := validate.NormalizeSlug(req.Slug)
+	if err != nil {
+		return domain.SellerDrop{}, err
+	}
 	if len(req.Sizes) == 0 {
 		req.Sizes = defaultSizes()
 	}
@@ -80,8 +88,8 @@ func (d *DropService) Update(ctx context.Context, req CreateDropRequest, dropID 
 	record, err := d.drops.Update(ctx, store.UpdateDropInput{
 		ID:               dropID,
 		SellerID:         req.SellerID,
-		Slug:             strings.TrimSpace(req.Slug),
-		Title:            strings.TrimSpace(req.Title),
+		Slug:             slug,
+		Title:            validate.Trim(req.Title),
 		Description:      req.Description,
 		Story:            req.Story,
 		PromoMessage:     req.PromoMessage,
@@ -106,6 +114,10 @@ func (d *DropService) Get(ctx context.Context, sellerID, dropID string) (domain.
 		return domain.SellerDrop{}, err
 	}
 	return record.ToSellerDrop(time.Now()), nil
+}
+
+func (d *DropService) Delete(ctx context.Context, sellerID, dropID string) error {
+	return d.drops.DeleteForSeller(ctx, dropID, sellerID)
 }
 
 func (d *DropService) List(ctx context.Context, sellerID string) ([]domain.SellerDrop, error) {
