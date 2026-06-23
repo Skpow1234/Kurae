@@ -1,7 +1,9 @@
 import Link from "next/link";
+import { notFound, redirect } from "next/navigation";
 
 import { OrderTimeline } from "@/components/dashboard/order-timeline";
-import { fetchPublicDrop } from "@/lib/api/drops-server";
+import { requireApiBase } from "@/lib/api/config";
+import type { BuyerOrderStatus } from "@/lib/types/buyer-order";
 import { formatPrice } from "@/lib/utils";
 
 type PageProps = {
@@ -14,24 +16,59 @@ type PageProps = {
   }>;
 };
 
+async function loadBuyerOrder(
+  orderId: string,
+  email: string,
+): Promise<BuyerOrderStatus | null> {
+  const qs = new URLSearchParams({ email });
+  const res = await fetch(
+    `${requireApiBase()}/checkout/orders/${orderId}/status?${qs.toString()}`,
+    { cache: "no-store" },
+  );
+  if (!res.ok) return null;
+  return res.json() as Promise<BuyerOrderStatus>;
+}
+
 export default async function OrderConfirmationPage({
   params,
   searchParams,
 }: PageProps) {
   const { orderId } = await params;
-  const {
-    drop: dropSlug,
-    seller: sellerSlug,
-    size,
-    email,
-  } = await searchParams;
+  const { email } = await searchParams;
 
-  const drop =
-    sellerSlug && dropSlug
-      ? await fetchPublicDrop(sellerSlug, dropSlug)
-      : null;
+  if (!email) {
+    notFound();
+  }
 
-  const confirmedAt = new Date().toISOString();
+  const order = await loadBuyerOrder(orderId, email);
+  if (!order) {
+    notFound();
+  }
+
+  if (order.status === "payment_pending" || order.status === "reserved") {
+    const params = new URLSearchParams({
+      order: orderId,
+      seller: order.sellerSlug,
+      drop: order.dropSlug,
+      size: order.sizeLabel,
+      email: order.buyerEmail,
+    });
+    redirect(`/checkout/pending?${params.toString()}`);
+  }
+
+  if (order.status === "cancelled" || order.status === "refunded") {
+    redirect(
+      `/checkout/failed?order=${orderId}&drop=${order.dropSlug}&size=${order.sizeLabel}&reason=${order.status}`,
+    );
+  }
+
+  const timeline =
+    order.events.length > 0
+      ? order.events
+      : [
+          { id: "1", label: "Order created", at: order.updatedAt },
+          { id: "2", label: "Payment confirmed", at: order.updatedAt },
+        ];
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-sakura-paper px-4 py-12">
@@ -44,22 +81,20 @@ export default async function OrderConfirmationPage({
             You&apos;re in.
           </h1>
           <p className="mt-2 text-sm text-sakura-stone">
-            Payment received{email ? ` — receipt sent to ${email}` : ""}.
+            Payment received — receipt sent to {order.buyerEmail}.
           </p>
         </div>
 
-        {drop && (
-          <div className="mt-6 rounded-md bg-sakura-petal/50 p-4 text-sm">
-            <p className="font-medium text-sakura-ink">{drop.title}</p>
-            {size && <p className="mt-1 text-sakura-mist">Size {size}</p>}
-            <p className="mt-2 font-mono text-lg font-semibold text-sakura-dusk">
-              {formatPrice(drop.priceCents, drop.currency)}
-            </p>
-          </div>
-        )}
+        <div className="mt-6 rounded-md bg-sakura-petal/50 p-4 text-sm">
+          <p className="font-medium text-sakura-ink">{order.dropTitle}</p>
+          <p className="mt-1 text-sakura-mist">Size {order.sizeLabel}</p>
+          <p className="mt-2 font-mono text-lg font-semibold text-sakura-dusk">
+            {formatPrice(order.amountCents, order.currency)}
+          </p>
+        </div>
 
         <p className="mt-4 text-center font-mono text-xs text-sakura-mist">
-          {orderId}
+          {order.orderId}
         </p>
 
         <div className="mt-8 border-t border-sakura-petal pt-6">
@@ -67,32 +102,16 @@ export default async function OrderConfirmationPage({
             Status
           </h2>
           <div className="mt-4">
-            <OrderTimeline
-              events={[
-                { id: "1", label: "Order created", at: confirmedAt },
-                {
-                  id: "2",
-                  label: "Inventory reserved",
-                  at: confirmedAt,
-                },
-                {
-                  id: "3",
-                  label: "Payment confirmed",
-                  at: confirmedAt,
-                },
-              ]}
-            />
+            <OrderTimeline events={timeline} />
           </div>
         </div>
 
-        {sellerSlug && dropSlug && (
-          <Link
-            href={`/${sellerSlug}/${dropSlug}`}
-            className="mt-8 flex h-10 w-full items-center justify-center rounded-md bg-sakura-blush text-sm font-medium text-sakura-ink hover:bg-sakura-bloom"
-          >
-            Back to drop
-          </Link>
-        )}
+        <Link
+          href={`/${order.sellerSlug}/${order.dropSlug}`}
+          className="mt-8 flex h-10 w-full items-center justify-center rounded-md bg-sakura-blush text-sm font-medium text-sakura-ink hover:bg-sakura-bloom"
+        >
+          Back to drop
+        </Link>
       </div>
     </main>
   );

@@ -64,6 +64,7 @@ func NewServer(cfg config.Config, s *store.Store, q *queue.RedisQueue) *Server {
 	r.Get("/public/{seller}/{drop}", publicH.GetDrop)
 	r.Post("/drops/{id}/waitlist", publicH.JoinWaitlist)
 	r.Post("/checkout", orderH.Checkout)
+	r.Get("/checkout/orders/{id}/status", orderH.BuyerStatus)
 	r.Post("/webhooks/stripe", webhookH.Stripe)
 
 	r.Group(func(protected chi.Router) {

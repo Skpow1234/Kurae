@@ -4,6 +4,7 @@ import (
 	"errors"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/kurae/kurae-api/internal/service"
@@ -99,6 +100,26 @@ func (h *OrderHandler) Checkout(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusCreated, result)
+}
+
+func (h *OrderHandler) BuyerStatus(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	email := strings.TrimSpace(r.URL.Query().Get("email"))
+	if email == "" {
+		writeError(w, http.StatusBadRequest, "email query parameter is required")
+		return
+	}
+
+	status, err := h.orders.GetBuyerOrderStatus(r.Context(), id, email)
+	if errors.Is(err, store.ErrNotFound) {
+		writeError(w, http.StatusNotFound, "Not found")
+		return
+	}
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "Could not load order status")
+		return
+	}
+	writeJSON(w, http.StatusOK, status)
 }
 
 func max(a, b int) int {

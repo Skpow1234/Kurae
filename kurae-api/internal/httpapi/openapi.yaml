@@ -263,6 +263,32 @@ paths:
                 $ref: "#/components/schemas/CheckoutResponse"
         "409":
           description: Sold out
+  /checkout/orders/{id}/status:
+    get:
+      tags: [checkout]
+      summary: Buyer order status (poll after payment)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: email
+          in: query
+          required: true
+          schema:
+            type: string
+            format: email
+      responses:
+        "200":
+          description: Order status for buyer
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BuyerOrderStatus"
+        "404":
+          $ref: "#/components/responses/Error"
   /uploads/presign:
     post:
       tags: [uploads]
@@ -527,6 +553,34 @@ components:
           format: date-time
         status:
           type: string
+    BuyerOrderStatus:
+      type: object
+      properties:
+        orderId:
+          type: string
+        status:
+          $ref: "#/components/schemas/OrderStatus"
+        sellerSlug:
+          type: string
+        dropSlug:
+          type: string
+        dropTitle:
+          type: string
+        sizeLabel:
+          type: string
+        amountCents:
+          type: integer
+        currency:
+          type: string
+        buyerEmail:
+          type: string
+        updatedAt:
+          type: string
+          format: date-time
+        events:
+          type: array
+          items:
+            type: object
     PresignResponse:
       type: object
       properties:

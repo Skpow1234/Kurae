@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"strings"
 	"time"
 
 	"github.com/kurae/kurae-api/internal/domain"
@@ -204,4 +205,28 @@ func (o *OrderService) GetForSeller(ctx context.Context, sellerID, orderID strin
 
 func (o *OrderService) ExpireReservations(ctx context.Context) (int, error) {
 	return o.orders.ExpireStaleReservations(ctx, time.Now())
+}
+
+func (o *OrderService) GetBuyerOrderStatus(ctx context.Context, orderID, email string) (domain.BuyerOrderStatus, error) {
+	r, err := o.orders.GetByID(ctx, orderID)
+	if err != nil {
+		return domain.BuyerOrderStatus{}, err
+	}
+	if !strings.EqualFold(strings.TrimSpace(r.BuyerEmail), strings.TrimSpace(email)) {
+		return domain.BuyerOrderStatus{}, store.ErrNotFound
+	}
+	events, _ := o.orders.ListAuditEvents(ctx, "order", r.ID)
+	return domain.BuyerOrderStatus{
+		OrderID:     r.ID,
+		Status:      r.Status,
+		SellerSlug:  r.SellerSlug,
+		DropSlug:    r.DropSlug,
+		DropTitle:   r.DropTitle,
+		SizeLabel:   r.SizeLabel,
+		AmountCents: r.AmountCents,
+		Currency:    r.Currency,
+		BuyerEmail:  r.BuyerEmail,
+		UpdatedAt:   r.UpdatedAt.UTC().Format(time.RFC3339),
+		Events:      events,
+	}, nil
 }
