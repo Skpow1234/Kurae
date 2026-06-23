@@ -1,24 +1,35 @@
 "use client";
 
+import { Elements } from "@stripe/react-stripe-js";
 import NextLink from "next/link";
-import { useRouter } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 
-import { StripePaymentMock } from "@/components/checkout/stripe-payment-mock";
+import { StripePaymentForm } from "@/components/checkout/stripe-payment-form";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useCart } from "@/contexts/cart-context";
 import { createCheckout } from "@/lib/api/checkout";
+import {
+  getStripe,
+  isDevPaymentIntent,
+  isStripeConfigured,
+} from "@/lib/stripe/client";
 import type { PublicDrop } from "@/lib/types";
 import { formatPrice } from "@/lib/utils";
 
+type CheckoutSession = {
+  orderId: string;
+  clientSecret: string;
+};
+
 function CheckoutContent() {
-  const router = useRouter();
   const { line } = useCart();
   const [drop, setDrop] = useState<PublicDrop | null>(null);
   const [loadingDrop, setLoadingDrop] = useState(true);
   const [email, setEmail] = useState("");
-  const [state, setState] = useState<"idle" | "reserving">("idle");
+  const [session, setSession] = useState<CheckoutSession | null>(null);
+  const [reserving, setReserving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -68,9 +79,22 @@ function CheckoutContent() {
     );
   }
 
-  async function handlePay() {
+  if (!isStripeConfigured()) {
+    return (
+      <div className="rounded-lg border border-sakura-petal bg-sakura-surface p-6 text-center">
+        <p className="text-sm text-sakura-stone">
+          Stripe is not configured. Set{" "}
+          <code className="text-xs">NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY</code> in{" "}
+          <code className="text-xs">.env.local</code> and{" "}
+          <code className="text-xs">STRIPE_SECRET_KEY</code> on kurae-api.
+        </p>
+      </div>
+    );
+  }
+
+  async function handleReserve() {
     if (!email.trim() || !drop) return;
-    setState("reserving");
+    setReserving(true);
     setError(null);
 
     try {
@@ -86,16 +110,21 @@ function CheckoutContent() {
         idempotencyKey,
       });
 
-      const params = new URLSearchParams({
-        order: result.orderId,
-        drop: line!.dropSlug,
-        size: line!.sizeLabel,
-        email,
+      if (isDevPaymentIntent(result.clientSecret)) {
+        setError(
+          "API is using the dev payment provider. Set STRIPE_SECRET_KEY on kurae-api to enable card payments.",
+        );
+        return;
+      }
+
+      setSession({
+        orderId: result.orderId,
+        clientSecret: result.clientSecret,
       });
-      router.push(`/checkout/pending?${params.toString()}`);
     } catch {
       setError("Could not reserve inventory. The drop may have sold out.");
-      setState("idle");
+    } finally {
+      setReserving(false);
     }
   }
 
@@ -116,38 +145,64 @@ function CheckoutContent() {
         </span>
       </p>
 
-      <StripePaymentMock
-        email={email}
-        onEmailChange={setEmail}
-        disabled={state !== "idle"}
-      />
+      {session ? (
+        <Elements
+          stripe={getStripe()}
+          options={{
+            clientSecret: session.clientSecret,
+            appearance: {
+              theme: "stripe",
+              variables: {
+                colorPrimary: "#c97b8a",
+                colorBackground: "#ffffff",
+                colorText: "#2d2428",
+                borderRadius: "6px",
+              },
+            },
+          }}
+        >
+          <StripePaymentForm
+            email={email.trim()}
+            orderId={session.orderId}
+            sellerSlug={line.sellerSlug}
+            dropSlug={line.dropSlug}
+            sizeLabel={line.sizeLabel}
+            onBack={() => setSession(null)}
+          />
+        </Elements>
+      ) : (
+        <>
+          <div>
+            <label htmlFor="checkout-email" className="mb-1 block text-sm font-medium">
+              Email
+            </label>
+            <Input
+              id="checkout-email"
+              type="email"
+              required
+              placeholder="you@email.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              disabled={reserving}
+            />
+          </div>
 
-      {error && (
-        <p className="text-sm text-sakura-warning" role="alert">
-          {error}
-        </p>
+          {error && (
+            <p className="text-sm text-sakura-warning" role="alert">
+              {error}
+            </p>
+          )}
+
+          <Button
+            className="w-full bg-sakura-blush text-sakura-ink hover:bg-sakura-bloom"
+            size="lg"
+            disabled={reserving || !email.trim()}
+            onClick={handleReserve}
+          >
+            {reserving ? "Reserving your unit…" : "Continue to payment"}
+          </Button>
+        </>
       )}
-
-      <Button
-        className="w-full bg-sakura-blush text-sakura-ink hover:bg-sakura-bloom"
-        size="lg"
-        disabled={state !== "idle" || !email.trim()}
-        onClick={handlePay}
-      >
-        {state === "idle" ? "Pay now" : "Reserving your unit…"}
-      </Button>
-
-      <button
-        type="button"
-        className="w-full text-center text-xs text-sakura-mist underline"
-        onClick={() =>
-          router.push(
-            `/checkout/failed?drop=${line.dropSlug}&size=${line.sizeLabel}`,
-          )
-        }
-      >
-        Simulate payment failure
-      </button>
     </div>
   );
 }
