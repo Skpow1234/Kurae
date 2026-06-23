@@ -139,7 +139,7 @@ func (o *OrderService) MarkPaid(ctx context.Context, orderID, paymentIntentID st
 	return nil
 }
 
-func (o *OrderService) ListForSeller(ctx context.Context, sellerID, status string, page, pageSize int) ([]domain.SellerOrder, int, error) {
+func (o *OrderService) ListForSeller(ctx context.Context, sellerID, status string, page, pageSize int, sortAsc bool) ([]domain.SellerOrder, int, error) {
 	if page < 1 {
 		page = 1
 	}
@@ -153,6 +153,7 @@ func (o *OrderService) ListForSeller(ctx context.Context, sellerID, status strin
 		Status:   status,
 		Limit:    pageSize,
 		Offset:   offset,
+		SortAsc:  sortAsc,
 	})
 	if err != nil {
 		return nil, 0, err

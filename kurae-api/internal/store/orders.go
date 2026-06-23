@@ -203,6 +203,7 @@ type ListOrdersFilter struct {
 	Status   string
 	Limit    int
 	Offset   int
+	SortAsc  bool
 }
 
 func (r *OrderRepository) ListForSeller(ctx context.Context, f ListOrdersFilter) ([]OrderRecord, int, error) {
@@ -233,7 +234,7 @@ func (r *OrderRepository) ListForSeller(ctx context.Context, f ListOrdersFilter)
 		listArgs = append(listArgs, f.Status)
 		argN++
 	}
-	listQuery += fmt.Sprintf(` ORDER BY o.created_at DESC LIMIT $%d OFFSET $%d`, argN, argN+1)
+	listQuery += fmt.Sprintf(` ORDER BY o.created_at %s LIMIT $%d OFFSET $%d`, orderDir(f.SortAsc), argN, argN+1)
 	listArgs = append(listArgs, f.Limit, f.Offset)
 
 	rows, err := r.store.pool.Query(ctx, listQuery, listArgs...)
@@ -251,6 +252,13 @@ func (r *OrderRepository) ListForSeller(ctx context.Context, f ListOrdersFilter)
 		orders = append(orders, o)
 	}
 	return orders, total, rows.Err()
+}
+
+func orderDir(sortAsc bool) string {
+	if sortAsc {
+		return "ASC"
+	}
+	return "DESC"
 }
 
 func (r *OrderRepository) TransitionStatus(ctx context.Context, orderID string, from, to domain.OrderStatus, metadata map[string]any) error {

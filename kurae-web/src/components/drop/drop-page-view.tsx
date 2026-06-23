@@ -27,6 +27,9 @@ export function DropPageView({
 }: DropPageViewProps) {
   const { count } = useCart();
   const inventory = useDropInventory({
+    sellerSlug: initialDrop.sellerSlug,
+    dropSlug: initialDrop.slug,
+    isPreview,
     initialRemaining: initialDrop.inventoryRemaining,
     total: initialDrop.inventoryTotal,
     status: initialDrop.status,

@@ -1,38 +1,52 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 
 import { OrderStatusBadge } from "@/components/dashboard/order-status-badge";
 import { Select } from "@/components/ui/select";
+import { ORDERS_PAGE_SIZE } from "@/lib/constants/orders";
 import type { SellerOrder } from "@/lib/types/orders";
 import { formatPrice } from "@/lib/utils";
 
-const PAGE_SIZE = 8;
-
 type OrdersTableProps = {
   orders: SellerOrder[];
+  total: number;
+  page: number;
+  statusFilter: string;
+  sort: "newest" | "oldest";
 };
 
-export function OrdersTable({ orders }: OrdersTableProps) {
-  const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [sort, setSort] = useState<"newest" | "oldest">("newest");
-  const [page, setPage] = useState(1);
-
-  const filtered = useMemo(() => {
-    let list = [...orders];
-    if (statusFilter !== "all") {
-      list = list.filter((o) => o.status === statusFilter);
+function buildOrdersHref(
+  base: URLSearchParams,
+  updates: Record<string, string | undefined>,
+): string {
+  const params = new URLSearchParams(base.toString());
+  for (const [key, value] of Object.entries(updates)) {
+    if (value) {
+      params.set(key, value);
+    } else {
+      params.delete(key);
     }
-    list.sort((a, b) => {
-      const cmp = a.createdAt.localeCompare(b.createdAt);
-      return sort === "newest" ? -cmp : cmp;
-    });
-    return list;
-  }, [orders, statusFilter, sort]);
+  }
+  const qs = params.toString();
+  return qs ? `/dashboard/orders?${qs}` : "/dashboard/orders";
+}
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const pageItems = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+export function OrdersTable({
+  orders,
+  total,
+  page,
+  statusFilter,
+  sort,
+}: OrdersTableProps) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const totalPages = Math.max(1, Math.ceil(total / ORDERS_PAGE_SIZE));
+
+  function navigate(updates: Record<string, string | undefined>) {
+    router.push(buildOrdersHref(searchParams, updates));
+  }
 
   return (
     <div className="space-y-4">
@@ -40,8 +54,11 @@ export function OrdersTable({ orders }: OrdersTableProps) {
         <Select
           value={statusFilter}
           onChange={(e) => {
-            setStatusFilter(e.target.value);
-            setPage(1);
+            const value = e.target.value;
+            navigate({
+              status: value === "all" ? undefined : value,
+              page: "1",
+            });
           }}
           className="w-auto min-w-[160px]"
           aria-label="Filter by status"
@@ -56,7 +73,13 @@ export function OrdersTable({ orders }: OrdersTableProps) {
         </Select>
         <Select
           value={sort}
-          onChange={(e) => setSort(e.target.value as "newest" | "oldest")}
+          onChange={(e) => {
+            const value = e.target.value as "newest" | "oldest";
+            navigate({
+              sort: value === "newest" ? undefined : value,
+              page: "1",
+            });
+          }}
           className="w-auto min-w-[140px]"
           aria-label="Sort orders"
         >
@@ -65,7 +88,7 @@ export function OrdersTable({ orders }: OrdersTableProps) {
         </Select>
       </div>
 
-      {pageItems.length === 0 ? (
+      {orders.length === 0 ? (
         <div className="rounded-lg border border-dashed border-sakura-petal p-10 text-center text-sm text-sakura-mist">
           No orders match your filters.
         </div>
@@ -83,7 +106,7 @@ export function OrdersTable({ orders }: OrdersTableProps) {
               </tr>
             </thead>
             <tbody>
-              {pageItems.map((order) => (
+              {orders.map((order) => (
                 <tr
                   key={order.id}
                   className="border-b border-sakura-petal last:border-0"
@@ -114,28 +137,40 @@ export function OrdersTable({ orders }: OrdersTableProps) {
         </div>
       )}
 
-      {totalPages > 1 && (
+      {total > 0 && (
         <div className="flex items-center justify-between text-sm">
           <p className="text-sakura-mist">
-            Page {page} of {totalPages} · {filtered.length} orders
+            Page {page} of {totalPages} · {total} orders
           </p>
           <div className="flex gap-2">
-            <button
-              type="button"
-              disabled={page <= 1}
-              onClick={() => setPage((p) => p - 1)}
-              className="rounded-md border border-sakura-petal px-3 py-1 disabled:opacity-40"
-            >
-              Previous
-            </button>
-            <button
-              type="button"
-              disabled={page >= totalPages}
-              onClick={() => setPage((p) => p + 1)}
-              className="rounded-md border border-sakura-petal px-3 py-1 disabled:opacity-40"
-            >
-              Next
-            </button>
+            {page > 1 ? (
+              <Link
+                href={buildOrdersHref(searchParams, {
+                  page: String(page - 1),
+                })}
+                className="rounded-md border border-sakura-petal px-3 py-1 hover:bg-sakura-surface"
+              >
+                Previous
+              </Link>
+            ) : (
+              <span className="rounded-md border border-sakura-petal px-3 py-1 opacity-40">
+                Previous
+              </span>
+            )}
+            {page < totalPages ? (
+              <Link
+                href={buildOrdersHref(searchParams, {
+                  page: String(page + 1),
+                })}
+                className="rounded-md border border-sakura-petal px-3 py-1 hover:bg-sakura-surface"
+              >
+                Next
+              </Link>
+            ) : (
+              <span className="rounded-md border border-sakura-petal px-3 py-1 opacity-40">
+                Next
+              </span>
+            )}
           </div>
         </div>
       )}

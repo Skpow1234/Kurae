@@ -2,47 +2,91 @@
 
 import { useEffect, useState } from "react";
 
-import type { DropStatus } from "@/lib/types";
+import type { DropStatus, PublicDrop } from "@/lib/types";
 
 type UseDropInventoryOptions = {
+  sellerSlug: string;
+  dropSlug: string;
+  isPreview?: boolean;
   initialRemaining: number;
   total: number;
   status: DropStatus;
   pollMs?: number;
 };
 
+function isTerminalStatus(status: DropStatus): boolean {
+  return status === "sold_out" || status === "expired";
+}
+
 export function useDropInventory({
+  sellerSlug,
+  dropSlug,
+  isPreview = false,
   initialRemaining,
-  total,
-  status,
+  total: initialTotal,
+  status: initialStatus,
   pollMs = 12_000,
 }: UseDropInventoryOptions) {
   const [remaining, setRemaining] = useState(initialRemaining);
+  const [total, setTotal] = useState(initialTotal);
+  const [status, setStatus] = useState(initialStatus);
 
   useEffect(() => {
     setRemaining(initialRemaining);
-  }, [initialRemaining]);
+    setTotal(initialTotal);
+    setStatus(initialStatus);
+  }, [
+    dropSlug,
+    initialRemaining,
+    initialStatus,
+    initialTotal,
+    sellerSlug,
+  ]);
 
   useEffect(() => {
-    if (status !== "live" || remaining <= 0) return;
+    if (isTerminalStatus(initialStatus)) return;
 
-    const id = setInterval(() => {
-      setRemaining((prev) => {
-        if (prev <= 0) return 0;
-        return Math.random() > 0.6 ? prev - 1 : prev;
-      });
-    }, pollMs);
+    let cancelled = false;
+    let intervalId: ReturnType<typeof setInterval> | null = null;
 
-    return () => clearInterval(id);
-  }, [status, remaining, pollMs]);
+    async function poll() {
+      if (cancelled) return;
 
-  const resolvedStatus: DropStatus =
-    status === "live" && remaining <= 0 ? "sold_out" : status;
+      try {
+        const qs = isPreview ? "?preview=1" : "";
+        const res = await fetch(
+          `/api/public/${encodeURIComponent(sellerSlug)}/${encodeURIComponent(dropSlug)}${qs}`,
+          { cache: "no-store" },
+        );
+        if (!res.ok || cancelled) return;
+
+        const data = (await res.json()) as { drop: PublicDrop };
+        setRemaining(data.drop.inventoryRemaining);
+        setTotal(data.drop.inventoryTotal);
+        setStatus(data.drop.status);
+
+        if (isTerminalStatus(data.drop.status) && intervalId) {
+          clearInterval(intervalId);
+          intervalId = null;
+        }
+      } catch {
+        // Keep last known values on transient errors.
+      }
+    }
+
+    void poll();
+    intervalId = setInterval(() => void poll(), pollMs);
+
+    return () => {
+      cancelled = true;
+      if (intervalId) clearInterval(intervalId);
+    };
+  }, [dropSlug, initialStatus, isPreview, pollMs, sellerSlug]);
 
   return {
     remaining,
     total,
-    status: resolvedStatus,
+    status,
     lowStock: total > 0 && remaining / total <= 0.2,
     critical: remaining > 0 && remaining <= 5,
   };

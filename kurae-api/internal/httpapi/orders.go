@@ -29,8 +29,9 @@ func (h *OrderHandler) List(w http.ResponseWriter, r *http.Request) {
 	page, _ := strconv.Atoi(r.URL.Query().Get("page"))
 	pageSize, _ := strconv.Atoi(r.URL.Query().Get("pageSize"))
 	status := r.URL.Query().Get("status")
+	sortAsc := r.URL.Query().Get("sort") == "oldest"
 
-	orders, total, err := h.orders.ListForSeller(r.Context(), claims.SellerID, status, page, pageSize)
+	orders, total, err := h.orders.ListForSeller(r.Context(), claims.SellerID, status, page, pageSize, sortAsc)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "Could not list orders")
 		return

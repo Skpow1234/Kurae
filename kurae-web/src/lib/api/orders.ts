@@ -8,6 +8,19 @@ export type DashboardStats = {
   waitlistTotal: number;
 };
 
+export type SellerOrdersListParams = {
+  page?: number;
+  pageSize?: number;
+  status?: string;
+  sort?: "newest" | "oldest";
+};
+
+export type SellerOrdersListResult = {
+  orders: SellerOrder[];
+  total: number;
+  page: number;
+};
+
 export async function fetchDashboardStats(
   _sellerSlug: string,
 ): Promise<DashboardStats> {
@@ -15,10 +28,26 @@ export async function fetchDashboardStats(
 }
 
 export async function fetchSellerOrders(
-  _sellerSlug: string,
-): Promise<SellerOrder[]> {
-  const data = await apiServerFetch<{ orders: SellerOrder[] }>("/orders");
-  return data.orders;
+  params: SellerOrdersListParams = {},
+): Promise<SellerOrdersListResult> {
+  const qs = new URLSearchParams();
+  if (params.page && params.page > 0) {
+    qs.set("page", String(params.page));
+  }
+  if (params.pageSize && params.pageSize > 0) {
+    qs.set("pageSize", String(params.pageSize));
+  }
+  if (params.status && params.status !== "all") {
+    qs.set("status", params.status);
+  }
+  if (params.sort === "oldest") {
+    qs.set("sort", "oldest");
+  }
+
+  const query = qs.toString();
+  return apiServerFetch<SellerOrdersListResult>(
+    `/orders${query ? `?${query}` : ""}`,
+  );
 }
 
 export async function fetchSellerOrder(
