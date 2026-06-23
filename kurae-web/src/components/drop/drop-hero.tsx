@@ -31,7 +31,7 @@ export function DropHero({ drop }: DropHeroProps) {
     drop.status === "upcoming" ? "Starts in" : "Ends in";
 
   return (
-    <section className="relative min-h-[70vh] overflow-hidden bg-sakura-ink">
+    <section className="relative min-h-[70vh] overflow-hidden bg-sakura-dusk">
       <Image
         src={drop.heroImageUrl}
         alt={drop.title}
@@ -40,7 +40,7 @@ export function DropHero({ drop }: DropHeroProps) {
         className="object-cover opacity-60"
         sizes="100vw"
       />
-      <div className="absolute inset-0 bg-gradient-to-t from-sakura-ink via-sakura-ink/70 to-sakura-ink/30" />
+      <div className="absolute inset-0 bg-gradient-to-t from-sakura-dusk via-sakura-dusk/75 to-sakura-blush/20" />
 
       <div className="relative mx-auto flex min-h-[70vh] max-w-6xl flex-col justify-end px-4 pb-10 pt-24">
         <div className="mb-4 flex flex-wrap items-center gap-3">

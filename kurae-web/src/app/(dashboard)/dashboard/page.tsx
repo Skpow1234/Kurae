@@ -18,7 +18,7 @@ export default function DashboardPage() {
         ].map((stat) => (
           <div
             key={stat.label}
-            className="rounded-lg border border-border bg-sakura-surface p-4"
+            className="rounded-lg border border-sakura-petal bg-sakura-surface p-4"
           >
             <p className="text-xs uppercase tracking-wide text-sakura-mist">
               {stat.label}
@@ -30,7 +30,7 @@ export default function DashboardPage() {
         ))}
       </div>
 
-      <div className="rounded-lg border border-border p-4">
+      <div className="rounded-lg border border-sakura-petal p-4">
         <h2 className="font-medium text-sakura-ink">Quick actions</h2>
         <ul className="mt-3 space-y-2 text-sm">
           <li>

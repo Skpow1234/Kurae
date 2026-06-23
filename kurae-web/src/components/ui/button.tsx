@@ -8,7 +8,7 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: "bg-sakura-ink text-sakura-paper hover:bg-sakura-stone",
+        default: "bg-sakura-dusk text-sakura-paper hover:bg-sakura-bloom",
         accent: "bg-sakura-blush text-sakura-ink hover:bg-sakura-bloom",
         outline:
           "border border-border bg-transparent hover:bg-sakura-surface",

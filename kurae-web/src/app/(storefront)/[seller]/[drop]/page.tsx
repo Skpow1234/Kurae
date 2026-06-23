@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import { DropPageView } from "@/components/drop/drop-page-view";
-import { getMockDrop } from "@/lib/mock/drops";
+import { fetchPublicDrop } from "@/lib/api/drops";
 
 type PageProps = {
   params: Promise<{ seller: string; drop: string }>;
@@ -12,7 +12,7 @@ export async function generateMetadata({
   params,
 }: PageProps): Promise<Metadata> {
   const { seller, drop: dropSlug } = await params;
-  const drop = getMockDrop(seller, dropSlug);
+  const drop = await fetchPublicDrop(seller, dropSlug);
 
   if (!drop) {
     return { title: "Drop not found" };
@@ -38,7 +38,7 @@ export async function generateMetadata({
 
 export default async function PublicDropPage({ params }: PageProps) {
   const { seller, drop: dropSlug } = await params;
-  const drop = getMockDrop(seller, dropSlug);
+  const drop = await fetchPublicDrop(seller, dropSlug);
 
   if (!drop) {
     notFound();

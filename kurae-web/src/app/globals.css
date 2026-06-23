@@ -1,32 +1,33 @@
 @import "tailwindcss";
 
 :root {
-  --sakura-ink: #1c1917;
-  --sakura-stone: #44403c;
-  --sakura-mist: #78716c;
-  --sakura-paper: #faf8f5;
-  --sakura-surface: #f5f0eb;
-  --sakura-blush: #c9a8a0;
-  --sakura-bloom: #b8928a;
-  --sakura-dusk: #6b4f4a;
-  --sakura-warning: #a16207;
+  --sakura-ink: #2a2224;
+  --sakura-stone: #5c4f52;
+  --sakura-mist: #9a858a;
+  --sakura-paper: #fdf8f8;
+  --sakura-surface: #f9eded;
+  --sakura-petal: #f0d4d4;
+  --sakura-blush: #e0b4b4;
+  --sakura-bloom: #d49a9a;
+  --sakura-dusk: #a67a7a;
+  --sakura-warning: #b45309;
   --sakura-success: #3f6212;
 
   --background: var(--sakura-paper);
   --foreground: var(--sakura-ink);
   --card: var(--sakura-surface);
   --card-foreground: var(--sakura-ink);
-  --primary: var(--sakura-ink);
+  --primary: var(--sakura-dusk);
   --primary-foreground: var(--sakura-paper);
-  --secondary: var(--sakura-surface);
+  --secondary: var(--sakura-petal);
   --secondary-foreground: var(--sakura-ink);
   --muted: var(--sakura-surface);
   --muted-foreground: var(--sakura-mist);
   --accent: var(--sakura-blush);
   --accent-foreground: var(--sakura-ink);
-  --border: #e7e0d8;
-  --input: #e7e0d8;
-  --ring: var(--sakura-blush);
+  --border: #ecd8d8;
+  --input: #ecd8d8;
+  --ring: var(--sakura-bloom);
   --radius: 0.375rem;
 }
 
@@ -52,6 +53,7 @@
   --color-sakura-mist: var(--sakura-mist);
   --color-sakura-paper: var(--sakura-paper);
   --color-sakura-surface: var(--sakura-surface);
+  --color-sakura-petal: var(--sakura-petal);
   --color-sakura-blush: var(--sakura-blush);
   --color-sakura-bloom: var(--sakura-bloom);
   --color-sakura-dusk: var(--sakura-dusk);
@@ -83,4 +85,24 @@ body {
 
 .animate-pulse-warning {
   animation: pulse-warning 1.5s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.skeleton-shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--sakura-surface) 0%,
+    var(--sakura-petal) 50%,
+    var(--sakura-surface) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
 }

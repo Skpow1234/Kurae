@@ -13,12 +13,12 @@ export function PromoStrip({ message }: PromoStripProps) {
   if (dismissed) return null;
 
   return (
-    <div className="relative bg-sakura-ink px-4 py-2 text-center text-xs tracking-wide text-sakura-paper sm:text-sm">
+    <div className="relative bg-sakura-blush px-4 py-2 text-center text-xs font-medium tracking-wide text-sakura-ink sm:text-sm">
       <p>{message}</p>
       <button
         type="button"
         onClick={() => setDismissed(true)}
-        className="absolute right-3 top-1/2 -translate-y-1/2 rounded p-1 hover:bg-sakura-stone/50"
+        className="absolute right-3 top-1/2 -translate-y-1/2 rounded p-1 hover:bg-sakura-bloom/40"
         aria-label="Dismiss announcement"
       >
         <X className="h-3.5 w-3.5" />

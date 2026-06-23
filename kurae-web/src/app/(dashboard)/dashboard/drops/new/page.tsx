@@ -23,13 +23,13 @@ export default function NewDropPage() {
               id={field.name}
               name={field.name}
               type={field.type}
-              className="flex h-10 w-full rounded-md border border-input bg-sakura-paper px-3 text-sm"
+              className="flex h-10 w-full rounded-md border border-sakura-petal bg-sakura-paper px-3 text-sm"
             />
           </div>
         ))}
         <button
           type="button"
-          className="rounded-md bg-sakura-ink px-4 py-2 text-sm font-medium text-sakura-paper hover:bg-sakura-stone"
+          className="rounded-md bg-sakura-dusk px-4 py-2 text-sm font-medium text-sakura-paper hover:bg-sakura-bloom"
         >
           Save draft
         </button>

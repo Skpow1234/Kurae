@@ -1,30 +1,55 @@
 "use client";
 
 import Image from "next/image";
-import Link from "next/link";
 import { useCallback, useRef, useState } from "react";
 
 import { DropHero } from "@/components/drop/drop-hero";
+import { DropStatusBanner } from "@/components/drop/drop-status-banner";
 import { PromoStrip } from "@/components/drop/promo-strip";
 import { PublicNav } from "@/components/drop/public-nav";
-import { SizePicker } from "@/components/drop/size-picker";
+import { PurchaseSection } from "@/components/drop/purchase-section";
+import { ShareButton } from "@/components/drop/share-button";
 import { StickyCtaBar } from "@/components/drop/sticky-cta-bar";
 import { WaitlistForm } from "@/components/drop/waitlist-form";
+import { useDropInventory } from "@/lib/hooks/use-drop-inventory";
 import type { PublicDrop } from "@/lib/types";
-import { formatPrice } from "@/lib/utils";
 
 type DropPageViewProps = {
   drop: PublicDrop;
 };
 
-export function DropPageView({ drop }: DropPageViewProps) {
+export function DropPageView({ drop: initialDrop }: DropPageViewProps) {
+  const inventory = useDropInventory({
+    initialRemaining: initialDrop.inventoryRemaining,
+    total: initialDrop.inventoryTotal,
+    status: initialDrop.status,
+  });
+
+  const drop: PublicDrop = {
+    ...initialDrop,
+    inventoryRemaining: inventory.remaining,
+    status: inventory.status,
+  };
+
   const [selectedSize, setSelectedSize] = useState<string | null>(null);
   const waitlistRef = useRef<HTMLDivElement>(null);
+  const purchaseRef = useRef<HTMLDivElement>(null);
+
   const showWaitlist =
     drop.status === "upcoming" || drop.status === "sold_out";
+  const isLive = drop.status === "live";
+
+  const checkoutHref =
+    selectedSize && isLive
+      ? `/checkout?seller=${drop.sellerSlug}&drop=${drop.slug}&size=${selectedSize}`
+      : undefined;
 
   const scrollToWaitlist = useCallback(() => {
     waitlistRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, []);
+
+  const scrollToPurchase = useCallback(() => {
+    purchaseRef.current?.scrollIntoView({ behavior: "smooth" });
   }, []);
 
   return (
@@ -33,36 +58,37 @@ export function DropPageView({ drop }: DropPageViewProps) {
       <PublicNav
         sellerName={drop.sellerName}
         dropTitle={drop.title}
-        cartCount={drop.status === "live" ? 0 : 0}
+        cartCount={0}
       />
 
       <DropHero drop={drop} />
 
       <div className="mx-auto max-w-6xl space-y-10 px-4 py-10">
-        {drop.status === "live" && (
-          <section className="hidden space-y-6 sm:block">
-            <SizePicker
+        <DropStatusBanner status={drop.status} />
+
+        <div className="flex flex-wrap items-center gap-3">
+          <ShareButton title={drop.title} text={drop.description} />
+        </div>
+
+        {isLive && (
+          <div ref={purchaseRef}>
+            <PurchaseSection
               sizes={drop.sizes}
-              selectedId={selectedSize}
-              onSelect={setSelectedSize}
+              selectedSizeId={selectedSize}
+              onSelectSize={setSelectedSize}
+              priceCents={drop.priceCents}
+              currency={drop.currency}
+              inventoryRemaining={drop.inventoryRemaining}
+              sellerSlug={drop.sellerSlug}
+              dropSlug={drop.slug}
             />
-            <div className="flex items-center gap-4">
-              <Link
-                href="/checkout"
-                className="inline-flex h-12 items-center justify-center rounded-md bg-sakura-blush px-6 text-base font-medium text-sakura-ink hover:bg-sakura-bloom"
-              >
-                Buy now — {formatPrice(drop.priceCents, drop.currency)}
-              </Link>
-              <p className="font-mono text-sm text-sakura-dusk">
-                {drop.inventoryRemaining} left
-              </p>
-            </div>
-          </section>
+          </div>
         )}
 
         {showWaitlist && (
           <div ref={waitlistRef}>
             <WaitlistForm
+              dropId={drop.id}
               dropTitle={drop.title}
               waitlistCount={drop.waitlistCount}
             />
@@ -82,7 +108,7 @@ export function DropPageView({ drop }: DropPageViewProps) {
             {drop.galleryImageUrls.map((url, i) => (
               <div
                 key={url}
-                className="relative aspect-[3/4] overflow-hidden rounded-md bg-sakura-surface"
+                className="relative aspect-[3/4] overflow-hidden rounded-md bg-sakura-surface ring-1 ring-sakura-petal"
               >
                 <Image
                   src={url}
@@ -97,13 +123,15 @@ export function DropPageView({ drop }: DropPageViewProps) {
         </section>
       </div>
 
-      <footer className="border-t border-border bg-sakura-surface px-4 py-8 text-center text-xs text-sakura-mist">
-        <p>© {new Date().getFullYear()} {drop.sellerName} · Powered by Kurae</p>
+      <footer className="border-t border-sakura-petal bg-sakura-surface px-4 py-8 text-center text-xs text-sakura-mist">
+        <p>
+          © {new Date().getFullYear()} {drop.sellerName} · Powered by Kurae
+        </p>
         <div className="mt-2 flex justify-center gap-4">
-          <a href="#" className="hover:text-sakura-ink">
+          <a href="#" className="hover:text-sakura-dusk">
             Privacy
           </a>
-          <a href="#" className="hover:text-sakura-ink">
+          <a href="#" className="hover:text-sakura-dusk">
             Terms
           </a>
         </div>
@@ -112,7 +140,9 @@ export function DropPageView({ drop }: DropPageViewProps) {
       <StickyCtaBar
         status={drop.status}
         inventoryRemaining={drop.inventoryRemaining}
+        checkoutHref={checkoutHref}
         onWaitlistClick={scrollToWaitlist}
+        onBuyWithoutSize={scrollToPurchase}
       />
     </div>
   );

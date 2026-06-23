@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 const orders = [
   {
     id: "ord_001",
@@ -21,9 +23,9 @@ export default function OrdersPage() {
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-semibold text-sakura-ink">Orders</h1>
-      <div className="overflow-hidden rounded-lg border border-border">
+      <div className="overflow-hidden rounded-lg border border-sakura-petal">
         <table className="w-full text-left text-sm">
-          <thead className="border-b border-border bg-sakura-surface text-xs uppercase tracking-wide text-sakura-mist">
+          <thead className="border-b border-sakura-petal bg-sakura-surface text-xs uppercase tracking-wide text-sakura-mist">
             <tr>
               <th className="px-4 py-3 font-medium">Order</th>
               <th className="px-4 py-3 font-medium">Drop</th>
@@ -35,8 +37,12 @@ export default function OrdersPage() {
           </thead>
           <tbody>
             {orders.map((order) => (
-              <tr key={order.id} className="border-b border-border last:border-0">
-                <td className="px-4 py-3 font-mono text-xs">{order.id}</td>
+              <tr key={order.id} className="border-b border-sakura-petal last:border-0">
+                <td className="px-4 py-3 font-mono text-xs">
+                  <Link href={`/orders/${order.id}/confirmation`} className="hover:text-sakura-dusk">
+                    {order.id}
+                  </Link>
+                </td>
                 <td className="px-4 py-3">{order.drop}</td>
                 <td className="px-4 py-3 text-sakura-stone">{order.email}</td>
                 <td className="px-4 py-3 capitalize text-sakura-stone">

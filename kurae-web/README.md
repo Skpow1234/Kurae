@@ -43,10 +43,13 @@ Open [http://localhost:3000](http://localhost:3000).
 
 | Route | Description |
 |-------|-------------|
-| `/hana-studio/sakura-hoodie` | Live drop page (countdown, inventory bar, buy CTA) |
-| `/hana-studio/sakura-tee` | Upcoming drop (waitlist) |
+| `/hana-studio/sakura-hoodie` | Live drop (inventory ticks down) |
+| `/hana-studio/sakura-tee` | Upcoming drop + waitlist |
+| `/hana-studio/sakura-cap` | Sold out + waitlist |
+| `/hana-studio/winter-bloom` | Expired drop |
+| `/checkout?seller=…&drop=…&size=…` | Checkout flow (mock) |
+| `/orders/demo-ord-001/confirmation` | Order confirmed |
 | `/dashboard` | Seller dashboard shell |
-| `/checkout` | Checkout placeholder |
 
 ## Design
 

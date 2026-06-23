@@ -13,7 +13,7 @@ export default function DashboardLayout({
 }) {
   return (
     <div className="min-h-screen bg-sakura-paper">
-      <header className="border-b border-border bg-sakura-paper">
+      <header className="border-b border-sakura-petal bg-sakura-paper">
         <div className="mx-auto flex h-14 max-w-5xl items-center justify-between px-4">
           <Link href="/dashboard" className="text-sm font-semibold text-sakura-ink">
             Kurae Dashboard
@@ -23,7 +23,7 @@ export default function DashboardLayout({
               <Link
                 key={item.href}
                 href={item.href}
-                className="hover:text-sakura-ink"
+                className="hover:text-sakura-dusk"
               >
                 {item.label}
               </Link>
@@ -31,7 +31,7 @@ export default function DashboardLayout({
           </nav>
           <Link
             href="/dashboard/login"
-            className="text-sm text-sakura-mist hover:text-sakura-ink"
+            className="text-sm text-sakura-mist hover:text-sakura-dusk"
           >
             Sign in
           </Link>

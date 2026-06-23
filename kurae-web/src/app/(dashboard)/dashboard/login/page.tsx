@@ -1,7 +1,7 @@
 import Link from "next/link";
 
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 export default function LoginPage() {
   return (
@@ -25,12 +25,12 @@ export default function LoginPage() {
           </label>
           <Input id="password" type="password" />
         </div>
-        <Button type="button" className="w-full">
+        <Button type="button" className="w-full bg-sakura-dusk hover:bg-sakura-bloom">
           Sign in
         </Button>
       </form>
       <p className="text-center text-sm text-sakura-mist">
-        <Link href="/dashboard" className="hover:text-sakura-ink">
+        <Link href="/dashboard" className="hover:text-sakura-dusk">
           Back to dashboard
         </Link>
       </p>

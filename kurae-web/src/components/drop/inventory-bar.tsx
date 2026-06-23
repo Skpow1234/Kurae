@@ -27,7 +27,7 @@ export function InventoryBar({ remaining, total, className }: InventoryBarProps)
           {remaining} left
         </p>
       </div>
-      <div className="h-2 w-full overflow-hidden rounded-full bg-sakura-stone/40">
+      <div className="h-2 w-full overflow-hidden rounded-full bg-sakura-petal/60">
         <div
           className={cn("h-full rounded-full transition-all duration-500", fillClass)}
           style={{ width: `${pct}%` }}

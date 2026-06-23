@@ -8,8 +8,8 @@ const badgeVariants = cva(
     variants: {
       variant: {
         default: "bg-sakura-surface text-sakura-ink",
-        live: "bg-sakura-blush text-sakura-ink",
-        upcoming: "bg-sakura-surface text-sakura-stone",
+        live: "bg-sakura-blush text-sakura-ink ring-1 ring-sakura-bloom",
+        upcoming: "bg-sakura-petal text-sakura-dusk",
         soldOut: "bg-sakura-dusk text-sakura-paper",
         expired: "bg-sakura-mist text-sakura-paper",
       },

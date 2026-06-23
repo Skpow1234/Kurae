@@ -13,6 +13,12 @@ const drops = [
     status: "Upcoming",
     inventory: "200 / 200",
   },
+  {
+    title: "Sakura Cap — Drop 000",
+    slug: "sakura-cap",
+    status: "Sold out",
+    inventory: "0 / 80",
+  },
 ];
 
 export default function DropsPage() {
@@ -22,15 +28,15 @@ export default function DropsPage() {
         <h1 className="text-2xl font-semibold text-sakura-ink">Drops</h1>
         <Link
           href="/dashboard/drops/new"
-          className="rounded-md bg-sakura-ink px-4 py-2 text-sm font-medium text-sakura-paper hover:bg-sakura-stone"
+          className="rounded-md bg-sakura-dusk px-4 py-2 text-sm font-medium text-sakura-paper hover:bg-sakura-bloom"
         >
           New drop
         </Link>
       </div>
 
-      <div className="overflow-hidden rounded-lg border border-border">
+      <div className="overflow-hidden rounded-lg border border-sakura-petal">
         <table className="w-full text-left text-sm">
-          <thead className="border-b border-border bg-sakura-surface text-xs uppercase tracking-wide text-sakura-mist">
+          <thead className="border-b border-sakura-petal bg-sakura-surface text-xs uppercase tracking-wide text-sakura-mist">
             <tr>
               <th className="px-4 py-3 font-medium">Title</th>
               <th className="px-4 py-3 font-medium">Status</th>
@@ -40,7 +46,7 @@ export default function DropsPage() {
           </thead>
           <tbody>
             {drops.map((drop) => (
-              <tr key={drop.slug} className="border-b border-border last:border-0">
+              <tr key={drop.slug} className="border-b border-sakura-petal last:border-0">
                 <td className="px-4 py-3 font-medium text-sakura-ink">
                   {drop.title}
                 </td>
