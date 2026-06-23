@@ -21,6 +21,10 @@ type Config struct {
 	CORSOrigins     []string
 	StripeSecretKey string
 	StripeWebhook   string
+	S3Bucket        string
+	S3Region        string
+	AWSAccessKey    string
+	AWSSecretKey    string
 	ReservationTTL  time.Duration
 }
 
@@ -32,6 +36,10 @@ func Load() (Config, error) {
 		JWTSecret:       os.Getenv("JWT_SECRET"),
 		StripeSecretKey: os.Getenv("STRIPE_SECRET_KEY"),
 		StripeWebhook:   os.Getenv("STRIPE_WEBHOOK_SECRET"),
+		S3Bucket:        os.Getenv("S3_BUCKET"),
+		S3Region:        os.Getenv("S3_REGION"),
+		AWSAccessKey:    os.Getenv("AWS_ACCESS_KEY_ID"),
+		AWSSecretKey:    os.Getenv("AWS_SECRET_ACCESS_KEY"),
 		ReservationTTL:  DefaultReservationTTL,
 	}
 

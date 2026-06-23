@@ -8,7 +8,9 @@ import (
 	"github.com/go-chi/cors"
 	"github.com/kurae/kurae-api/internal/config"
 	"github.com/kurae/kurae-api/internal/payments"
+	"github.com/kurae/kurae-api/internal/queue"
 	"github.com/kurae/kurae-api/internal/service"
+	"github.com/kurae/kurae-api/internal/storage"
 	"github.com/kurae/kurae-api/internal/store"
 )
 
@@ -16,18 +18,23 @@ type Server struct {
 	router *chi.Mux
 }
 
-func NewServer(cfg config.Config, s *store.Store) *Server {
+func NewServer(cfg config.Config, s *store.Store, q *queue.RedisQueue) *Server {
 	authSvc := service.NewAuthService(s, cfg.JWTSecret)
 	dropSvc := service.NewDropService(s)
 	waitlistSvc := service.NewWaitlistService(s)
+	dashboardSvc := service.NewDashboardService(s)
 	provider := payments.NewFromConfig(cfg.StripeSecretKey, cfg.StripeWebhook)
-	orderSvc := service.NewOrderService(s, provider, cfg.ReservationTTL)
+	orderSvc := service.NewOrderService(s, provider, q, cfg.ReservationTTL)
+
+	s3Storage, _ := storage.NewS3Storage(cfg)
 
 	authH := NewAuthHandler(authSvc)
 	dropH := NewDropHandler(dropSvc, authSvc)
 	publicH := NewPublicHandler(dropSvc, waitlistSvc, authSvc)
 	orderH := NewOrderHandler(orderSvc)
 	webhookH := NewWebhookHandler(s, provider, orderSvc)
+	dashboardH := NewDashboardHandler(dashboardSvc)
+	uploadH := NewUploadHandler(s3Storage)
 
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID)
@@ -43,6 +50,8 @@ func NewServer(cfg config.Config, s *store.Store) *Server {
 		AllowCredentials: true,
 		MaxAge:           300,
 	}))
+
+	RegisterSwagger(r)
 
 	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
@@ -61,9 +70,12 @@ func NewServer(cfg config.Config, s *store.Store) *Server {
 		protected.Use(AuthMiddleware(authSvc))
 		protected.Get("/drops", dropH.List)
 		protected.Post("/drops", dropH.Create)
+		protected.Get("/drops/{id}", dropH.Get)
 		protected.Patch("/drops/{id}", dropH.Update)
 		protected.Get("/orders", orderH.List)
 		protected.Get("/orders/{id}", orderH.Get)
+		protected.Get("/dashboard/stats", dashboardH.Stats)
+		protected.Post("/uploads/presign", uploadH.Presign)
 	})
 
 	return &Server{router: r}

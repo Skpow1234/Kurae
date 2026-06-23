@@ -68,6 +68,26 @@ func (h *DropHandler) Create(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusCreated, map[string]any{"drop": drop})
 }
 
+func (h *DropHandler) Get(w http.ResponseWriter, r *http.Request) {
+	claims, ok := claimsFromContext(r.Context())
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+
+	id := chi.URLParam(r, "id")
+	drop, err := h.drops.Get(r.Context(), claims.SellerID, id)
+	if errors.Is(err, store.ErrNotFound) {
+		writeError(w, http.StatusNotFound, "Not found")
+		return
+	}
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "Could not load drop")
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"drop": drop})
+}
+
 func (h *DropHandler) Update(w http.ResponseWriter, r *http.Request) {
 	claims, ok := claimsFromContext(r.Context())
 	if !ok {

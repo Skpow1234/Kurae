@@ -1,0 +1,538 @@
+openapi: 3.0.3
+info:
+  title: Kurae API
+  description: REST API for Kurae — limited drops, inventory, checkout, and seller dashboard.
+  version: 0.1.0
+  contact:
+    name: Kurae
+servers:
+  - url: http://localhost:8080
+    description: Local development
+tags:
+  - name: health
+  - name: auth
+  - name: public
+  - name: drops
+  - name: orders
+  - name: checkout
+  - name: uploads
+  - name: webhooks
+paths:
+  /health:
+    get:
+      tags: [health]
+      summary: Liveness check
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+  /auth/register:
+    post:
+      tags: [auth]
+      summary: Register seller
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterRequest"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "409":
+          $ref: "#/components/responses/Error"
+  /auth/login:
+    post:
+      tags: [auth]
+      summary: Seller login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "401":
+          $ref: "#/components/responses/Error"
+  /auth/logout:
+    post:
+      tags: [auth]
+      summary: Logout (client clears token)
+      responses:
+        "200":
+          description: OK
+  /public/{seller}/{drop}:
+    get:
+      tags: [public]
+      summary: Public drop page data
+      parameters:
+        - $ref: "#/components/parameters/SellerSlug"
+        - $ref: "#/components/parameters/DropSlug"
+        - name: preview
+          in: query
+          schema:
+            type: string
+            enum: ["1"]
+          description: Draft preview (requires seller Bearer token)
+      responses:
+        "200":
+          description: Drop payload
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PublicDrop"
+        "404":
+          $ref: "#/components/responses/Error"
+  /drops/{id}/waitlist:
+    post:
+      tags: [public]
+      summary: Join drop waitlist
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email:
+                  type: string
+                  format: email
+      responses:
+        "200":
+          description: Joined or already on list
+        "429":
+          $ref: "#/components/responses/Error"
+  /drops:
+    get:
+      tags: [drops]
+      summary: List seller drops
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  drops:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/SellerDropRow"
+    post:
+      tags: [drops]
+      summary: Create drop
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DropInput"
+      responses:
+        "201":
+          description: Created
+  /drops/{id}:
+    get:
+      tags: [drops]
+      summary: Get drop by ID
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/DropId"
+      responses:
+        "200":
+          description: OK
+    patch:
+      tags: [drops]
+      summary: Update drop
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/DropId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DropInput"
+      responses:
+        "200":
+          description: Updated
+  /orders:
+    get:
+      tags: [orders]
+      summary: Paginated seller orders
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: status
+          in: query
+          schema:
+            $ref: "#/components/schemas/OrderStatus"
+      responses:
+        "200":
+          description: OK
+  /orders/{id}:
+    get:
+      tags: [orders]
+      summary: Order detail
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: OK
+  /dashboard/stats:
+    get:
+      tags: [orders]
+      summary: Seller dashboard aggregates
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardStats"
+  /checkout:
+    post:
+      tags: [checkout]
+      summary: Reserve inventory and create payment intent
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CheckoutRequest"
+      responses:
+        "201":
+          description: Checkout started
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CheckoutResponse"
+        "409":
+          description: Sold out
+  /uploads/presign:
+    post:
+      tags: [uploads]
+      summary: Presigned S3 upload URL for product images
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [filename, contentType]
+              properties:
+                filename:
+                  type: string
+                contentType:
+                  type: string
+                  enum: [image/jpeg, image/png, image/webp]
+      responses:
+        "200":
+          description: Presigned URL
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PresignResponse"
+  /webhooks/stripe:
+    post:
+      tags: [webhooks]
+      summary: Stripe payment webhooks
+      parameters:
+        - name: Stripe-Signature
+          in: header
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Processed
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    SellerSlug:
+      name: seller
+      in: path
+      required: true
+      schema:
+        type: string
+    DropSlug:
+      name: drop
+      in: path
+      required: true
+      schema:
+        type: string
+    DropId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+  responses:
+    Error:
+      description: Error
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+  schemas:
+    RegisterRequest:
+      type: object
+      required: [email, password, name]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 8
+        name:
+          type: string
+        slug:
+          type: string
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+        password:
+          type: string
+    AuthResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+        session:
+          $ref: "#/components/schemas/SellerSession"
+        token:
+          type: string
+    SellerSession:
+      type: object
+      properties:
+        email:
+          type: string
+        sellerSlug:
+          type: string
+        sellerName:
+          type: string
+    PublicDrop:
+      type: object
+      properties:
+        id:
+          type: string
+        sellerSlug:
+          type: string
+        sellerName:
+          type: string
+        slug:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+        story:
+          type: string
+        priceCents:
+          type: integer
+        currency:
+          type: string
+        heroImageUrl:
+          type: string
+        galleryImageUrls:
+          type: array
+          items:
+            type: string
+        inventoryTotal:
+          type: integer
+        inventoryRemaining:
+          type: integer
+        waitlistCount:
+          type: integer
+        startsAt:
+          type: string
+          format: date-time
+        endsAt:
+          type: string
+          format: date-time
+        status:
+          type: string
+          enum: [upcoming, live, sold_out, expired]
+        promoMessage:
+          type: string
+          nullable: true
+        sizes:
+          type: array
+          items:
+            $ref: "#/components/schemas/DropSize"
+    SellerDropRow:
+      allOf:
+        - $ref: "#/components/schemas/PublicDrop"
+        - type: object
+          properties:
+            publishStatus:
+              type: string
+              enum: [draft, published]
+            publicStatus:
+              type: string
+    DropSize:
+      type: object
+      properties:
+        id:
+          type: string
+        label:
+          type: string
+        available:
+          type: boolean
+    DropInput:
+      type: object
+      required: [title, slug, priceCents, inventoryTotal, startsAt, endsAt]
+      properties:
+        title:
+          type: string
+        slug:
+          type: string
+        description:
+          type: string
+        story:
+          type: string
+        priceCents:
+          type: integer
+        inventoryTotal:
+          type: integer
+        startsAt:
+          type: string
+          format: date-time
+        endsAt:
+          type: string
+          format: date-time
+        promoMessage:
+          type: string
+          nullable: true
+        heroImageUrl:
+          type: string
+        galleryImageUrls:
+          type: array
+          items:
+            type: string
+        sizes:
+          type: array
+          items:
+            $ref: "#/components/schemas/DropSize"
+        publishStatus:
+          type: string
+          enum: [draft, published]
+    OrderStatus:
+      type: string
+      enum: [reserved, payment_pending, paid, fulfilled, cancelled, refunded]
+    DashboardStats:
+      type: object
+      properties:
+        revenue7dCents:
+          type: integer
+        orderCount:
+          type: integer
+        paidCount:
+          type: integer
+        waitlistTotal:
+          type: integer
+    CheckoutRequest:
+      type: object
+      required: [dropId, buyerEmail, sizeLabel]
+      properties:
+        dropId:
+          type: string
+        buyerEmail:
+          type: string
+        sizeLabel:
+          type: string
+        idempotencyKey:
+          type: string
+    CheckoutResponse:
+      type: object
+      properties:
+        orderId:
+          type: string
+        clientSecret:
+          type: string
+        amountCents:
+          type: integer
+        currency:
+          type: string
+        reservationUntil:
+          type: string
+          format: date-time
+        status:
+          type: string
+    PresignResponse:
+      type: object
+      properties:
+        uploadUrl:
+          type: string
+        publicUrl:
+          type: string
+        key:
+          type: string

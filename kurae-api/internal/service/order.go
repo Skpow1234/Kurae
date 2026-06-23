@@ -7,6 +7,7 @@ import (
 
 	"github.com/kurae/kurae-api/internal/domain"
 	"github.com/kurae/kurae-api/internal/payments"
+	"github.com/kurae/kurae-api/internal/queue"
 	"github.com/kurae/kurae-api/internal/store"
 )
 
@@ -14,14 +15,16 @@ type OrderService struct {
 	orders   *store.OrderRepository
 	drops    *store.DropRepository
 	provider payments.Provider
+	queue    *queue.RedisQueue
 	ttl      time.Duration
 }
 
-func NewOrderService(s *store.Store, provider payments.Provider, ttl time.Duration) *OrderService {
+func NewOrderService(s *store.Store, provider payments.Provider, q *queue.RedisQueue, ttl time.Duration) *OrderService {
 	return &OrderService{
 		orders:   s.Orders(),
 		drops:    s.Drops(),
 		provider: provider,
+		queue:    q,
 		ttl:      ttl,
 	}
 }
@@ -118,7 +121,21 @@ func (o *OrderService) MarkPaid(ctx context.Context, orderID, paymentIntentID st
 	if err := o.orders.MarkPaymentPaid(ctx, orderID, paymentIntentID); err != nil {
 		return err
 	}
-	return o.orders.ConvertReservation(ctx, orderID)
+	if err := o.orders.ConvertReservation(ctx, orderID); err != nil {
+		return err
+	}
+
+	if o.queue != nil {
+		order, err := o.orders.GetByID(ctx, orderID)
+		if err == nil {
+			_ = o.queue.EnqueueEmail(ctx, queue.EmailJob{
+				OrderID:    order.ID,
+				BuyerEmail: order.BuyerEmail,
+				DropTitle:  order.DropTitle,
+			})
+		}
+	}
+	return nil
 }
 
 func (o *OrderService) ListForSeller(ctx context.Context, sellerID, status string, page, pageSize int) ([]domain.SellerOrder, int, error) {

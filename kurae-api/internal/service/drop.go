@@ -100,6 +100,14 @@ func (d *DropService) Update(ctx context.Context, req CreateDropRequest, dropID 
 	return record.ToSellerDrop(time.Now()), nil
 }
 
+func (d *DropService) Get(ctx context.Context, sellerID, dropID string) (domain.SellerDrop, error) {
+	record, err := d.drops.GetByIDForSeller(ctx, dropID, sellerID)
+	if err != nil {
+		return domain.SellerDrop{}, err
+	}
+	return record.ToSellerDrop(time.Now()), nil
+}
+
 func (d *DropService) List(ctx context.Context, sellerID string) ([]domain.SellerDrop, error) {
 	records, err := d.drops.ListBySellerID(ctx, sellerID)
 	if err != nil {

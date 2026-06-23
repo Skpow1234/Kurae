@@ -12,6 +12,7 @@ import (
 
 	"github.com/kurae/kurae-api/internal/config"
 	"github.com/kurae/kurae-api/internal/httpapi"
+	"github.com/kurae/kurae-api/internal/queue"
 	"github.com/kurae/kurae-api/internal/store"
 )
 
@@ -28,7 +29,17 @@ func main() {
 	}
 	defer db.Close()
 
-	srv := httpapi.NewServer(cfg, db)
+	var redisQueue *queue.RedisQueue
+	if cfg.RedisURL != "" {
+		redisQueue, err = queue.NewRedisQueue(cfg.RedisURL)
+		if err != nil {
+			log.Printf("redis: %v (email queue disabled)", err)
+		} else {
+			defer redisQueue.Close()
+		}
+	}
+
+	srv := httpapi.NewServer(cfg, db, redisQueue)
 	server := &http.Server{
 		Addr:              ":" + cfg.Port,
 		Handler:           srv.Handler(),
@@ -36,7 +47,7 @@ func main() {
 	}
 
 	go func() {
-		log.Printf("kurae-api listening on :%s", cfg.Port)
+		log.Printf("kurae-api listening on :%s (swagger: /swagger/)", cfg.Port)
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatalf("server: %v", err)
 		}
