@@ -19,11 +19,14 @@ Frontend for [Kurae](https://github.com/your-org/kurae) — public drop pages, b
 `NEXT_PUBLIC_API_URL` defaults to `http://localhost:8080` in development if unset. Copy `.env.example` to `.env.local` for Stripe and optional S3 image hostname.
 
 ```bash
-# Terminal 1 — API
+# Terminal 1 — API dependencies + server
 cd ../kurae-api
-docker compose up -d
+docker compose up -d          # Postgres + Redis
 cp .env.example .env
 make migrate-up && make seed && make run-api
+
+# After API code changes: Ctrl+C in the API terminal, then make run-api again.
+# To restart Postgres/Redis only: docker compose restart
 
 # Terminal 2 — Web
 cp .env.example .env.local   # optional; localhost default works in dev
@@ -92,7 +95,7 @@ Server Components use `apiServerFetch` against `NEXT_PUBLIC_API_URL` directly wi
 |-------|-------------|
 | `/dashboard/login`, `/dashboard/signup` | Auth |
 | `/dashboard` | Overview stats from API |
-| `/dashboard/drops`, `/dashboard/drops/new`, `/dashboard/drops/[id]` | Drop CRUD |
+| `/dashboard/drops`, `/dashboard/drops/new`, `/dashboard/drops/[id]` | Drop CRUD (delete when no orders) |
 | `/dashboard/orders`, `/dashboard/orders/[id]` | Orders — paginated list, fulfill, refund |
 | `/dashboard/settings` | Brand name and password |
 | `/dashboard/analytics`, `/referrals`, `/discounts`, `/branding` | Phase 2 UI placeholders |

@@ -63,11 +63,12 @@ function readFileAsDataUrl(file: File): Promise<string> {
 async function requestPresign(
   filename: string,
   contentType: string,
+  sizeBytes: number,
 ): Promise<PresignResponse | null> {
   const res = await fetch("/api/uploads/presign", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ filename, contentType }),
+    body: JSON.stringify({ filename, contentType, sizeBytes }),
   });
 
   if (res.status === 503) {
@@ -110,7 +111,7 @@ export async function uploadProductImage(file: File): Promise<string> {
     return readFileAsDataUrl(file);
   }
 
-  const presign = await requestPresign(file.name || "image", contentType);
+  const presign = await requestPresign(file.name || "image", contentType, file.size);
   if (!presign) {
     return readFileAsDataUrl(file);
   }

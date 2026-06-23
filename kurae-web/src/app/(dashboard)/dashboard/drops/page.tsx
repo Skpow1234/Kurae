@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
+import { DropDeleteButton } from "@/components/dashboard/drop-delete-button";
 import { listSellerDrops } from "@/lib/api/drops-server";
 import { getSession } from "@/lib/auth/session";
 import { toPublicDrop } from "@/lib/drop-status";
@@ -71,17 +72,23 @@ export default async function DropsPage() {
                       {drop.inventoryRemaining} / {drop.inventoryTotal}
                     </td>
                     <td className="px-4 py-3 text-right">
-                      <Link
-                        href={
-                          drop.publishStatus === "published"
-                            ? `/${drop.sellerSlug}/${drop.slug}`
-                            : `/${drop.sellerSlug}/${drop.slug}?preview=1`
-                        }
-                        className="text-sakura-dusk hover:underline"
-                        target="_blank"
-                      >
-                        Preview
-                      </Link>
+                      <div className="flex items-center justify-end gap-3">
+                        <Link
+                          href={
+                            drop.publishStatus === "published"
+                              ? `/${drop.sellerSlug}/${drop.slug}`
+                              : `/${drop.sellerSlug}/${drop.slug}?preview=1`
+                          }
+                          className="text-sakura-dusk hover:underline"
+                          target="_blank"
+                        >
+                          Preview
+                        </Link>
+                        <DropDeleteButton
+                          dropId={drop.id}
+                          dropTitle={drop.title}
+                        />
+                      </div>
                     </td>
                   </tr>
                 );
