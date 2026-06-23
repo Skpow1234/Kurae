@@ -13,6 +13,7 @@ import { StickyCtaBar } from "@/components/drop/sticky-cta-bar";
 import { WaitlistForm } from "@/components/drop/waitlist-form";
 import { useCart } from "@/contexts/cart-context";
 import { useDropInventory } from "@/lib/hooks/use-drop-inventory";
+import { shouldUnoptimizeImageSrc } from "@/lib/images";
 import type { PublicDrop } from "@/lib/types";
 
 type DropPageViewProps = {
@@ -118,7 +119,7 @@ export function DropPageView({
                   fill
                   className="object-cover"
                   sizes="(max-width: 768px) 50vw, 25vw"
-                  unoptimized={url.startsWith("data:")}
+                  unoptimized={shouldUnoptimizeImageSrc(url)}
                 />
               </div>
             ))}

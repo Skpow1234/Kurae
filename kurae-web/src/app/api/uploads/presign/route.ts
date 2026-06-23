@@ -1,0 +1,21 @@
+import { NextResponse } from "next/server";
+
+import { proxyToApi, readToken } from "@/lib/api/proxy";
+import { getSession } from "@/lib/auth/session";
+
+export async function POST(request: Request) {
+  const session = await getSession();
+  if (!session) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const body = await request.json();
+  const token = await readToken();
+  const res = await proxyToApi(
+    "/uploads/presign",
+    { method: "POST", body: JSON.stringify(body) },
+    token,
+  );
+  const data = await res.json();
+  return NextResponse.json(data, { status: res.status });
+}

@@ -8,6 +8,10 @@ import { useCallback, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { DropFormValues, PublishStatus, SellerDrop, SellerSession } from "@/lib/types";
+import { shouldUnoptimizeImageSrc } from "@/lib/images";
+import {
+  uploadProductImage,
+} from "@/lib/uploads/product-image";
 import { DEFAULT_DROP_SIZES } from "@/lib/constants/sizes";
 import {
   fromDatetimeLocalValue,
@@ -87,6 +91,9 @@ export function DropForm({ session, drop }: DropFormProps) {
   const [errors, setErrors] = useState<DropFormErrors>({});
   const [saving, setSaving] = useState(false);
   const [slugTouched, setSlugTouched] = useState(Boolean(drop));
+  const [uploadingHero, setUploadingHero] = useState(false);
+  const [uploadingGallery, setUploadingGallery] = useState(false);
+  const [imageError, setImageError] = useState<string | null>(null);
 
   const setField = useCallback(
     <K extends keyof DropFormValues>(key: K, value: DropFormValues[K]) => {
@@ -102,34 +109,41 @@ export function DropForm({ session, drop }: DropFormProps) {
     }
   }
 
-  function handleHeroFile(file: File | null) {
+  async function handleHeroFile(file: File | null) {
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result === "string") {
-        setField("heroImageUrl", reader.result);
-      }
-    };
-    reader.readAsDataURL(file);
+    setImageError(null);
+    setUploadingHero(true);
+
+    try {
+      const url = await uploadProductImage(file);
+      setField("heroImageUrl", url);
+    } catch (err) {
+      setImageError(err instanceof Error ? err.message : "Could not upload hero image.");
+    } finally {
+      setUploadingHero(false);
+    }
   }
 
-  function handleGalleryFiles(files: FileList | null) {
+  async function handleGalleryFiles(files: FileList | null) {
     if (!files?.length) return;
-    Array.from(files).forEach((file) => {
-      const reader = new FileReader();
-      reader.onload = () => {
-        if (typeof reader.result === "string") {
-          setValues((prev) => ({
-            ...prev,
-            galleryImageUrls: [...prev.galleryImageUrls, reader.result as string].slice(
-              0,
-              4,
-            ),
-          }));
-        }
-      };
-      reader.readAsDataURL(file);
-    });
+    setImageError(null);
+    setUploadingGallery(true);
+
+    try {
+      const uploads = await Promise.all(
+        Array.from(files).map((file) => uploadProductImage(file)),
+      );
+      setValues((prev) => ({
+        ...prev,
+        galleryImageUrls: [...prev.galleryImageUrls, ...uploads].slice(0, 4),
+      }));
+    } catch (err) {
+      setImageError(
+        err instanceof Error ? err.message : "Could not upload gallery images.",
+      );
+    } finally {
+      setUploadingGallery(false);
+    }
   }
 
   function toggleSize(id: string) {
@@ -315,13 +329,29 @@ export function DropForm({ session, drop }: DropFormProps) {
           <legend className="px-1 text-sm font-medium text-sakura-ink">
             Imagery
           </legend>
+          <p className="text-sm text-sakura-mist">
+            JPEG, PNG, or WebP up to 5 MB. Uses S3 when configured on kurae-api;
+            otherwise images are embedded for local dev.
+          </p>
+          {imageError && (
+            <p className="text-sm text-sakura-warning" role="alert">
+              {imageError}
+            </p>
+          )}
 
           <Field label="Hero image" error={errors.heroImageUrl}>
             <Input
               type="file"
               accept="image/jpeg,image/png,image/webp"
-              onChange={(e) => handleHeroFile(e.target.files?.[0] ?? null)}
+              disabled={uploadingHero || uploadingGallery}
+              onChange={(e) => {
+                void handleHeroFile(e.target.files?.[0] ?? null);
+                e.target.value = "";
+              }}
             />
+            {uploadingHero && (
+              <p className="mt-2 text-sm text-sakura-mist">Uploading hero image…</p>
+            )}
             {values.heroImageUrl && (
               <div className="relative mt-3 aspect-video w-full max-w-sm overflow-hidden rounded-md ring-1 ring-sakura-petal">
                 <Image
@@ -329,7 +359,7 @@ export function DropForm({ session, drop }: DropFormProps) {
                   alt="Hero preview"
                   fill
                   className="object-cover"
-                  unoptimized={values.heroImageUrl.startsWith("data:")}
+                  unoptimized={shouldUnoptimizeImageSrc(values.heroImageUrl)}
                 />
               </div>
             )}
@@ -340,13 +370,20 @@ export function DropForm({ session, drop }: DropFormProps) {
               type="file"
               accept="image/jpeg,image/png,image/webp"
               multiple
-              onChange={(e) => handleGalleryFiles(e.target.files)}
+              disabled={uploadingHero || uploadingGallery}
+              onChange={(e) => {
+                void handleGalleryFiles(e.target.files);
+                e.target.value = "";
+              }}
             />
+            {uploadingGallery && (
+              <p className="mt-2 text-sm text-sakura-mist">Uploading gallery images…</p>
+            )}
             {values.galleryImageUrls.length > 0 && (
               <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
                 {values.galleryImageUrls.map((url) => (
                   <div
-                    key={url.slice(0, 32)}
+                    key={url.slice(0, 48)}
                     className="relative aspect-square overflow-hidden rounded-md ring-1 ring-sakura-petal"
                   >
                     <Image
@@ -354,7 +391,7 @@ export function DropForm({ session, drop }: DropFormProps) {
                       alt="Gallery preview"
                       fill
                       className="object-cover"
-                      unoptimized={url.startsWith("data:")}
+                      unoptimized={shouldUnoptimizeImageSrc(url)}
                     />
                   </div>
                 ))}
