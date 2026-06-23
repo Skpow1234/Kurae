@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { DropDeleteButton } from "@/components/dashboard/drop-delete-button";
 import { Input } from "@/components/ui/input";
 import type { DropFormValues, PublishStatus, SellerDrop, SellerSession } from "@/lib/types";
 import { shouldUnoptimizeImageSrc } from "@/lib/images";
@@ -453,6 +454,21 @@ export function DropForm({ session, drop }: DropFormProps) {
             </Button>
           )}
         </div>
+
+        {drop && (
+          <div className="rounded-lg border border-sakura-warning/30 bg-sakura-surface/50 p-5">
+            <h2 className="text-sm font-medium text-sakura-ink">Danger zone</h2>
+            <p className="mt-1 text-sm text-sakura-mist">
+              Permanently remove this drop. Drops with orders cannot be deleted.
+            </p>
+            <DropDeleteButton
+              dropId={drop.id}
+              dropTitle={drop.title}
+              redirectToList
+              className="mt-4"
+            />
+          </div>
+        )}
       </form>
     </div>
   );
