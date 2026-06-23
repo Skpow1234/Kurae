@@ -25,5 +25,47 @@ services:
       timeout: 5s
       retries: 5
 
+  migrate:
+    build: .
+    command: ["migrate", "up"]
+    env_file: .env
+    environment:
+      DATABASE_URL: postgres://kurae:kurae@postgres:5432/kurae?sslmode=disable
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  api:
+    build: .
+    command: ["api"]
+    ports:
+      - "8080:8080"
+    env_file: .env
+    environment:
+      DATABASE_URL: postgres://kurae:kurae@postgres:5432/kurae?sslmode=disable
+      REDIS_URL: redis://redis:6379/0
+      CORS_ORIGINS: http://localhost:3000
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  worker:
+    build: .
+    command: ["worker"]
+    env_file: .env
+    environment:
+      DATABASE_URL: postgres://kurae:kurae@postgres:5432/kurae?sslmode=disable
+      REDIS_URL: redis://redis:6379/0
+    depends_on:
+      api:
+        condition: service_started
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
 volumes:
   kurae_pg:

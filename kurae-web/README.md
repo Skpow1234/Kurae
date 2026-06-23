@@ -14,22 +14,20 @@ Frontend for [Kurae](https://github.com/your-org/kurae) — public drop pages, b
 
 ## Development
 
-**Prerequisites:** kurae-api on port 8080 (see kurae-api README).
-
-`NEXT_PUBLIC_API_URL` defaults to `http://localhost:8080` in development if unset. Copy `.env.example` to `.env.local` for Stripe and optional S3 image hostname.
+**Prerequisites:** kurae-api running in Docker on port 8080 (see kurae-api README).
 
 ```bash
-# Terminal 1 — API dependencies + server
+# Terminal 1 — API (Docker)
 cd ../kurae-api
-docker compose up -d          # Postgres + Redis
 cp .env.example .env
-make migrate-up && make seed && make run-api
+docker compose up -d --build
+make docker-seed   # optional demo seller + drops
 
-# After API code changes: Ctrl+C in the API terminal, then make run-api again.
-# To restart Postgres/Redis only: docker compose restart
+# After API code changes:
+docker compose up -d --build api
 
 # Terminal 2 — Web
-cp .env.example .env.local   # optional; localhost default works in dev
+cp .env.example .env.local
 npm install
 npm run dev
 ```
@@ -47,16 +45,26 @@ Open [http://localhost:3000](http://localhost:3000).
 
 You can also **sign up** at `/dashboard/signup` for your own seller account. The home page adapts when signed in (dashboard + preview link) vs signed out (seller landing).
 
-### Stripe checkout (optional in dev)
+### Stripe checkout (Block A)
 
-Without Stripe keys, reservation works but card UI is disabled:
+Add Stripe **test** keys to both repos:
 
 | Where | Variable |
 |-------|----------|
-| kurae-api | `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` |
-| kurae-web | `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` |
+| kurae-api `.env` | `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` |
+| kurae-web `.env.local` | `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` |
 
-Use Stripe test keys and forward webhooks to `http://localhost:8080/webhooks/stripe` for end-to-end payment → paid flow.
+Rebuild API after changing keys: `docker compose up -d --build api`
+
+Automated API test: `cd kurae-api && make stripe-block-a`
+
+For live webhooks during browser checkout, forward events to the Docker API:
+
+```bash
+stripe listen --forward-to http://localhost:8080/webhooks/stripe
+```
+
+Use test card `4242 4242 4242 4242` in Elements. Pending page polls until paid → confirmation.
 
 ### Image uploads (optional in dev)
 

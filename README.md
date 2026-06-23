@@ -14,7 +14,7 @@ Kurae is split into two independent repos. **Both are required for local develop
 ## Stack
 
 - **Frontend:** Next.js, React, TypeScript, Tailwind CSS, shadcn/ui
-- **Backend:** Go, PostgreSQL, Redis
+- **Backend:** Go, PostgreSQL, Redis (Docker locally)
 - **Payments:** Stripe (MVP); LATAM providers post-MVP
 - **Storage:** S3-compatible (product images)
 - **Email:** Resend / Postmark
@@ -24,7 +24,7 @@ Kurae is split into two independent repos. **Both are required for local develop
 ## Architecture
 
 - **kurae-web** serves public drop pages, checkout UI, and the seller dashboard. Browser calls go through Next.js BFF routes (`/api/*`) which proxy to kurae-api with the seller JWT cookie.
-- **kurae-api** owns business logic, PostgreSQL, Stripe webhooks, inventory reservations, and background workers.
+- **kurae-api** runs in **Docker** locally (Postgres, Redis, API, worker). Business logic, Stripe webhooks, inventory reservations, and background jobs live here.
 - Contract: OpenAPI spec at `kurae-api/internal/httpapi/openapi.yaml` (Swagger UI at `/swagger/`).
 
 ## MVP status
@@ -42,18 +42,36 @@ Kurae is split into two independent repos. **Both are required for local develop
 
 ## Getting started
 
-1. Start **kurae-api** (Postgres, Redis, migrations, seed) — see [kurae-api/README.md](./kurae-api/README.md).
-2. Start **kurae-web** with `NEXT_PUBLIC_API_URL` pointing at the API — see [kurae-web/README.md](./kurae-web/README.md).
-3. Sign in with the seeded demo seller or create an account at `/dashboard/signup`.
+```bash
+# Terminal 1 — API stack (Docker)
+cd kurae-api
+cp .env.example .env
+docker compose up -d --build
+make docker-seed   # optional demo data
 
-### Restarting the API locally
+# Terminal 2 — Web
+cd kurae-web
+cp .env.example .env.local
+npm install && npm run dev
+```
 
-Postgres and Redis run in Docker; the API runs on your machine:
+Open http://localhost:3000 — API at http://localhost:8080.
+
+### Restarting the API (Docker)
 
 ```bash
 cd kurae-api
-docker compose restart   # restart Postgres + Redis
-make run-api             # restart API after Ctrl+C
+
+# After code changes — rebuild and restart API
+docker compose up -d --build api
+
+# Restart entire stack
+docker compose up -d --build
+
+# Logs
+docker compose logs -f api worker
 ```
 
 Health check: `curl http://localhost:8080/health`
+
+See [kurae-api/README.md](./kurae-api/README.md) for Stripe Block A E2E and full Docker commands.

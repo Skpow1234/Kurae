@@ -24,11 +24,93 @@ Backend for [Kurae](https://github.com/your-org/kurae) — REST API, payment web
 
 ## Prerequisites
 
-- Go 1.22+
-- PostgreSQL 15+
-- Redis 7+
+- Docker + Docker Compose
+- Go 1.22+ (for tests and optional host-side `go run`)
 
-## Environment variables
+## Development (Docker — recommended)
+
+The full stack runs in Docker: **Postgres, Redis, migrations, API, and worker**.
+
+```bash
+cd kurae-api
+cp .env.example .env
+docker compose up -d --build
+# or: make docker-up
+```
+
+First-time demo data:
+
+```bash
+make docker-seed
+```
+
+| Service | URL / port |
+|---------|------------|
+| API | http://localhost:8080 |
+| Swagger | http://localhost:8080/swagger/ |
+| Postgres | `localhost:5432` |
+| Redis | `localhost:6379` |
+
+Smoke check: `curl http://localhost:8080/health` → `{"status":"ok"}`.
+
+### Restarting services (Docker)
+
+```bash
+cd kurae-api
+
+# Rebuild and restart API after code changes
+docker compose up -d --build api
+# or: make docker-restart-api
+
+# Restart worker
+docker compose up -d --build worker
+# or: make docker-restart-worker
+
+# Restart entire stack (postgres, redis, api, worker)
+docker compose up -d --build
+
+# Restart only Postgres + Redis
+docker compose restart postgres redis
+
+# View API + worker logs
+docker compose logs -f api worker
+# or: make docker-logs
+
+# Stop everything
+docker compose down
+# or: make docker-down
+```
+
+### Stripe Block A E2E (pre-ship)
+
+1. Add Stripe **test** keys to `.env`:
+   - `STRIPE_SECRET_KEY=sk_test_...`
+   - `STRIPE_WEBHOOK_SECRET=whsec_...` (from `stripe listen --forward-to http://localhost:8080/webhooks/stripe`)
+2. Rebuild API: `docker compose up -d --build api`
+3. Run automated test:
+
+```bash
+make stripe-block-a
+# or: bash scripts/stripe-block-a.sh
+```
+
+4. **Browser check (Elements + pending page):** set `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_...` in `kurae-web/.env.local`, run `npm run dev`, checkout a live drop, pay with card `4242 4242 4242 4242`, confirm pending → confirmation.
+
+### Optional: run API on the host
+
+If you prefer `go run` while Postgres/Redis stay in Docker:
+
+```bash
+make deps-up          # postgres + redis only
+make migrate-up
+make seed
+make run-api          # terminal 1
+make run-worker       # terminal 2
+```
+
+Host `.env` uses `localhost` for `DATABASE_URL` / `REDIS_URL` (see `.env.example`).
+
+## Development vs production payments
 
 | Variable | Description |
 |----------|-------------|
@@ -48,80 +130,10 @@ Backend for [Kurae](https://github.com/your-org/kurae) — REST API, payment web
 
 Copy `.env.example` to `.env` when available.
 
-### Development vs production payments
-
-- **Development:** Leave `STRIPE_SECRET_KEY` empty to use the noop payment provider. Checkout returns `pi_dev_*` client secrets; webhooks are not processed.
+- **Development (Docker):** Set Stripe test keys in `.env` for real PaymentIntents. Leave empty for noop `pi_dev_*` (no card payments).
 - **Production:** Set `ENV=production`, `STRIPE_SECRET_KEY`, and `STRIPE_WEBHOOK_SECRET`. The API refuses to start without a strong `JWT_SECRET` and Stripe credentials.
 
-## Development
-
-```bash
-# Start Postgres + Redis (Docker)
-docker compose up -d
-# or: make deps-up
-
-# Copy env and run migrations
-cp .env.example .env
-make migrate-up
-
-# Optional: seed demo seller + drops for local testing
-make seed
-
-# Start API server (runs on the host, not in Docker)
-make run-api
-
-# Start worker (reservation expiry + email queue)
-make run-worker
-```
-
-### Restarting local services
-
-Docker Compose only runs **Postgres and Redis**. The Go API and worker run as local processes.
-
-**Postgres + Redis (Docker):**
-
-```bash
-cd kurae-api
-
-# Restart both dependency containers
-docker compose restart
-# or: make deps-restart
-
-# Stop and start fresh
-docker compose down && docker compose up -d
-
-# View logs
-docker compose logs -f postgres redis
-```
-
-**API server** (after code or route changes — stop with `Ctrl+C`, then):
-
-```bash
-cd kurae-api
-make run-api
-# equivalent: go run ./cmd/api
-```
-
-**Worker:**
-
-```bash
-cd kurae-api
-make run-worker
-# equivalent: go run ./cmd/worker
-```
-
-**Full local stack reset** (keeps database volume):
-
-```bash
-cd kurae-api
-docker compose restart
-make run-api    # terminal 1
-make run-worker # terminal 2 (optional)
-```
-
-Smoke check: `curl http://localhost:8080/health` → `{"status":"ok"}`.
-
-## Testing
+## Environment variables
 
 ```bash
 go test ./...
