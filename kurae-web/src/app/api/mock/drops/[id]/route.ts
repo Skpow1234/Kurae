@@ -6,7 +6,7 @@ import {
   updateDrop,
   toPublicDrop,
 } from "@/lib/mock/drop-store";
-import type { PublishStatus } from "@/lib/types";
+import type { PublishStatus, DropSize } from "@/lib/types";
 import { fromDatetimeLocalValue } from "@/lib/validation/drop";
 
 type RouteContext = { params: Promise<{ id: string }> };
@@ -54,6 +54,7 @@ export async function PATCH(request: Request, context: RouteContext) {
     promoMessage: string | null;
     heroImageUrl: string;
     galleryImageUrls: string[];
+    sizes: DropSize[];
     publishStatus: PublishStatus;
   }>;
 

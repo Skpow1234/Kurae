@@ -2,10 +2,18 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { getSession } from "@/lib/auth/session";
+import { getDashboardStats } from "@/lib/mock/order-store";
+import { listDropsBySeller } from "@/lib/mock/drop-store";
+import { formatPrice } from "@/lib/utils";
 
 export default async function DashboardPage() {
   const session = await getSession();
   if (!session) redirect("/dashboard/login");
+
+  const stats = getDashboardStats(session.sellerSlug);
+  const liveDrops = listDropsBySeller(session.sellerSlug).filter(
+    (d) => d.publishStatus === "published",
+  ).length;
 
   return (
     <div className="space-y-8">
@@ -16,11 +24,15 @@ export default async function DashboardPage() {
         </p>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {[
-          { label: "Revenue (7d)", value: "—" },
-          { label: "Orders", value: "—" },
-          { label: "Waitlist", value: "—" },
+          {
+            label: "Revenue (7d)",
+            value: formatPrice(stats.revenue7dCents, "USD"),
+          },
+          { label: "Orders", value: String(stats.orderCount) },
+          { label: "Paid", value: String(stats.paidCount) },
+          { label: "Waitlist", value: String(stats.waitlistTotal) },
         ].map((stat) => (
           <div
             key={stat.label}
@@ -46,7 +58,12 @@ export default async function DashboardPage() {
           </li>
           <li>
             <Link href="/dashboard/drops" className="text-sakura-dusk hover:underline">
-              Manage drops
+              Manage drops ({liveDrops} published)
+            </Link>
+          </li>
+          <li>
+            <Link href="/dashboard/orders" className="text-sakura-dusk hover:underline">
+              View orders
             </Link>
           </li>
           <li>

@@ -8,6 +8,7 @@ import { useCallback, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { DropFormValues, PublishStatus, SellerDrop, SellerSession } from "@/lib/types";
+import { DEFAULT_DROP_SIZES } from "@/lib/constants/sizes";
 import {
   fromDatetimeLocalValue,
   slugify,
@@ -37,6 +38,7 @@ function defaultValues(session: SellerSession): DropFormValues {
     promoMessage: "",
     heroImageUrl: "",
     galleryImageUrls: [],
+    sizes: DEFAULT_DROP_SIZES.map((s) => ({ ...s })),
     publishStatus: "draft",
   };
 }
@@ -54,6 +56,7 @@ function fromSellerDrop(drop: SellerDrop): DropFormValues {
     promoMessage: drop.promoMessage ?? "",
     heroImageUrl: drop.heroImageUrl,
     galleryImageUrls: drop.galleryImageUrls,
+    sizes: drop.sizes.map((s) => ({ ...s })),
     publishStatus: drop.publishStatus,
   };
 }
@@ -71,6 +74,7 @@ function toPayload(values: DropFormValues) {
     promoMessage: values.promoMessage.trim() || null,
     heroImageUrl: values.heroImageUrl,
     galleryImageUrls: values.galleryImageUrls,
+    sizes: values.sizes,
     publishStatus: values.publishStatus,
   };
 }
@@ -107,6 +111,34 @@ export function DropForm({ session, drop }: DropFormProps) {
       }
     };
     reader.readAsDataURL(file);
+  }
+
+  function handleGalleryFiles(files: FileList | null) {
+    if (!files?.length) return;
+    Array.from(files).forEach((file) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        if (typeof reader.result === "string") {
+          setValues((prev) => ({
+            ...prev,
+            galleryImageUrls: [...prev.galleryImageUrls, reader.result as string].slice(
+              0,
+              4,
+            ),
+          }));
+        }
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  function toggleSize(id: string) {
+    setValues((prev) => ({
+      ...prev,
+      sizes: prev.sizes.map((s) =>
+        s.id === id ? { ...s, available: !s.available } : s,
+      ),
+    }));
   }
 
   async function save(publishStatus: PublishStatus) {
@@ -302,6 +334,58 @@ export function DropForm({ session, drop }: DropFormProps) {
               </div>
             )}
           </Field>
+
+          <Field label="Gallery images (up to 4)">
+            <Input
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              multiple
+              onChange={(e) => handleGalleryFiles(e.target.files)}
+            />
+            {values.galleryImageUrls.length > 0 && (
+              <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                {values.galleryImageUrls.map((url) => (
+                  <div
+                    key={url.slice(0, 32)}
+                    className="relative aspect-square overflow-hidden rounded-md ring-1 ring-sakura-petal"
+                  >
+                    <Image
+                      src={url}
+                      alt="Gallery preview"
+                      fill
+                      className="object-cover"
+                      unoptimized={url.startsWith("data:")}
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
+          </Field>
+        </fieldset>
+
+        <fieldset className="space-y-4 rounded-lg border border-sakura-petal bg-sakura-surface/50 p-5">
+          <legend className="px-1 text-sm font-medium text-sakura-ink">
+            Sizes
+          </legend>
+          <p className="text-sm text-sakura-mist">
+            Toggle which sizes are available for this drop.
+          </p>
+          <div className="flex flex-wrap gap-4">
+            {values.sizes.map((size) => (
+              <label
+                key={size.id}
+                className="flex cursor-pointer items-center gap-2 text-sm"
+              >
+                <input
+                  type="checkbox"
+                  checked={size.available}
+                  onChange={() => toggleSize(size.id)}
+                  className="rounded border-sakura-petal text-sakura-blush focus:ring-sakura-bloom"
+                />
+                <span className="font-medium text-sakura-ink">{size.label}</span>
+              </label>
+            ))}
+          </div>
         </fieldset>
 
         <div className="flex flex-wrap gap-3">
@@ -319,8 +403,18 @@ export function DropForm({ session, drop }: DropFormProps) {
             disabled={saving}
             onClick={() => save("published")}
           >
-            {saving ? "Saving…" : "Publish drop"}
+            {saving ? "Saving…" : drop?.publishStatus === "published" ? "Update drop" : "Publish drop"}
           </Button>
+          {drop?.publishStatus === "published" && (
+            <Button
+              type="button"
+              variant="outline"
+              disabled={saving}
+              onClick={() => save("draft")}
+            >
+              Unpublish
+            </Button>
+          )}
         </div>
       </form>
     </div>

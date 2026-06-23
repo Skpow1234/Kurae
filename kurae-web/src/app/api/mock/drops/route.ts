@@ -6,7 +6,7 @@ import {
   listDropsBySeller,
   toPublicDrop,
 } from "@/lib/mock/drop-store";
-import type { PublishStatus, SellerDrop } from "@/lib/types";
+import type { PublishStatus, DropSize } from "@/lib/types";
 import { fromDatetimeLocalValue } from "@/lib/validation/drop";
 
 const defaultSizes = [
@@ -48,6 +48,7 @@ export async function POST(request: Request) {
     promoMessage: string | null;
     heroImageUrl: string;
     galleryImageUrls: string[];
+    sizes: DropSize[];
     publishStatus: PublishStatus;
   };
 
@@ -70,7 +71,7 @@ export async function POST(request: Request) {
       ? fromDatetimeLocalValue(body.endsAt)
       : body.endsAt,
     promoMessage: body.promoMessage,
-    sizes: defaultSizes,
+    sizes: body.sizes?.length ? body.sizes : defaultSizes,
     publishStatus: body.publishStatus,
   });
 

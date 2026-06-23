@@ -64,5 +64,6 @@ export type DropFormValues = {
   promoMessage: string;
   heroImageUrl: string;
   galleryImageUrls: string[];
+  sizes: DropSize[];
   publishStatus: PublishStatus;
 };

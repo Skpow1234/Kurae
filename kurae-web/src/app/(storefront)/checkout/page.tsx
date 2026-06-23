@@ -4,6 +4,7 @@ import NextLink from "next/link";
 import { useRouter } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 
+import { StripePaymentMock } from "@/components/checkout/stripe-payment-mock";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useCart } from "@/contexts/cart-context";
@@ -12,12 +13,11 @@ import { formatPrice } from "@/lib/utils";
 
 function CheckoutContent() {
   const router = useRouter();
-  const { line, clear } = useCart();
+  const { line } = useCart();
   const [drop, setDrop] = useState<PublicDrop | null>(null);
   const [loadingDrop, setLoadingDrop] = useState(true);
-  const [state, setState] = useState<
-    "idle" | "reserving" | "pending" | "failed"
-  >("idle");
+  const [email, setEmail] = useState("");
+  const [state, setState] = useState<"idle" | "reserving">("idle");
 
   useEffect(() => {
     if (!line) {
@@ -67,14 +67,15 @@ function CheckoutContent() {
   }
 
   async function handlePay() {
+    if (!email.trim()) return;
     setState("reserving");
-    await new Promise((r) => setTimeout(r, 800));
-    setState("pending");
-    await new Promise((r) => setTimeout(r, 1200));
-    clear();
-    router.push(
-      `/orders/demo-ord-001/confirmation?drop=${line!.dropSlug}&size=${line!.sizeLabel}`,
-    );
+    await new Promise((r) => setTimeout(r, 900));
+    const params = new URLSearchParams({
+      drop: line!.dropSlug,
+      size: line!.sizeLabel,
+      email,
+    });
+    router.push(`/checkout/pending?${params.toString()}`);
   }
 
   return (
@@ -94,34 +95,32 @@ function CheckoutContent() {
         </span>
       </p>
 
-      {state === "failed" && (
-        <p className="rounded-md border border-sakura-warning/30 bg-sakura-petal px-3 py-2 text-sm text-sakura-warning">
-          Payment failed. Try again or use a different card.
-        </p>
-      )}
+      <StripePaymentMock
+        email={email}
+        onEmailChange={setEmail}
+        disabled={state !== "idle"}
+      />
 
-      <section className="space-y-3 rounded-lg border border-sakura-petal p-4">
-        <p className="text-sm text-sakura-mist">
-          {state === "idle" && "Stripe checkout mounts here when kurae-api is connected."}
-          {state === "reserving" && "Reserving your unit…"}
-          {state === "pending" && "Redirecting to payment…"}
-        </p>
-        <Button
-          className="w-full bg-sakura-blush text-sakura-ink hover:bg-sakura-bloom"
-          size="lg"
-          disabled={state !== "idle"}
-          onClick={handlePay}
-        >
-          {state === "idle" ? "Pay with Stripe" : "Processing…"}
-        </Button>
-        <button
-          type="button"
-          className="w-full text-center text-xs text-sakura-mist underline"
-          onClick={() => setState("failed")}
-        >
-          Simulate payment failure
-        </button>
-      </section>
+      <Button
+        className="w-full bg-sakura-blush text-sakura-ink hover:bg-sakura-bloom"
+        size="lg"
+        disabled={state !== "idle" || !email.trim()}
+        onClick={handlePay}
+      >
+        {state === "idle" ? "Pay now" : "Reserving your unit…"}
+      </Button>
+
+      <button
+        type="button"
+        className="w-full text-center text-xs text-sakura-mist underline"
+        onClick={() =>
+          router.push(
+            `/checkout/failed?drop=${line.dropSlug}&size=${line.sizeLabel}`,
+          )
+        }
+      >
+        Simulate payment failure
+      </button>
     </div>
   );
 }

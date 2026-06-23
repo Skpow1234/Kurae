@@ -1,13 +1,20 @@
-import { redirect } from "next/navigation";
+import Link from "next/link";
 
 import { DashboardHeaderActions } from "@/components/dashboard/dashboard-header-actions";
 import { getSession } from "@/lib/auth/session";
-import Link from "next/link";
 
-const navItems = [
+const mainNav = [
   { href: "/dashboard", label: "Overview" },
   { href: "/dashboard/drops", label: "Drops" },
   { href: "/dashboard/orders", label: "Orders" },
+];
+
+const moreNav = [
+  { href: "/dashboard/analytics", label: "Analytics" },
+  { href: "/dashboard/referrals", label: "Referrals" },
+  { href: "/dashboard/discounts", label: "Discounts" },
+  { href: "/dashboard/branding", label: "Branding" },
+  { href: "/dashboard/settings", label: "Settings" },
 ];
 
 export default async function DashboardLayout({
@@ -24,12 +31,18 @@ export default async function DashboardLayout({
           <Link href="/dashboard" className="text-sm font-semibold text-sakura-ink">
             Kurae Dashboard
           </Link>
-          <nav className="hidden gap-6 text-sm text-sakura-stone sm:flex">
-            {navItems.map((item) => (
+          <nav className="hidden items-center gap-5 text-sm text-sakura-stone lg:flex">
+            {mainNav.map((item) => (
+              <Link key={item.href} href={item.href} className="hover:text-sakura-dusk">
+                {item.label}
+              </Link>
+            ))}
+            <span className="text-sakura-petal">|</span>
+            {moreNav.map((item) => (
               <Link
                 key={item.href}
                 href={item.href}
-                className="hover:text-sakura-dusk"
+                className="text-sakura-mist hover:text-sakura-dusk"
               >
                 {item.label}
               </Link>
