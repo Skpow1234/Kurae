@@ -2,24 +2,27 @@
 
 Frontend for [Kurae](https://github.com/your-org/kurae) — public drop pages, buyer checkout, and the seller dashboard.
 
+**Requires [kurae-api](../kurae-api/)** running locally or deployed. All data comes from the API; there is no mock mode.
+
 ## Stack
 
 - Next.js (App Router)
 - React, TypeScript
 - Tailwind CSS, shadcn-style UI
+- Stripe Elements (checkout)
 - Deployed on Vercel
 
 ## Development
 
-**Prerequisites:** kurae-api running on port 8080 (see kurae-api README).
+**Prerequisites:** kurae-api on port 8080 (see kurae-api README).
 
-`NEXT_PUBLIC_API_URL` defaults to `http://localhost:8080` in development if unset. You can also copy `.env.example` to `.env.local`.
+`NEXT_PUBLIC_API_URL` defaults to `http://localhost:8080` in development if unset. Copy `.env.example` to `.env.local` for Stripe and optional S3 image hostname.
 
 ```bash
 # Terminal 1 — API
 cd ../kurae-api
 docker compose up -d
-cp .env.example .env   # or use the included .env
+cp .env.example .env
 make migrate-up && make seed && make run-api
 
 # Terminal 2 — Web
@@ -28,80 +31,85 @@ npm install
 npm run dev
 ```
 
-### Demo seller account (after `make seed`)
+Open [http://localhost:3000](http://localhost:3000).
+
+### Demo seller (after `make seed`)
 
 | | |
 |--|--|
 | **Login** | `demo@hana.studio` / `demo1234` |
 | **Dashboard** | http://localhost:3000/dashboard |
-| **Drops** | 4 seeded drops (live, upcoming, sold out, expired) |
-| **Orders** | 6 sample orders on Sakura Hoodie |
+| **Sample drops** | 4 seeded (live, upcoming, sold out, expired) under `/hana-studio/...` |
+| **Orders** | 6 sample orders |
 
-### Buyer storefront
+You can also **sign up** at `/dashboard/signup` for your own seller account. The home page adapts when signed in (dashboard + preview link) vs signed out (seller landing).
 
-| Drop | URL | State |
-|------|-----|--------|
-| Sakura Hoodie | `/hana-studio/sakura-hoodie` | Live (checkout) |
-| Sakura Tee | `/hana-studio/sakura-tee` | Upcoming |
-| Sakura Cap | `/hana-studio/sakura-cap` | Sold out |
-| Winter Bloom | `/hana-studio/winter-bloom` | Expired |
+### Stripe checkout (optional in dev)
 
-You can also **sign up** at `/dashboard/signup` to create your own seller account.
+Without Stripe keys, reservation works but card UI is disabled:
 
-Open [http://localhost:3000](http://localhost:3000).
+| Where | Variable |
+|-------|----------|
+| kurae-api | `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` |
+| kurae-web | `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` |
 
-## Mock views (all routes)
+Use Stripe test keys and forward webhooks to `http://localhost:8080/webhooks/stripe` for end-to-end payment → paid flow.
+
+### Image uploads (optional in dev)
+
+Drop builder uploads via S3 presign when `S3_BUCKET` and AWS credentials are set on kurae-api. Otherwise images are embedded as data URLs for local dev. Set `NEXT_PUBLIC_S3_IMAGE_HOSTNAME` on web when using S3 public URLs with Next.js Image.
+
+## How the web talks to the API
+
+Browser code calls **BFF routes** under `/api/*` (same origin). Those routes attach the seller JWT from cookies and proxy to kurae-api.
+
+Examples:
+
+- `POST /api/auth/login` → `POST /auth/login`
+- `GET /api/drops` → `GET /drops`
+- `GET /api/public/{seller}/{drop}` → `GET /public/{seller}/{drop}`
+- `POST /api/checkout` → `POST /checkout`
+
+Server Components use `apiServerFetch` against `NEXT_PUBLIC_API_URL` directly with the token cookie.
+
+## Routes
 
 ### Storefront (buyer)
 
-| Route | View |
-|-------|------|
-| `/` | Home + links to demo drops |
-| `/[seller]/[drop]` | Public drop page (live, upcoming, sold out, expired) |
-| `/[seller]/[drop]?preview=1` | Draft drop preview (seller session) |
-| `/checkout` | Checkout + Stripe mock form |
-| `/checkout/pending` | Payment pending |
-| `/checkout/failed` | Payment failed |
-| `/orders/[id]/confirmation` | Order confirmed |
+| Route | Description |
+|-------|-------------|
+| `/` | Seller landing (signed out) or welcome + preview (signed in) |
+| `/[seller]/[drop]` | Public drop page — live inventory polling from API |
+| `/[seller]/[drop]?preview=1` | Draft preview (seller session, same slug) |
+| `/checkout` | Cart checkout — Stripe Elements when configured |
+| `/checkout/pending` | Polls order status until paid or failed |
+| `/checkout/failed` | Contextual payment / sold-out errors |
+| `/orders/[id]/confirmation` | Buyer order confirmation |
 
 ### Dashboard (seller)
 
-| Route | View |
-|-------|------|
-| `/dashboard/login` | Sign in |
-| `/dashboard/signup` | Create account |
-| `/dashboard` | Overview + mock stats |
-| `/dashboard/drops` | Drops table |
-| `/dashboard/drops/new` | Drop builder |
-| `/dashboard/drops/[id]` | Edit drop |
-| `/dashboard/orders` | Orders list (filter, paginate) |
-| `/dashboard/orders/[id]` | Order detail + timeline |
-| `/dashboard/settings` | Account settings |
-| `/dashboard/analytics` | Analytics mock (phase 2) |
-| `/dashboard/referrals` | Referrals mock (phase 2) |
-| `/dashboard/discounts` | Discount codes mock (phase 2) |
-| `/dashboard/branding` | Branding mock (phase 2) |
-
-### Demo drops
-
-| Route | State |
-|-------|--------|
-| `/hana-studio/sakura-hoodie` | Live |
-| `/hana-studio/sakura-tee` | Upcoming |
-| `/hana-studio/sakura-cap` | Sold out |
-| `/hana-studio/winter-bloom` | Expired |
+| Route | Description |
+|-------|-------------|
+| `/dashboard/login`, `/dashboard/signup` | Auth |
+| `/dashboard` | Overview stats from API |
+| `/dashboard/drops`, `/dashboard/drops/new`, `/dashboard/drops/[id]` | Drop CRUD |
+| `/dashboard/orders`, `/dashboard/orders/[id]` | Orders — paginated list, fulfill, refund |
+| `/dashboard/settings` | Brand name and password |
+| `/dashboard/analytics`, `/referrals`, `/discounts`, `/branding` | Phase 2 UI placeholders |
 
 ## Environment variables
 
-| Variable | Description |
-|----------|-------------|
-| `NEXT_PUBLIC_API_URL` | Base URL of `kurae-api` (unset = mock stores) |
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `NEXT_PUBLIC_API_URL` | Dev default | Base URL of kurae-api (`http://localhost:8080` in dev) |
+| `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | For checkout | Stripe publishable key |
+| `NEXT_PUBLIC_S3_IMAGE_HOSTNAME` | Optional | S3 bucket hostname for Next.js Image optimization |
 
-Copy `.env.example` to `.env.local` when connecting the API.
+Production builds require `NEXT_PUBLIC_API_URL` to be set explicitly.
 
 ## Design
 
-Feature specifications live in `docs/design.md` (local only, gitignored).
+Feature specifications: `docs/design.md`
 
 ## Related
 

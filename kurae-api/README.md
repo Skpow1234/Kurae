@@ -53,7 +53,7 @@ docker compose up -d
 cp .env.example .env
 make migrate-up
 
-# Optional: seed demo seller + drops (matches kurae-web mocks)
+# Optional: seed demo seller + drops for local testing
 make seed
 
 # Start API server
@@ -87,9 +87,13 @@ Base URL: `http://localhost:8080` (configurable via `PORT`).
 | GET | `/public/{seller}/{drop}` | — | `PublicDrop` JSON (camelCase) |
 | POST | `/drops/{id}/waitlist` | — | `{ email }` — 429 when rate limited |
 | POST | `/checkout` | — | Atomic reservation + payment intent |
+| GET | `/checkout/orders/{id}/status` | — | Buyer order status (`?email=`) |
 | POST | `/webhooks/stripe` | Stripe sig | Idempotent payment events |
 | GET/PATCH | `/drops`, `/drops/{id}` | Bearer JWT | Seller drop CRUD |
 | GET | `/orders`, `/orders/{id}` | Bearer JWT | Paginated seller orders |
+| PATCH | `/orders/{id}` | Bearer JWT | `{ action: fulfill \| refund }` |
+| GET/PATCH | `/auth/me`, `/auth/profile`, `/auth/password` | Bearer JWT | Seller settings |
+| POST | `/uploads/presign` | Bearer JWT | S3 presigned image upload |
 
 Set `NEXT_PUBLIC_API_URL` in `kurae-web` to point at this API. Seller routes expect `Authorization: Bearer <token>` from login/register.
 
