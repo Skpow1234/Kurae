@@ -45,3 +45,15 @@ Kurae is split into two independent repos. **Both are required for local develop
 1. Start **kurae-api** (Postgres, Redis, migrations, seed) — see [kurae-api/README.md](./kurae-api/README.md).
 2. Start **kurae-web** with `NEXT_PUBLIC_API_URL` pointing at the API — see [kurae-web/README.md](./kurae-web/README.md).
 3. Sign in with the seeded demo seller or create an account at `/dashboard/signup`.
+
+### Restarting the API locally
+
+Postgres and Redis run in Docker; the API runs on your machine:
+
+```bash
+cd kurae-api
+docker compose restart   # restart Postgres + Redis
+make run-api             # restart API after Ctrl+C
+```
+
+Health check: `curl http://localhost:8080/health`

@@ -181,6 +181,15 @@ paths:
       responses:
         "200":
           description: Joined or already on list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  waitlistCount:
+                    type: integer
         "429":
           $ref: "#/components/responses/Error"
   /drops:
@@ -242,6 +251,20 @@ paths:
       responses:
         "200":
           description: Updated
+    delete:
+      tags: [drops]
+      summary: Delete drop (blocked when orders exist)
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/DropId"
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          $ref: "#/components/responses/Error"
+        "409":
+          description: Drop has orders and cannot be deleted
   /orders:
     get:
       tags: [orders]
@@ -269,6 +292,16 @@ paths:
             type: string
             enum: [newest, oldest]
             default: newest
+        - name: from
+          in: query
+          description: Filter orders created on or after this time (RFC3339 or YYYY-MM-DD)
+          schema:
+            type: string
+        - name: to
+          in: query
+          description: Filter orders created before this time (RFC3339 or YYYY-MM-DD, inclusive for date-only)
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -393,13 +426,18 @@ paths:
           application/json:
             schema:
               type: object
-              required: [filename, contentType]
+              required: [filename, contentType, sizeBytes]
               properties:
                 filename:
                   type: string
                 contentType:
                   type: string
                   enum: [image/jpeg, image/png, image/webp]
+                sizeBytes:
+                  type: integer
+                  format: int64
+                  maximum: 5242880
+                  description: File size in bytes (max 5MB)
       responses:
         "200":
           description: Presigned URL
