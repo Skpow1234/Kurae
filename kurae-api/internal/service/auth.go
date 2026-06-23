@@ -15,7 +15,10 @@ import (
 var (
 	ErrInvalidCredentials = errors.New("invalid credentials")
 	ErrUnauthorized       = errors.New("unauthorized")
+	ErrWeakPassword       = errors.New("weak password")
 )
+
+const minPasswordLength = 8
 
 type AuthService struct {
 	sellers   *store.SellerRepository
@@ -52,11 +55,7 @@ func (a *AuthService) Register(ctx context.Context, in RegisterInput) (domain.Se
 		return domain.SellerSession{}, "", err
 	}
 
-	session := domain.SellerSession{
-		Email:      seller.Email,
-		SellerSlug: seller.Slug,
-		SellerName: seller.Name,
-	}
+	session := sellerSession(seller)
 	token, err := a.issueToken(seller)
 	if err != nil {
 		return domain.SellerSession{}, "", err
@@ -77,16 +76,69 @@ func (a *AuthService) Login(ctx context.Context, email, password string) (domain
 		return domain.SellerSession{}, "", ErrInvalidCredentials
 	}
 
-	session := domain.SellerSession{
-		Email:      seller.Email,
-		SellerSlug: seller.Slug,
-		SellerName: seller.Name,
-	}
+	session := sellerSession(seller)
 	token, err := a.issueToken(seller)
 	if err != nil {
 		return domain.SellerSession{}, "", err
 	}
 	return session, token, nil
+}
+
+func (a *AuthService) GetSession(ctx context.Context, sellerID string) (domain.SellerSession, error) {
+	seller, err := a.sellers.GetByID(ctx, sellerID)
+	if err != nil {
+		return domain.SellerSession{}, err
+	}
+	return sellerSession(seller), nil
+}
+
+func (a *AuthService) UpdateProfile(ctx context.Context, sellerID, name string) (domain.SellerSession, string, error) {
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return domain.SellerSession{}, "", errors.New("name is required")
+	}
+
+	seller, err := a.sellers.UpdateName(ctx, sellerID, name)
+	if err != nil {
+		return domain.SellerSession{}, "", err
+	}
+
+	session := sellerSession(seller)
+	token, err := a.issueToken(seller)
+	if err != nil {
+		return domain.SellerSession{}, "", err
+	}
+	return session, token, nil
+}
+
+func (a *AuthService) ChangePassword(ctx context.Context, sellerID, currentPassword, newPassword string) error {
+	if len(newPassword) < minPasswordLength {
+		return ErrWeakPassword
+	}
+
+	seller, err := a.sellers.GetByID(ctx, sellerID)
+	if err != nil {
+		return err
+	}
+
+	if err := bcrypt.CompareHashAndPassword([]byte(seller.PasswordHash), []byte(currentPassword)); err != nil {
+		return ErrInvalidCredentials
+	}
+
+	hash, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
+	if err != nil {
+		return err
+	}
+
+	return a.sellers.UpdatePasswordHash(ctx, sellerID, string(hash))
+}
+
+func sellerSession(seller domain.Seller) domain.SellerSession {
+	return domain.SellerSession{
+		Email:      seller.Email,
+		SellerSlug: seller.Slug,
+		SellerName: seller.Name,
+	}
 }
 
 type AuthClaims struct {

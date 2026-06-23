@@ -78,6 +78,9 @@ func NewServer(cfg config.Config, s *store.Store, q *queue.RedisQueue) *Server {
 		protected.Patch("/orders/{id}", orderH.Update)
 		protected.Get("/dashboard/stats", dashboardH.Stats)
 		protected.Post("/uploads/presign", uploadH.Presign)
+		protected.Get("/auth/me", authH.Me)
+		protected.Patch("/auth/profile", authH.UpdateProfile)
+		protected.Patch("/auth/password", authH.ChangePassword)
 	})
 
 	return &Server{router: r}

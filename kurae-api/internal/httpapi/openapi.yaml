@@ -78,6 +78,62 @@ paths:
       responses:
         "200":
           description: OK
+  /auth/me:
+    get:
+      tags: [auth]
+      summary: Current seller session
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: OK
+  /auth/profile:
+    patch:
+      tags: [auth]
+      summary: Update seller brand name
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name:
+                  type: string
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+  /auth/password:
+    patch:
+      tags: [auth]
+      summary: Change seller password
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [currentPassword, newPassword]
+              properties:
+                currentPassword:
+                  type: string
+                newPassword:
+                  type: string
+                  minLength: 8
+      responses:
+        "200":
+          description: Password changed
+        "401":
+          $ref: "#/components/responses/Error"
   /public/{seller}/{drop}:
     get:
       tags: [public]

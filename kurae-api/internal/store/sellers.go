@@ -86,6 +86,37 @@ func (r *SellerRepository) GetBySlug(ctx context.Context, slug string) (domain.S
 	return seller, nil
 }
 
+func (r *SellerRepository) UpdateName(ctx context.Context, sellerID, name string) (domain.Seller, error) {
+	row := r.store.pool.QueryRow(ctx, `
+		UPDATE sellers SET name = $2
+		WHERE id = $1
+		RETURNING id, email, password_hash, name, slug, created_at
+	`, sellerID, name)
+
+	var seller domain.Seller
+	if err := row.Scan(&seller.ID, &seller.Email, &seller.PasswordHash, &seller.Name, &seller.Slug, &seller.CreatedAt); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return domain.Seller{}, ErrNotFound
+		}
+		return domain.Seller{}, err
+	}
+	return seller, nil
+}
+
+func (r *SellerRepository) UpdatePasswordHash(ctx context.Context, sellerID, passwordHash string) error {
+	tag, err := r.store.pool.Exec(ctx, `
+		UPDATE sellers SET password_hash = $2
+		WHERE id = $1
+	`, sellerID, passwordHash)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
 func slugify(name string) string {
 	s := strings.ToLower(strings.TrimSpace(name))
 	s = strings.ReplaceAll(s, " ", "-")
