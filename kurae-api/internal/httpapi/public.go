@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/kurae/kurae-api/internal/domain"
 	"github.com/kurae/kurae-api/internal/service"
 	"github.com/kurae/kurae-api/internal/store"
 )
@@ -17,6 +18,18 @@ type PublicHandler struct {
 
 func NewPublicHandler(drops *service.DropService, waitlist *service.WaitlistService, auth *service.AuthService) *PublicHandler {
 	return &PublicHandler{drops: drops, waitlist: waitlist, auth: auth}
+}
+
+func (h *PublicHandler) ListDrops(w http.ResponseWriter, r *http.Request) {
+	drops, err := h.drops.ListPublicFeed(r.Context(), 24)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "Could not load drops")
+		return
+	}
+	if drops == nil {
+		drops = []domain.PublicDrop{}
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"drops": drops})
 }
 
 func (h *PublicHandler) GetDrop(w http.ResponseWriter, r *http.Request) {

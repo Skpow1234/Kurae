@@ -164,6 +164,41 @@ func (r *DropRepository) ListBySellerID(ctx context.Context, sellerID string) ([
 
 var ErrDropHasOrders = errors.New("drop has orders and cannot be deleted")
 
+func (r *DropRepository) ListPublished(ctx context.Context, limit int) ([]domain.DropRecord, error) {
+	if limit <= 0 {
+		limit = 24
+	}
+	if limit > 50 {
+		limit = 50
+	}
+
+	rows, err := r.store.pool.Query(ctx, dropSelect+`
+		WHERE d.publish_status = 'published'
+		ORDER BY
+			CASE
+				WHEN d.ends_at > now() AND d.inventory_remaining > 0 AND d.starts_at <= now() THEN 0
+				WHEN d.starts_at > now() THEN 1
+				ELSE 2
+			END,
+			d.starts_at DESC
+		LIMIT $1
+	`, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var drops []domain.DropRecord
+	for rows.Next() {
+		d, err := r.scanDrop(rows)
+		if err != nil {
+			return nil, err
+		}
+		drops = append(drops, d)
+	}
+	return drops, rows.Err()
+}
+
 func (r *DropRepository) DeleteForSeller(ctx context.Context, id, sellerID string) error {
 	var orderCount int
 	if err := r.store.pool.QueryRow(ctx, `

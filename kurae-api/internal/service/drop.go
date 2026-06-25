@@ -147,6 +147,19 @@ func (d *DropService) GetPublic(ctx context.Context, sellerSlug, dropSlug string
 	return record.ToPublicDrop(time.Now()), nil
 }
 
+func (d *DropService) ListPublicFeed(ctx context.Context, limit int) ([]domain.PublicDrop, error) {
+	records, err := d.drops.ListPublished(ctx, limit)
+	if err != nil {
+		return nil, err
+	}
+	now := time.Now()
+	out := make([]domain.PublicDrop, len(records))
+	for i, r := range records {
+		out[i] = r.ToPublicDrop(now)
+	}
+	return out, nil
+}
+
 func defaultSizes() []domain.DropSize {
 	return []domain.DropSize{
 		{ID: "s", Label: "S", Available: true},

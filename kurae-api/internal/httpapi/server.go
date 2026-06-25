@@ -70,6 +70,7 @@ func NewServer(cfg config.Config, s *store.Store, q *queue.RedisQueue) *Server {
 	r.With(RateLimit(authLimiter)).Post("/auth/login", authH.Login)
 	r.Post("/auth/logout", authH.Logout)
 
+	r.Get("/public/drops", publicH.ListDrops)
 	r.Get("/public/{seller}/{drop}", publicH.GetDrop)
 	r.With(RateLimit(waitlistLimiter)).Post("/drops/{id}/waitlist", publicH.JoinWaitlist)
 	r.With(RateLimit(checkoutLimiter)).Post("/checkout", orderH.Checkout)
