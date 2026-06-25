@@ -4,6 +4,8 @@ import Image from "next/image";
 import { useCallback, useRef, useState } from "react";
 
 import { DropHero } from "@/components/drop/drop-hero";
+import { SellerBrandCard } from "@/components/branding/seller-brand-card";
+import { SellerBrandTheme } from "@/components/branding/seller-brand-theme";
 import { ReferralCapture } from "@/components/referral/referral-capture";
 import { DropStatusBanner } from "@/components/drop/drop-status-banner";
 import { PromoStrip } from "@/components/drop/promo-strip";
@@ -61,7 +63,8 @@ export function DropPageView({
   }, []);
 
   return (
-    <div className="min-h-screen bg-sakura-paper pb-24 sm:pb-0">
+    <SellerBrandTheme accent={drop.sellerAccent}>
+      <div className="min-h-screen bg-sakura-paper pb-24 sm:pb-0">
       <ReferralCapture
         dropId={drop.id}
         sellerSlug={drop.sellerSlug}
@@ -75,11 +78,18 @@ export function DropPageView({
       {drop.promoMessage && <PromoStrip message={drop.promoMessage} />}
       <PublicNav
         sellerName={drop.sellerName}
+        sellerLogoUrl={drop.sellerLogoUrl}
         dropTitle={drop.title}
         cartCount={count}
       />
 
       <DropHero drop={drop} />
+
+      <SellerBrandCard
+        sellerName={drop.sellerName}
+        logoUrl={drop.sellerLogoUrl}
+        bio={drop.sellerBio}
+      />
 
       <div className="mx-auto max-w-6xl space-y-10 px-4 py-10">
         <DropStatusBanner status={drop.status} />
@@ -158,6 +168,7 @@ export function DropPageView({
         onWaitlistClick={scrollToWaitlist}
         onBuyWithoutSize={scrollToPurchase}
       />
-    </div>
+      </div>
+    </SellerBrandTheme>
   );
 }

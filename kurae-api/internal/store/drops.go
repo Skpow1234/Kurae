@@ -60,7 +60,9 @@ func (r *DropRepository) scanDrop(row pgx.Row) (domain.DropRecord, error) {
 	var promo *string
 
 	err := row.Scan(
-		&d.ID, &d.SellerID, &d.SellerSlug, &d.SellerName, &d.Slug, &d.Title,
+		&d.ID, &d.SellerID, &d.SellerSlug, &d.SellerName,
+		&d.SellerLogoURL, &d.SellerAccent, &d.SellerBio,
+		&d.Slug, &d.Title,
 		&d.Description, &d.Story, &promo, &d.PriceCents, &d.Currency,
 		&d.HeroImageURL, &galleryJSON, &d.InventoryTotal, &d.InventoryRemaining,
 		&d.WaitlistCount, &sizesJSON, &d.StartsAt, &d.EndsAt, &d.PublishStatus,
@@ -80,7 +82,8 @@ func (r *DropRepository) scanDrop(row pgx.Row) (domain.DropRecord, error) {
 }
 
 const dropSelect = `
-	SELECT d.id, d.seller_id, s.slug, s.name, d.slug, d.title,
+	SELECT d.id, d.seller_id, s.slug, s.name, s.brand_logo_url, s.brand_accent, s.brand_bio,
+		d.slug, d.title,
 		d.description, d.story, d.promo_message, d.price_cents, d.currency,
 		d.hero_image_url, d.gallery_image_urls, d.inventory_total, d.inventory_remaining,
 		d.waitlist_count, d.sizes, d.starts_at, d.ends_at, d.publish_status,

@@ -96,6 +96,26 @@ body {
   }
 }
 
+.brand-themed .brand-accent-bg {
+  background-color: var(--brand-primary);
+}
+
+.brand-themed .brand-accent-bg:hover {
+  background-color: var(--brand-hover);
+}
+
+.brand-themed .brand-accent-text {
+  color: var(--brand-soft);
+}
+
+.brand-themed .brand-accent-ring:focus-visible {
+  outline-color: var(--brand-primary);
+}
+
+.brand-themed .brand-accent-badge {
+  background-color: var(--brand-primary);
+}
+
 .skeleton-shimmer {
   background: linear-gradient(
     90deg,

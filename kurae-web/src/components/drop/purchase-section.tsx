@@ -53,11 +53,11 @@ export function PurchaseSection({
       <div className="flex items-start justify-between gap-4">
         <div>
           <h2 className="text-lg font-semibold text-sakura-ink">Select size</h2>
-          <p className="mt-1 font-mono text-xl font-semibold tabular-nums text-sakura-dusk">
+          <p className="mt-1 font-mono text-xl font-semibold tabular-nums brand-accent-text">
             {formatPrice(drop.priceCents, drop.currency)}
           </p>
         </div>
-        <p className="font-mono text-sm font-medium tabular-nums text-sakura-bloom">
+        <p className="font-mono text-sm font-medium tabular-nums brand-accent-text">
           {inventoryRemaining} left
         </p>
       </div>
@@ -73,7 +73,7 @@ export function PurchaseSection({
       )}
 
       <Button
-        className="w-full bg-sakura-blush text-sakura-ink hover:bg-sakura-bloom sm:w-auto"
+        className="brand-accent-bg w-full text-sakura-ink sm:w-auto"
         size="lg"
         disabled={!selectedSizeId}
         onClick={handleBuy}

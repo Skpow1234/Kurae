@@ -64,6 +64,9 @@ type PublicDrop struct {
 	Status             DropStatus `json:"status"`
 	PromoMessage       *string    `json:"promoMessage"`
 	Sizes              []DropSize `json:"sizes"`
+	SellerLogoURL      string     `json:"sellerLogoUrl,omitempty"`
+	SellerAccent       string     `json:"sellerAccent,omitempty"`
+	SellerBio          string     `json:"sellerBio,omitempty"`
 }
 
 type SellerDrop struct {
@@ -132,6 +135,9 @@ type DropRecord struct {
 	SellerID           string
 	SellerSlug         string
 	SellerName         string
+	SellerLogoURL      string
+	SellerAccent       string
+	SellerBio          string
 	Slug               string
 	Title              string
 	Description        string
@@ -186,6 +192,9 @@ func (d DropRecord) ToPublicDrop(now time.Time) PublicDrop {
 		Status:             ResolveDropStatus(d.StartsAt, d.EndsAt, d.InventoryRemaining, now),
 		PromoMessage:       d.PromoMessage,
 		Sizes:              d.Sizes,
+		SellerLogoURL:      d.SellerLogoURL,
+		SellerAccent:       d.SellerAccent,
+		SellerBio:          d.SellerBio,
 	}
 }
 

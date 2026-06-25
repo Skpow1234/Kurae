@@ -117,6 +117,40 @@ func (r *SellerRepository) UpdatePasswordHash(ctx context.Context, sellerID, pas
 	return nil
 }
 
+func (r *SellerRepository) GetBranding(ctx context.Context, sellerID string) (domain.SellerBranding, error) {
+	row := r.store.pool.QueryRow(ctx, `
+		SELECT brand_logo_url, brand_accent, brand_bio
+		FROM sellers WHERE id = $1
+	`, sellerID)
+
+	var b domain.SellerBranding
+	if err := row.Scan(&b.LogoURL, &b.Accent, &b.Bio); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return domain.SellerBranding{}, ErrNotFound
+		}
+		return domain.SellerBranding{}, err
+	}
+	return b, nil
+}
+
+func (r *SellerRepository) UpdateBranding(ctx context.Context, sellerID string, b domain.SellerBranding) (domain.SellerBranding, error) {
+	row := r.store.pool.QueryRow(ctx, `
+		UPDATE sellers
+		SET brand_logo_url = $2, brand_accent = $3, brand_bio = $4
+		WHERE id = $1
+		RETURNING brand_logo_url, brand_accent, brand_bio
+	`, sellerID, b.LogoURL, b.Accent, b.Bio)
+
+	var out domain.SellerBranding
+	if err := row.Scan(&out.LogoURL, &out.Accent, &out.Bio); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return domain.SellerBranding{}, ErrNotFound
+		}
+		return domain.SellerBranding{}, err
+	}
+	return out, nil
+}
+
 func slugify(name string) string {
 	s := strings.ToLower(strings.TrimSpace(name))
 	s = strings.ReplaceAll(s, " ", "-")

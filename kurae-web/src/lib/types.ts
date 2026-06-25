@@ -28,6 +28,17 @@ export type PublicDrop = {
   status: DropStatus;
   promoMessage: string | null;
   sizes: DropSize[];
+  sellerLogoUrl?: string;
+  sellerAccent?: BrandAccent;
+  sellerBio?: string;
+};
+
+export type BrandAccent = "blush" | "dusk" | "teal";
+
+export type SellerBranding = {
+  logoUrl: string;
+  accent: BrandAccent;
+  bio: string;
 };
 
 export type SellerDrop = Omit<PublicDrop, "status"> & {
