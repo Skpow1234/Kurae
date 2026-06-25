@@ -5,6 +5,7 @@ import { OrdersTable } from "@/components/dashboard/orders-table";
 import { fetchSellerOrders } from "@/lib/api/orders";
 import { ORDERS_PAGE_SIZE } from "@/lib/constants/orders";
 import { getSellerSession } from "@/lib/auth/session";
+import { authUrl } from "@/lib/auth/safe-redirect";
 
 type PageProps = {
   searchParams: Promise<{

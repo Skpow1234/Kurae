@@ -6,6 +6,7 @@ import { OrderStatusBadge } from "@/components/dashboard/order-status-badge";
 import { OrderTimeline } from "@/components/dashboard/order-timeline";
 import { fetchSellerOrder } from "@/lib/api/orders";
 import { getSellerSession } from "@/lib/auth/session";
+import { authUrl } from "@/lib/auth/safe-redirect";
 import { formatPrice } from "@/lib/utils";
 
 type PageProps = {

@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 
 import { SettingsForm } from "@/components/dashboard/settings-form";
 import { getSellerSession } from "@/lib/auth/session";
+import { authUrl } from "@/lib/auth/safe-redirect";
 
 export default async function SettingsPage() {
   const session = await getSellerSession();

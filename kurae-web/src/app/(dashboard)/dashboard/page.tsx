@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { fetchDashboardStats } from "@/lib/api/orders";
 import { listSellerDrops } from "@/lib/api/drops-server";
 import { getSellerSession } from "@/lib/auth/session";
+import { authUrl } from "@/lib/auth/safe-redirect";
 import { getStorefrontPreview } from "@/lib/storefront-preview";
 import { formatPrice } from "@/lib/utils";
 

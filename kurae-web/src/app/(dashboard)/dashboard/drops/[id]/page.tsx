@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { DropForm } from "@/components/dashboard/drop-form";
 import { getSellerDrop } from "@/lib/api/drops-server";
 import { getSellerSession } from "@/lib/auth/session";
+import { authUrl } from "@/lib/auth/safe-redirect";
 
 type PageProps = {
   params: Promise<{ id: string }>;

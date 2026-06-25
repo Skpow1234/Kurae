@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { DropDeleteButton } from "@/components/dashboard/drop-delete-button";
 import { listSellerDrops } from "@/lib/api/drops-server";
 import { getSellerSession } from "@/lib/auth/session";
+import { authUrl } from "@/lib/auth/safe-redirect";
 import { toPublicDrop } from "@/lib/drop-status";
 
 export default async function DropsPage() {
