@@ -38,7 +38,7 @@ func NewServer(cfg config.Config, s *store.Store, q *queue.RedisQueue) *Server {
 	authH := NewAuthHandler(authSvc)
 	dropH := NewDropHandler(dropSvc, authSvc)
 	publicH := NewPublicHandler(dropSvc, waitlistSvc, authSvc)
-	orderH := NewOrderHandler(orderSvc)
+	orderH := NewOrderHandler(orderSvc, authSvc)
 	webhookH := NewWebhookHandler(s, provider, orderSvc)
 	dashboardH := NewDashboardHandler(dashboardSvc)
 	uploadH := NewUploadHandler(s3Storage)

@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useCart } from "@/contexts/cart-context";
 import { ApiError } from "@/lib/api/client";
+import { loginUrl } from "@/lib/auth/safe-redirect";
 import { createCheckout } from "@/lib/api/checkout";
 import {
   buildCheckoutFailedUrl,
@@ -35,20 +36,28 @@ function CheckoutContent() {
   const [drop, setDrop] = useState<PublicDrop | null>(null);
   const [loadingDrop, setLoadingDrop] = useState(true);
   const [email, setEmail] = useState("");
+  const [loadingBuyer, setLoadingBuyer] = useState(true);
   const [session, setSession] = useState<CheckoutSession | null>(null);
   const [reserving, setReserving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     fetch("/api/auth/buyer/me")
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data: { session?: { email?: string } } | null) => {
+      .then((res) => {
+        if (!res.ok) {
+          router.replace(loginUrl("/checkout"));
+          return null;
+        }
+        return res.json() as Promise<{ session?: { email?: string } }>;
+      })
+      .then((data) => {
         if (data?.session?.email) {
           setEmail(data.session.email);
         }
       })
-      .catch(() => undefined);
-  }, []);
+      .catch(() => router.replace(loginUrl("/checkout")))
+      .finally(() => setLoadingBuyer(false));
+  }, [router]);
 
   useEffect(() => {
     if (!line) {
@@ -79,7 +88,7 @@ function CheckoutContent() {
     );
   }
 
-  if (loadingDrop) {
+  if (loadingDrop || loadingBuyer) {
     return <Skeleton className="h-64 w-full" />;
   }
 
@@ -123,7 +132,6 @@ function CheckoutContent() {
 
       const result = await createCheckout({
         dropId: drop.id,
-        buyerEmail: email.trim(),
         sizeLabel: line!.sizeLabel,
         idempotencyKey,
       });
@@ -216,11 +224,14 @@ function CheckoutContent() {
               id="checkout-email"
               type="email"
               required
-              placeholder="you@email.com"
+              readOnly
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
               disabled={reserving}
+              className="bg-sakura-surface text-sakura-stone"
             />
+            <p className="mt-1 text-xs text-sakura-mist">
+              Receipt and order updates go to your account email.
+            </p>
           </div>
 
           {error && (

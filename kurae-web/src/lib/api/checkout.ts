@@ -1,5 +1,4 @@
 import { ApiError } from "@/lib/api/client";
-import { requireApiBase } from "@/lib/api/config";
 
 export type CheckoutResult = {
   orderId: string;
@@ -12,7 +11,6 @@ export type CheckoutResult = {
 
 export async function createCheckout(input: {
   dropId: string;
-  buyerEmail: string;
   sizeLabel: string;
   idempotencyKey?: string;
 }): Promise<CheckoutResult> {
@@ -23,12 +21,11 @@ export async function createCheckout(input: {
     headers["Idempotency-Key"] = input.idempotencyKey;
   }
 
-  const res = await fetch(`${requireApiBase()}/checkout`, {
+  const res = await fetch("/api/checkout", {
     method: "POST",
     headers,
     body: JSON.stringify({
       dropId: input.dropId,
-      buyerEmail: input.buyerEmail,
       sizeLabel: input.sizeLabel,
       idempotencyKey: input.idempotencyKey,
     }),

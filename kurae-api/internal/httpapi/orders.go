@@ -14,10 +14,11 @@ import (
 
 type OrderHandler struct {
 	orders *service.OrderService
+	auth   *service.AuthService
 }
 
-func NewOrderHandler(orders *service.OrderService) *OrderHandler {
-	return &OrderHandler{orders: orders}
+func NewOrderHandler(orders *service.OrderService, auth *service.AuthService) *OrderHandler {
+	return &OrderHandler{orders: orders, auth: auth}
 }
 
 func (h *OrderHandler) List(w http.ResponseWriter, r *http.Request) {
@@ -129,9 +130,20 @@ func (h *OrderHandler) Checkout(w http.ResponseWriter, r *http.Request) {
 		idem = r.Header.Get("Idempotency-Key")
 	}
 
+	buyerEmail := strings.TrimSpace(body.BuyerEmail)
+	if token := bearerToken(r); token != "" {
+		if claims, err := h.auth.ParseToken(token); err == nil && claims.IsBuyer() {
+			buyerEmail = claims.Email
+		}
+	}
+	if buyerEmail == "" {
+		writeError(w, http.StatusBadRequest, "buyerEmail is required")
+		return
+	}
+
 	result, err := h.orders.Checkout(r.Context(), service.CheckoutRequest{
 		DropID:         body.DropID,
-		BuyerEmail:     body.BuyerEmail,
+		BuyerEmail:     buyerEmail,
 		SizeLabel:      body.SizeLabel,
 		IdempotencyKey: idem,
 	})
