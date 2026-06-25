@@ -33,6 +33,7 @@ func NewServer(cfg config.Config, s *store.Store, q *queue.RedisQueue) *Server {
 	discountSvc := service.NewDiscountService(s)
 	referralSvc := service.NewReferralService(s)
 	brandingSvc := service.NewBrandingService(s)
+	analyticsSvc := service.NewAnalyticsService(s)
 	provider := payments.NewFromConfig(cfg.StripeSecretKey, cfg.StripeWebhook, cfg.IsProduction())
 	orderSvc := service.NewOrderService(s, provider, q, cfg.ReservationTTL, !cfg.IsProduction())
 
@@ -45,6 +46,7 @@ func NewServer(cfg config.Config, s *store.Store, q *queue.RedisQueue) *Server {
 	discountH := NewDiscountHandler(discountSvc, orderSvc)
 	referralH := NewReferralHandler(referralSvc)
 	brandingH := NewBrandingHandler(brandingSvc)
+	analyticsH := NewAnalyticsHandler(analyticsSvc)
 	webhookH := NewWebhookHandler(s, provider, orderSvc)
 	dashboardH := NewDashboardHandler(dashboardSvc)
 	uploadH := NewUploadHandler(s3Storage)
@@ -88,10 +90,13 @@ func NewServer(cfg config.Config, s *store.Store, q *queue.RedisQueue) *Server {
 
 	referralClickLimiter := ratelimit.NewIP(60, time.Minute)
 
+	viewLimiter := ratelimit.NewIP(120, time.Minute)
+
 	r.Get("/public/drops", publicH.ListDrops)
 	r.Get("/public/{seller}/{drop}", publicH.GetDrop)
 	r.With(RateLimit(waitlistLimiter)).Post("/drops/{id}/waitlist", publicH.JoinWaitlist)
 	r.With(RateLimit(referralClickLimiter)).Post("/public/referrals/click", referralH.RecordClick)
+	r.With(RateLimit(viewLimiter)).Post("/public/analytics/view", analyticsH.RecordView)
 	r.With(RateLimit(checkoutLimiter)).Post("/checkout", orderH.Checkout)
 	r.With(RateLimit(checkoutLimiter)).Post("/checkout/discount/validate", discountH.ValidateCheckout)
 	r.Get("/checkout/orders/{id}/status", orderH.BuyerStatus)
@@ -116,6 +121,7 @@ func NewServer(cfg config.Config, s *store.Store, q *queue.RedisQueue) *Server {
 		protected.Delete("/referral-codes/{id}", referralH.Delete)
 		protected.Get("/branding", brandingH.Get)
 		protected.Patch("/branding", brandingH.Update)
+		protected.Get("/dashboard/analytics", analyticsH.Get)
 		protected.Post("/uploads/presign", uploadH.Presign)
 		protected.Get("/auth/me", authH.Me)
 		protected.Patch("/auth/profile", authH.UpdateProfile)
