@@ -3,11 +3,11 @@ import { redirect } from "next/navigation";
 
 import { DropDeleteButton } from "@/components/dashboard/drop-delete-button";
 import { listSellerDrops } from "@/lib/api/drops-server";
-import { getSession } from "@/lib/auth/session";
+import { getSellerSession } from "@/lib/auth/session";
 import { toPublicDrop } from "@/lib/drop-status";
 
 export default async function DropsPage() {
-  const session = await getSession();
+  const session = await getSellerSession();
   if (!session) redirect("/dashboard/login");
 
   const drops = await listSellerDrops(session.sellerSlug);

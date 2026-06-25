@@ -40,15 +40,26 @@ function SignupForm({ variant, defaultNext }: SignupPageClientProps) {
     setLoading(true);
     setError(null);
 
-    const res = await fetch("/api/auth/signup", {
+    const endpoint =
+      variant === "storefront" ? "/api/auth/buyer/signup" : "/api/auth/signup";
+
+    const res = await fetch(endpoint, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        email,
-        password,
-        sellerName: sellerName.trim(),
-        sellerSlug: sellerSlug.trim() || slugify(sellerName),
-      }),
+      body: JSON.stringify(
+        variant === "storefront"
+          ? {
+              email,
+              password,
+              name: sellerName.trim(),
+            }
+          : {
+              email,
+              password,
+              sellerName: sellerName.trim(),
+              sellerSlug: sellerSlug.trim() || slugify(sellerName),
+            },
+      ),
     });
 
     setLoading(false);
@@ -141,6 +152,17 @@ function SignupForm({ variant, defaultNext }: SignupPageClientProps) {
           Sign in
         </Link>
       </p>
+      {isStorefront && (
+        <p className="text-center text-xs text-sakura-mist">
+          Want to launch drops?{" "}
+          <Link
+            href={`/dashboard/signup?next=${encodeURIComponent("/dashboard/drops/new")}`}
+            className="text-sakura-dusk hover:underline"
+          >
+            Create a seller account
+          </Link>
+        </p>
+      )}
     </form>
   );
 }
@@ -155,7 +177,7 @@ export function SignupPageClient({
         <h1 className="text-2xl font-semibold text-sakura-ink">Create account</h1>
         <p className="mt-1 text-sm text-sakura-mist">
           {variant === "storefront"
-            ? "Create an account to check out. Your cart is saved."
+            ? "Create a buyer account to check out. Your cart is saved."
             : "Set up your seller brand on Kurae."}
         </p>
       </div>

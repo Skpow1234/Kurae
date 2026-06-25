@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 
 import { DropPageView } from "@/components/drop/drop-page-view";
 import { fetchPublicDrop } from "@/lib/api/drops-server";
-import { getSession } from "@/lib/auth/session";
+import { getSellerSession } from "@/lib/auth/session";
 
 type PageProps = {
   params: Promise<{ seller: string; drop: string }>;
@@ -16,7 +16,7 @@ export async function generateMetadata({
 }: PageProps): Promise<Metadata> {
   const { seller, drop: dropSlug } = await params;
   const { preview } = await searchParams;
-  const session = await getSession();
+  const session = await getSellerSession();
   const allowDraft = preview === "1" && session?.sellerSlug === seller;
   const drop = await fetchPublicDrop(seller, dropSlug, { allowDraft });
 
@@ -48,7 +48,7 @@ export default async function PublicDropPage({
 }: PageProps) {
   const { seller, drop: dropSlug } = await params;
   const { preview } = await searchParams;
-  const session = await getSession();
+  const session = await getSellerSession();
   const allowDraft = preview === "1" && session?.sellerSlug === seller;
   const drop = await fetchPublicDrop(seller, dropSlug, { allowDraft });
 

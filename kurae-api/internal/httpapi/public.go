@@ -39,7 +39,7 @@ func (h *PublicHandler) GetDrop(w http.ResponseWriter, r *http.Request) {
 	allowDraft := false
 	if r.URL.Query().Get("preview") == "1" {
 		if token := bearerToken(r); token != "" {
-			if claims, err := h.auth.ParseToken(token); err == nil && claims.SellerSlug == sellerSlug {
+			if claims, err := h.auth.ParseToken(token); err == nil && claims.IsSeller() && claims.SellerSlug == sellerSlug {
 				allowDraft = true
 			}
 		}

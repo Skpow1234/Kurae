@@ -2,7 +2,7 @@ import Link from "next/link";
 
 import { DashboardHeaderActions } from "@/components/dashboard/dashboard-header-actions";
 import { listSellerDrops } from "@/lib/api/drops-server";
-import { getSession } from "@/lib/auth/session";
+import { getSellerSession } from "@/lib/auth/session";
 import { getStorefrontPreview } from "@/lib/storefront-preview";
 
 const mainNav = [
@@ -24,7 +24,7 @@ export default async function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const session = await getSession();
+  const session = await getSellerSession();
   const drops = session ? await listSellerDrops(session.sellerSlug) : [];
   const storefrontPreview = getStorefrontPreview(drops);
 

@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
 
 import { proxyToApi, readToken } from "@/lib/api/proxy";
-import { getSession } from "@/lib/auth/session";
+import { getSellerSession } from "@/lib/auth/session";
 
 export async function GET(request: Request) {
-  const session = await getSession();
+  const session = await getSellerSession();
   if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }

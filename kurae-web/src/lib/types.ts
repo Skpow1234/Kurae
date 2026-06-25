@@ -35,10 +35,19 @@ export type SellerDrop = Omit<PublicDrop, "status"> & {
 };
 
 export type SellerSession = {
+  role: "seller";
   email: string;
   sellerSlug: string;
   sellerName: string;
 };
+
+export type BuyerSession = {
+  role: "buyer";
+  email: string;
+  name: string;
+};
+
+export type KuraeSession = SellerSession | BuyerSession;
 
 export type CartLine = {
   dropId: string;

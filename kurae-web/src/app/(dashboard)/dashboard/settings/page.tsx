@@ -1,10 +1,10 @@
 import { redirect } from "next/navigation";
 
 import { SettingsForm } from "@/components/dashboard/settings-form";
-import { getSession } from "@/lib/auth/session";
+import { getSellerSession } from "@/lib/auth/session";
 
 export default async function SettingsPage() {
-  const session = await getSession();
+  const session = await getSellerSession();
   if (!session) redirect("/dashboard/login");
 
   return (

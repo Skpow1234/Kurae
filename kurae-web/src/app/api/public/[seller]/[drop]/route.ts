@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 import { requireApiBase } from "@/lib/api/config";
 import { getAuthToken } from "@/lib/api/server";
-import { getSession } from "@/lib/auth/session";
+import { getSellerSession } from "@/lib/auth/session";
 
 const PUBLIC_REVALIDATE_SECONDS = 15;
 
@@ -13,7 +13,7 @@ type RouteContext = {
 export async function GET(request: Request, context: RouteContext) {
   const { seller, drop: dropSlug } = await context.params;
   const preview = new URL(request.url).searchParams.get("preview") === "1";
-  const session = await getSession();
+  const session = await getSellerSession();
   const allowDraft = preview && session?.sellerSlug === seller;
 
   const base = requireApiBase();

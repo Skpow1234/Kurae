@@ -3,12 +3,12 @@ import { redirect } from "next/navigation";
 
 import { fetchDashboardStats } from "@/lib/api/orders";
 import { listSellerDrops } from "@/lib/api/drops-server";
-import { getSession } from "@/lib/auth/session";
+import { getSellerSession } from "@/lib/auth/session";
 import { getStorefrontPreview } from "@/lib/storefront-preview";
 import { formatPrice } from "@/lib/utils";
 
 export default async function DashboardPage() {
-  const session = await getSession();
+  const session = await getSellerSession();
   if (!session) redirect("/dashboard/login");
 
   const stats = await fetchDashboardStats(session.sellerSlug);

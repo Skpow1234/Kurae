@@ -5,7 +5,7 @@ import { OrderActions } from "@/components/dashboard/order-actions";
 import { OrderStatusBadge } from "@/components/dashboard/order-status-badge";
 import { OrderTimeline } from "@/components/dashboard/order-timeline";
 import { fetchSellerOrder } from "@/lib/api/orders";
-import { getSession } from "@/lib/auth/session";
+import { getSellerSession } from "@/lib/auth/session";
 import { formatPrice } from "@/lib/utils";
 
 type PageProps = {
@@ -13,7 +13,7 @@ type PageProps = {
 };
 
 export default async function OrderDetailPage({ params }: PageProps) {
-  const session = await getSession();
+  const session = await getSellerSession();
   if (!session) redirect("/dashboard/login");
 
   const { id } = await params;

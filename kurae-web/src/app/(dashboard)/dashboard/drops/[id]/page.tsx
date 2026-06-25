@@ -2,14 +2,14 @@ import { redirect } from "next/navigation";
 
 import { DropForm } from "@/components/dashboard/drop-form";
 import { getSellerDrop } from "@/lib/api/drops-server";
-import { getSession } from "@/lib/auth/session";
+import { getSellerSession } from "@/lib/auth/session";
 
 type PageProps = {
   params: Promise<{ id: string }>;
 };
 
 export default async function EditDropPage({ params }: PageProps) {
-  const session = await getSession();
+  const session = await getSellerSession();
   if (!session) redirect("/dashboard/login");
 
   const { id } = await params;

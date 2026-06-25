@@ -4,7 +4,7 @@ import { Suspense } from "react";
 import { OrdersTable } from "@/components/dashboard/orders-table";
 import { fetchSellerOrders } from "@/lib/api/orders";
 import { ORDERS_PAGE_SIZE } from "@/lib/constants/orders";
-import { getSession } from "@/lib/auth/session";
+import { getSellerSession } from "@/lib/auth/session";
 
 type PageProps = {
   searchParams: Promise<{
@@ -15,7 +15,7 @@ type PageProps = {
 };
 
 export default async function OrdersPage({ searchParams }: PageProps) {
-  const session = await getSession();
+  const session = await getSellerSession();
   if (!session) redirect("/dashboard/login");
 
   const params = await searchParams;

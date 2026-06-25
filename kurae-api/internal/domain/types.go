@@ -72,9 +72,16 @@ type SellerDrop struct {
 }
 
 type SellerSession struct {
+	Role       string `json:"role"`
 	Email      string `json:"email"`
 	SellerSlug string `json:"sellerSlug"`
 	SellerName string `json:"sellerName"`
+}
+
+type BuyerSession struct {
+	Role  string `json:"role"`
+	Email string `json:"email"`
+	Name  string `json:"name"`
 }
 
 type OrderEvent struct {
@@ -106,6 +113,14 @@ type Seller struct {
 	PasswordHash string
 	Name         string
 	Slug         string
+	CreatedAt    time.Time
+}
+
+type Buyer struct {
+	ID           string
+	Email        string
+	PasswordHash string
+	Name         string
 	CreatedAt    time.Time
 }
 

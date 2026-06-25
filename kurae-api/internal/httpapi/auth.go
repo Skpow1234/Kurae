@@ -90,6 +90,102 @@ func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
 }
 
+func (h *AuthHandler) RegisterBuyer(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		Email    string `json:"email"`
+		Password string `json:"password"`
+		Name     string `json:"name"`
+	}
+	if err := decodeJSON(r, &body); err != nil {
+		writeError(w, http.StatusBadRequest, "Invalid JSON")
+		return
+	}
+	if strings.TrimSpace(body.Email) == "" || body.Password == "" {
+		writeError(w, http.StatusBadRequest, "Email and password are required")
+		return
+	}
+
+	session, token, err := h.auth.RegisterBuyer(r.Context(), service.BuyerRegisterInput{
+		Email:    body.Email,
+		Password: body.Password,
+		Name:     body.Name,
+	})
+	if errors.Is(err, store.ErrConflict) {
+		writeError(w, http.StatusConflict, "Account already exists")
+		return
+	}
+	if errors.Is(err, service.ErrWeakPassword) {
+		writeError(w, http.StatusBadRequest, "Password must be at least 8 characters")
+		return
+	}
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "Could not register")
+		return
+	}
+
+	writeJSON(w, http.StatusCreated, map[string]any{
+		"ok":      true,
+		"session": session,
+		"token":   token,
+	})
+}
+
+func (h *AuthHandler) LoginBuyer(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		Email    string `json:"email"`
+		Password string `json:"password"`
+	}
+	if err := decodeJSON(r, &body); err != nil {
+		writeError(w, http.StatusBadRequest, "Invalid JSON")
+		return
+	}
+	if strings.TrimSpace(body.Email) == "" || body.Password == "" {
+		writeError(w, http.StatusBadRequest, "Email and password are required")
+		return
+	}
+
+	session, token, err := h.auth.LoginBuyer(r.Context(), body.Email, body.Password)
+	if errors.Is(err, service.ErrInvalidCredentials) {
+		writeError(w, http.StatusUnauthorized, "Invalid credentials")
+		return
+	}
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "Could not login")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]any{
+		"ok":      true,
+		"session": session,
+		"token":   token,
+	})
+}
+
+func (h *AuthHandler) BuyerMe(w http.ResponseWriter, r *http.Request) {
+	token := bearerToken(r)
+	if token == "" {
+		writeError(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+	claims, err := h.auth.ParseToken(token)
+	if err != nil || !claims.IsBuyer() {
+		writeError(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+
+	session, err := h.auth.GetBuyerSession(r.Context(), claims.BuyerID)
+	if errors.Is(err, store.ErrNotFound) {
+		writeError(w, http.StatusNotFound, "Not found")
+		return
+	}
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "Could not load session")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]any{"session": session})
+}
+
 func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
 	claims, ok := claimsFromContext(r.Context())
 	if !ok {

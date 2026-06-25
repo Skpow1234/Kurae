@@ -7,9 +7,9 @@ import {
   readToken,
   setAuthCookies,
 } from "@/lib/api/proxy";
-import type { SellerSession } from "@/lib/types";
+import type { KuraeSession } from "@/lib/types";
 
-type AuthPayload = { ok: boolean; session: SellerSession; token: string };
+type AuthPayload = { ok: boolean; session: KuraeSession; token: string };
 
 export async function handleLogin(request: NextRequest) {
   const body = (await request.json()) as { email?: string; password?: string };
@@ -33,6 +33,71 @@ export async function handleLogin(request: NextRequest) {
     const err = data as { error?: string };
     return NextResponse.json(
       { error: err.error ?? "Sign in failed" },
+      { status: res.status },
+    );
+  }
+  const auth = data as AuthPayload;
+  const response = NextResponse.json({ ok: true, session: auth.session });
+  return setAuthCookies(response, auth);
+}
+
+export async function handleBuyerLogin(request: NextRequest) {
+  const body = (await request.json()) as { email?: string; password?: string };
+
+  if (!body.email?.trim() || !body.password) {
+    return NextResponse.json(
+      { error: "Email and password are required" },
+      { status: 400 },
+    );
+  }
+
+  const res = await proxyToApi("/auth/buyer/login", {
+    method: "POST",
+    body: JSON.stringify({
+      email: body.email.trim().toLowerCase(),
+      password: body.password,
+    }),
+  });
+  const data = (await res.json()) as AuthPayload | { error?: string };
+  if (!res.ok) {
+    const err = data as { error?: string };
+    return NextResponse.json(
+      { error: err.error ?? "Sign in failed" },
+      { status: res.status },
+    );
+  }
+  const auth = data as AuthPayload;
+  const response = NextResponse.json({ ok: true, session: auth.session });
+  return setAuthCookies(response, auth);
+}
+
+export async function handleBuyerSignup(request: NextRequest) {
+  const body = (await request.json()) as {
+    email?: string;
+    password?: string;
+    name?: string;
+  };
+
+  if (!body.email?.trim() || !body.password) {
+    return NextResponse.json(
+      { error: "Email and password are required" },
+      { status: 400 },
+    );
+  }
+
+  const res = await proxyToApi("/auth/buyer/register", {
+    method: "POST",
+    body: JSON.stringify({
+      email: body.email.trim().toLowerCase(),
+      password: body.password,
+      name: body.name?.trim() ?? "",
+    }),
+  });
+  const data = (await res.json()) as AuthPayload | { error?: string };
+  if (!res.ok) {
+    const err = data as { error?: string };
+    return NextResponse.json(
+      { error: err.error ?? "Sign up failed" },
       { status: res.status },
     );
   }

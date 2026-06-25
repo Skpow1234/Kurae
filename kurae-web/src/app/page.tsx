@@ -4,7 +4,7 @@ import { Suspense } from "react";
 import { PublicDropsSection } from "@/components/home/public-drops-section";
 import { PublicDropsSkeleton } from "@/components/home/public-drops-skeleton";
 import { listSellerDrops } from "@/lib/api/drops-server";
-import { getSession } from "@/lib/auth/session";
+import { getSellerSession } from "@/lib/auth/session";
 import { getStorefrontPreview } from "@/lib/storefront-preview";
 
 const primaryButtonClass =
@@ -15,7 +15,7 @@ const textLinkClass =
   "inline-flex h-10 items-center justify-center rounded-md px-4 text-sm font-medium text-sakura-dusk hover:bg-sakura-surface";
 
 export default async function HomePage() {
-  const session = await getSession();
+  const session = await getSellerSession();
 
   if (session) {
     const drops = await listSellerDrops(session.sellerSlug);

@@ -68,6 +68,9 @@ func NewServer(cfg config.Config, s *store.Store, q *queue.RedisQueue) *Server {
 
 	r.With(RateLimit(authLimiter)).Post("/auth/register", authH.Register)
 	r.With(RateLimit(authLimiter)).Post("/auth/login", authH.Login)
+	r.With(RateLimit(authLimiter)).Post("/auth/buyer/register", authH.RegisterBuyer)
+	r.With(RateLimit(authLimiter)).Post("/auth/buyer/login", authH.LoginBuyer)
+	r.Get("/auth/buyer/me", authH.BuyerMe)
 	r.Post("/auth/logout", authH.Logout)
 
 	r.Get("/public/drops", publicH.ListDrops)
@@ -78,7 +81,7 @@ func NewServer(cfg config.Config, s *store.Store, q *queue.RedisQueue) *Server {
 	r.Post("/webhooks/stripe", webhookH.Stripe)
 
 	r.Group(func(protected chi.Router) {
-		protected.Use(AuthMiddleware(authSvc))
+		protected.Use(SellerAuthMiddleware(authSvc))
 		protected.Get("/drops", dropH.List)
 		protected.Post("/drops", dropH.Create)
 		protected.Get("/drops/{id}", dropH.Get)

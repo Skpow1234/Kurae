@@ -30,7 +30,10 @@ function LoginForm({ variant, defaultNext }: LoginPageClientProps) {
     setLoading(true);
     setError(null);
 
-    const res = await fetch("/api/auth/login", {
+    const endpoint =
+      variant === "storefront" ? "/api/auth/buyer/login" : "/api/auth/login";
+
+    const res = await fetch(endpoint, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email, password }),
@@ -99,6 +102,17 @@ function LoginForm({ variant, defaultNext }: LoginPageClientProps) {
           Create account
         </Link>
       </p>
+      {variant === "storefront" && (
+        <p className="text-center text-xs text-sakura-mist">
+          Want to sell on Kurae?{" "}
+          <Link
+            href={`/dashboard/signup?next=${encodeURIComponent("/dashboard/drops/new")}`}
+            className="text-sakura-dusk hover:underline"
+          >
+            Create a seller account
+          </Link>
+        </p>
+      )}
     </form>
   );
 }
@@ -113,7 +127,7 @@ export function LoginPageClient({
         <h1 className="text-2xl font-semibold text-sakura-ink">Sign in</h1>
         <p className="mt-1 text-sm text-sakura-mist">
           {variant === "storefront"
-            ? "Sign in to complete your purchase."
+            ? "Buyer account — sign in to check out. This is not a seller account."
             : "Seller accounts — session via secure cookie."}
         </p>
       </div>

@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { requireApiBase } from "@/lib/api/config";
 import { SESSION_COOKIE, TOKEN_COOKIE } from "@/lib/auth/constants";
 import { serializeSession } from "@/lib/auth/session";
-import type { SellerSession } from "@/lib/types";
+import type { KuraeSession } from "@/lib/types";
 
 const COOKIE_OPTS = {
   httpOnly: true,
@@ -12,7 +12,7 @@ const COOKIE_OPTS = {
   maxAge: 60 * 60 * 24 * 7,
 };
 
-type AuthPayload = { ok: boolean; session: SellerSession; token: string };
+type AuthPayload = { ok: boolean; session: KuraeSession; token: string };
 
 export async function proxyToApi(
   path: string,

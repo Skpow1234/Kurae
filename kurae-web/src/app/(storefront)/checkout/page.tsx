@@ -40,7 +40,7 @@ function CheckoutContent() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch("/api/auth/me")
+    fetch("/api/auth/buyer/me")
       .then((res) => (res.ok ? res.json() : null))
       .then((data: { session?: { email?: string } } | null) => {
         if (data?.session?.email) {

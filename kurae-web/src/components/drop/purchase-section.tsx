@@ -33,7 +33,7 @@ export function PurchaseSection({
     if (!selectedSizeId) return;
     addItem(drop, selectedSizeId);
 
-    const me = await fetch("/api/auth/me");
+    const me = await fetch("/api/auth/buyer/me");
     if (me.ok) {
       router.push("/checkout");
       return;
