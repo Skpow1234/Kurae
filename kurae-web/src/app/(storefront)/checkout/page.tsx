@@ -40,6 +40,17 @@ function CheckoutContent() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    fetch("/api/auth/me")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: { session?: { email?: string } } | null) => {
+        if (data?.session?.email) {
+          setEmail(data.session.email);
+        }
+      })
+      .catch(() => undefined);
+  }, []);
+
+  useEffect(() => {
     if (!line) {
       setLoadingDrop(false);
       return;
