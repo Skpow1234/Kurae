@@ -1,0 +1,130 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  GO_VERSION: "1.24.x"
+  NODE_VERSION: "22"
+
+jobs:
+  api:
+    name: API — vet, migrate, test, build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: kurae-api
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: kurae
+          POSTGRES_PASSWORD: kurae
+          POSTGRES_DB: kurae
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U kurae -d kurae"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgres://kurae:kurae@localhost:5432/kurae?sslmode=disable
+      JWT_SECRET: ci-jwt-secret-at-least-32-characters-long
+      ENV: development
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache-dependency-path: kurae-api/go.sum
+
+      - name: Go vet
+        run: go vet ./...
+
+      - name: Run migrations
+        run: go run ./cmd/migrate up
+
+      - name: Go test
+        run: go test ./... -count=1 -race -timeout 5m
+
+      - name: Go build
+        run: |
+          go build -o /dev/null ./cmd/api
+          go build -o /dev/null ./cmd/worker
+          go build -o /dev/null ./cmd/migrate
+          go build -o /dev/null ./cmd/seed
+
+  web:
+    name: Web — typecheck, lint, build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: kurae-web
+
+    env:
+      NEXT_PUBLIC_API_URL: http://localhost:8080
+      NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: pk_test_ci_placeholder
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: kurae-web/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build
+        run: npm run build
+
+  docker-api:
+    name: API — Docker build
+    runs-on: ubuntu-latest
+    needs: [api]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build API image
+        uses: docker/build-push-action@v6
+        with:
+          context: kurae-api
+          push: false
+          tags: kurae-api:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  ci-gate:
+    name: CI gate
+    runs-on: ubuntu-latest
+    needs: [api, web, docker-api]
+    steps:
+      - run: echo "All CI checks passed."
