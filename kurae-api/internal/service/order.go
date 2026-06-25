@@ -16,20 +16,22 @@ import (
 var ErrInvalidOrderAction = errors.New("invalid order action")
 
 type OrderService struct {
-	orders   *store.OrderRepository
-	drops    *store.DropRepository
-	provider payments.Provider
-	queue    *queue.RedisQueue
-	ttl      time.Duration
+	orders             *store.OrderRepository
+	drops              *store.DropRepository
+	provider           payments.Provider
+	queue              *queue.RedisQueue
+	ttl                time.Duration
+	devPaymentPollSync bool
 }
 
-func NewOrderService(s *store.Store, provider payments.Provider, q *queue.RedisQueue, ttl time.Duration) *OrderService {
+func NewOrderService(s *store.Store, provider payments.Provider, q *queue.RedisQueue, ttl time.Duration, devPaymentPollSync bool) *OrderService {
 	return &OrderService{
-		orders:   s.Orders(),
-		drops:    s.Drops(),
-		provider: provider,
-		queue:    q,
-		ttl:      ttl,
+		orders:             s.Orders(),
+		drops:              s.Drops(),
+		provider:           provider,
+		queue:              q,
+		ttl:                ttl,
+		devPaymentPollSync: devPaymentPollSync,
 	}
 }
 
@@ -279,6 +281,10 @@ func (o *OrderService) ExpireReservations(ctx context.Context) (int, error) {
 }
 
 func (o *OrderService) GetBuyerOrderStatus(ctx context.Context, orderID, email string) (domain.BuyerOrderStatus, error) {
+	if o.devPaymentPollSync {
+		_ = o.syncPaymentFromProvider(ctx, orderID)
+	}
+
 	r, err := o.orders.GetByID(ctx, orderID)
 	if err != nil {
 		return domain.BuyerOrderStatus{}, err
@@ -300,4 +306,26 @@ func (o *OrderService) GetBuyerOrderStatus(ctx context.Context, orderID, email s
 		UpdatedAt:   r.UpdatedAt.UTC().Format(time.RFC3339),
 		Events:      events,
 	}, nil
+}
+
+func (o *OrderService) syncPaymentFromProvider(ctx context.Context, orderID string) error {
+	r, err := o.orders.GetByID(ctx, orderID)
+	if err != nil {
+		return err
+	}
+	if r.Status != domain.OrderPaymentPending {
+		return nil
+	}
+
+	payment, err := o.orders.GetPaymentByOrderID(ctx, orderID)
+	if err != nil {
+		return nil
+	}
+
+	succeeded, err := o.provider.PaymentSucceeded(ctx, payment.ProviderPaymentID)
+	if err != nil || !succeeded {
+		return err
+	}
+
+	return o.MarkPaid(ctx, orderID, payment.ProviderPaymentID)
 }

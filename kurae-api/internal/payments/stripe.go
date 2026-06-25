@@ -83,6 +83,18 @@ func (s *StripeProvider) VerifyWebhook(payload []byte, signature string) (string
 	return event.ID, orderID, true, nil
 }
 
+func (s *StripeProvider) PaymentSucceeded(ctx context.Context, providerPaymentID string) (bool, error) {
+	_ = ctx
+	if providerPaymentID == "" {
+		return false, nil
+	}
+	pi, err := paymentintent.Get(providerPaymentID, nil)
+	if err != nil {
+		return false, err
+	}
+	return pi.Status == stripe.PaymentIntentStatusSucceeded, nil
+}
+
 type NoopProvider struct{}
 
 func NewNoopProvider() *NoopProvider {
@@ -108,6 +120,12 @@ func (n *NoopProvider) VerifyWebhook(payload []byte, signature string) (string, 
 	_ = payload
 	_ = signature
 	return "", "", false, errors.New("noop provider does not process webhooks")
+}
+
+func (n *NoopProvider) PaymentSucceeded(ctx context.Context, providerPaymentID string) (bool, error) {
+	_ = ctx
+	_ = providerPaymentID
+	return false, nil
 }
 
 func NewFromConfig(secretKey, webhookSecret string, production bool) Provider {

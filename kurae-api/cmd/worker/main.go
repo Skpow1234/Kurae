@@ -31,7 +31,7 @@ func main() {
 	}
 	defer db.Close()
 
-	orderSvc := service.NewOrderService(db, payments.NewNoopProvider(), nil, cfg.ReservationTTL)
+	orderSvc := service.NewOrderService(db, payments.NewNoopProvider(), nil, cfg.ReservationTTL, false)
 	emailSender := jobs.NewEmailSender(cfg)
 
 	var redisQueue *queue.RedisQueue

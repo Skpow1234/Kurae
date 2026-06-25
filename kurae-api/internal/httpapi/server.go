@@ -31,7 +31,7 @@ func NewServer(cfg config.Config, s *store.Store, q *queue.RedisQueue) *Server {
 	waitlistSvc := service.NewWaitlistService(s)
 	dashboardSvc := service.NewDashboardService(s)
 	provider := payments.NewFromConfig(cfg.StripeSecretKey, cfg.StripeWebhook, cfg.IsProduction())
-	orderSvc := service.NewOrderService(s, provider, q, cfg.ReservationTTL)
+	orderSvc := service.NewOrderService(s, provider, q, cfg.ReservationTTL, !cfg.IsProduction())
 
 	s3Storage, _ := storage.NewS3Storage(cfg)
 

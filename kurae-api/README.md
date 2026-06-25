@@ -85,7 +85,7 @@ docker compose down
 
 1. Add Stripe **test** keys to `.env`:
    - `STRIPE_SECRET_KEY=sk_test_...`
-   - `STRIPE_WEBHOOK_SECRET=whsec_...` (from `stripe listen --forward-to http://localhost:8080/webhooks/stripe`)
+   - `STRIPE_WEBHOOK_SECRET=whsec_...` (any placeholder is fine in development)
 2. Rebuild API: `docker compose up -d --build api`
 3. Run automated test:
 
@@ -95,6 +95,8 @@ make stripe-block-a
 ```
 
 4. **Browser check (Elements + pending page):** set `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_...` in `kurae-web/.env.local`, run `npm run dev`, checkout a live drop, pay with card `4242 4242 4242 4242`, confirm pending → confirmation.
+
+In **development**, the pending page polls `GET /checkout/orders/{id}/status`; the API syncs payment state from Stripe when webhooks are not forwarded (no Stripe CLI required). Optional: `stripe listen --forward-to http://localhost:8080/webhooks/stripe` for real webhook flow.
 
 ### Optional: run API on the host
 
