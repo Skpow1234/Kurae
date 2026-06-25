@@ -1,6 +1,27 @@
 import type { OrderEvent } from "@/lib/types/orders";
 
-export function OrderTimeline({ events }: { events: OrderEvent[] }) {
+function formatEventLabel(label: string): string {
+  const labels: Record<string, string> = {
+    reserved: "Reserved",
+    payment_pending: "Payment pending",
+    paid: "Paid",
+    fulfilled: "Fulfilled",
+    cancelled: "Cancelled",
+    refunded: "Refunded",
+  };
+  return (
+    labels[label] ??
+    label.replace(/_/g, " ").replace(/\b\w/g, (char) => char.toUpperCase())
+  );
+}
+
+type OrderTimelineProps = {
+  events: OrderEvent[];
+  /** Buyer-facing pages: status labels only, no metadata or timestamps. */
+  compact?: boolean;
+};
+
+export function OrderTimeline({ events, compact = false }: OrderTimelineProps) {
   return (
     <ol className="space-y-4">
       {events.map((event, i) => (
@@ -13,13 +34,17 @@ export function OrderTimeline({ events }: { events: OrderEvent[] }) {
           )}
           <span className="relative z-10 mt-1.5 h-2 w-2 shrink-0 rounded-full bg-sakura-blush ring-2 ring-sakura-paper" />
           <div className="pb-2">
-            <p className="text-sm font-medium text-sakura-ink">{event.label}</p>
-            {event.detail && (
+            <p className="text-sm font-medium text-sakura-ink">
+              {formatEventLabel(event.label)}
+            </p>
+            {!compact && event.detail && (
               <p className="text-xs text-sakura-mist">{event.detail}</p>
             )}
-            <p className="mt-0.5 font-mono text-xs text-sakura-mist">
-              {new Date(event.at).toLocaleString()}
-            </p>
+            {!compact && (
+              <p className="mt-0.5 font-mono text-xs text-sakura-mist">
+                {new Date(event.at).toLocaleString()}
+              </p>
+            )}
           </div>
         </li>
       ))}

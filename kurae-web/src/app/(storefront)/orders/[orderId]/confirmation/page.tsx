@@ -100,16 +100,12 @@ export default async function OrderConfirmationPage({
           </p>
         </div>
 
-        <p className="mt-4 text-center font-mono text-xs text-sakura-mist">
-          {order.orderId}
-        </p>
-
         <div className="mt-8 border-t border-sakura-petal pt-6">
           <h2 className="text-xs font-medium uppercase tracking-wide text-sakura-mist">
             Status
           </h2>
           <div className="mt-4">
-            <OrderTimeline events={timeline} />
+            <OrderTimeline events={timeline} compact />
           </div>
         </div>
 
