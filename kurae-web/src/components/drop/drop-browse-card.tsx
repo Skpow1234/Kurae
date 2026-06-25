@@ -8,6 +8,7 @@ import { shouldUnoptimizeImageSrc } from "@/lib/images";
 
 type DropBrowseCardProps = {
   drop: PublicDrop;
+  priority?: boolean;
 };
 
 const statusStyles: Record<PublicDrop["status"], string> = {
@@ -17,7 +18,7 @@ const statusStyles: Record<PublicDrop["status"], string> = {
   expired: "bg-sakura-mist/20 text-sakura-stone",
 };
 
-export function DropBrowseCard({ drop }: DropBrowseCardProps) {
+export function DropBrowseCard({ drop, priority = false }: DropBrowseCardProps) {
   const href = `/${drop.sellerSlug}/${drop.slug}`;
 
   return (
@@ -31,6 +32,7 @@ export function DropBrowseCard({ drop }: DropBrowseCardProps) {
             src={drop.heroImageUrl}
             alt={drop.title}
             fill
+            priority={priority}
             className="object-cover transition-transform group-hover:scale-[1.02]"
             sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
             unoptimized={shouldUnoptimizeImageSrc(drop.heroImageUrl)}

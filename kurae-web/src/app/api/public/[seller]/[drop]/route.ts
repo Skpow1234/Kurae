@@ -4,6 +4,8 @@ import { requireApiBase } from "@/lib/api/config";
 import { getAuthToken } from "@/lib/api/server";
 import { getSession } from "@/lib/auth/session";
 
+const PUBLIC_REVALIDATE_SECONDS = 15;
+
 type RouteContext = {
   params: Promise<{ seller: string; drop: string }>;
 };
@@ -23,11 +25,22 @@ export async function GET(request: Request, context: RouteContext) {
   const qs = allowDraft ? "?preview=1" : "";
   const res = await fetch(`${base}/public/${seller}/${dropSlug}${qs}`, {
     headers,
-    cache: "no-store",
+    ...(allowDraft
+      ? { cache: "no-store" as const }
+      : { next: { revalidate: PUBLIC_REVALIDATE_SECONDS } }),
   });
   if (!res.ok) {
     return NextResponse.json({ error: "Not found" }, { status: res.status });
   }
   const drop = await res.json();
-  return NextResponse.json({ drop });
+  return NextResponse.json(
+    { drop },
+    allowDraft
+      ? undefined
+      : {
+          headers: {
+            "Cache-Control": `private, max-age=${PUBLIC_REVALIDATE_SECONDS}`,
+          },
+        },
+  );
 }

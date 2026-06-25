@@ -74,11 +74,15 @@ export function useDropInventory({
       }
     }
 
-    void poll();
-    intervalId = setInterval(() => void poll(), pollMs);
+    // Server already rendered inventory; defer polling to avoid a duplicate fetch on load.
+    const timeoutId = setTimeout(() => {
+      void poll();
+      intervalId = setInterval(() => void poll(), pollMs);
+    }, pollMs);
 
     return () => {
       cancelled = true;
+      clearTimeout(timeoutId);
       if (intervalId) clearInterval(intervalId);
     };
   }, [dropSlug, initialStatus, isPreview, pollMs, sellerSlug]);

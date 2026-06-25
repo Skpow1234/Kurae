@@ -58,7 +58,9 @@ Rebuild API after changing keys: `docker compose up -d --build api`
 
 Automated API test: `cd kurae-api && make stripe-block-a`
 
-For live webhooks during browser checkout, forward events to the Docker API:
+**Browser checkout (no Stripe CLI needed):** in development, after you pay with test card `4242 4242 4242 4242`, the pending page polls the API; the API checks Stripe and marks the order paid. Rebuild API after key changes: `docker compose up -d --build api`.
+
+Optional — forward webhooks like production:
 
 ```bash
 stripe listen --forward-to http://localhost:8080/webhooks/stripe

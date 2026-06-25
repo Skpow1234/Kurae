@@ -1,35 +1,43 @@
-import type { PublicDrop, SellerDrop } from "@/lib/types";
-import { apiServerFetch, getAuthToken } from "@/lib/api/server";
+import { cache } from "react";
 
-export async function listPublicDrops(): Promise<PublicDrop[]> {
+import type { PublicDrop, SellerDrop } from "@/lib/types";
+import { apiPublicFetch, apiServerFetch, getAuthToken } from "@/lib/api/server";
+
+export const listPublicDrops = cache(async (): Promise<PublicDrop[]> => {
   try {
-    const data = await apiServerFetch<{ drops: PublicDrop[] }>("/public/drops");
+    const data = await apiPublicFetch<{ drops: PublicDrop[] }>("/public/drops");
     return data.drops ?? [];
   } catch {
     return [];
   }
-}
+});
 
-export async function fetchPublicDrop(
-  sellerSlug: string,
-  dropSlug: string,
-  options?: { allowDraft?: boolean },
-): Promise<PublicDrop | null> {
-  try {
-    const headers: Record<string, string> = {};
-    if (options?.allowDraft) {
-      const token = await getAuthToken();
-      if (token) headers.Authorization = `Bearer ${token}`;
+export const fetchPublicDrop = cache(
+  async (
+    sellerSlug: string,
+    dropSlug: string,
+    options?: { allowDraft?: boolean },
+  ): Promise<PublicDrop | null> => {
+    try {
+      if (options?.allowDraft) {
+        const headers: Record<string, string> = {};
+        const token = await getAuthToken();
+        if (token) headers.Authorization = `Bearer ${token}`;
+        const qs = "?preview=1";
+        return await apiServerFetch<PublicDrop>(
+          `/public/${sellerSlug}/${dropSlug}${qs}`,
+          { headers },
+        );
+      }
+
+      return await apiPublicFetch<PublicDrop>(
+        `/public/${sellerSlug}/${dropSlug}`,
+      );
+    } catch {
+      return null;
     }
-    const qs = options?.allowDraft ? "?preview=1" : "";
-    return await apiServerFetch<PublicDrop>(
-      `/public/${sellerSlug}/${dropSlug}${qs}`,
-      { headers },
-    );
-  } catch {
-    return null;
-  }
-}
+  },
+);
 
 export async function listSellerDrops(_sellerSlug: string): Promise<SellerDrop[]> {
   const data = await apiServerFetch<{ drops: SellerDrop[] }>("/drops");
