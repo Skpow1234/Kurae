@@ -3,6 +3,8 @@ import { ApiError } from "@/lib/api/client";
 export type CheckoutResult = {
   orderId: string;
   clientSecret: string;
+  subtotalCents: number;
+  discountCents: number;
   amountCents: number;
   currency: string;
   reservationUntil: string;
@@ -13,6 +15,7 @@ export async function createCheckout(input: {
   dropId: string;
   sizeLabel: string;
   idempotencyKey?: string;
+  discountCode?: string;
 }): Promise<CheckoutResult> {
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
@@ -28,6 +31,7 @@ export async function createCheckout(input: {
       dropId: input.dropId,
       sizeLabel: input.sizeLabel,
       idempotencyKey: input.idempotencyKey,
+      discountCode: input.discountCode?.trim() || undefined,
     }),
   });
   if (!res.ok) {

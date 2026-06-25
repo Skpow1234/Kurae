@@ -13,6 +13,7 @@ import { useCart } from "@/contexts/cart-context";
 import { ApiError } from "@/lib/api/client";
 import { loginUrl } from "@/lib/auth/safe-redirect";
 import { createCheckout } from "@/lib/api/checkout";
+import { validateDiscountCode } from "@/lib/api/discount";
 import {
   buildCheckoutFailedUrl,
   checkoutFailureFromHttpStatus,
@@ -23,6 +24,7 @@ import {
   isStripeConfigured,
 } from "@/lib/stripe/client";
 import type { PublicDrop } from "@/lib/types";
+import type { DiscountPreview } from "@/lib/types/discount";
 import { formatPrice } from "@/lib/utils";
 
 type CheckoutSession = {
@@ -40,6 +42,12 @@ function CheckoutContent() {
   const [session, setSession] = useState<CheckoutSession | null>(null);
   const [reserving, setReserving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [discountInput, setDiscountInput] = useState("");
+  const [appliedCode, setAppliedCode] = useState<string | null>(null);
+  const [discountPreview, setDiscountPreview] = useState<DiscountPreview | null>(
+    null,
+  );
+  const [validatingCode, setValidatingCode] = useState(false);
 
   useEffect(() => {
     fetch("/api/auth/buyer/me")
@@ -119,6 +127,39 @@ function CheckoutContent() {
     );
   }
 
+  async function handleApplyCode() {
+    if (!drop || !discountInput.trim()) return;
+    setValidatingCode(true);
+    setError(null);
+    try {
+      const preview = await validateDiscountCode({
+        dropId: drop.id,
+        code: discountInput.trim(),
+      });
+      if (!preview.valid) {
+        setAppliedCode(null);
+        setDiscountPreview(null);
+        setError(preview.message ?? "Invalid or expired code.");
+        return;
+      }
+      setAppliedCode(preview.code ?? discountInput.trim().toUpperCase());
+      setDiscountPreview(preview);
+    } catch {
+      setError("Could not validate code.");
+      setAppliedCode(null);
+      setDiscountPreview(null);
+    } finally {
+      setValidatingCode(false);
+    }
+  }
+
+  function handleClearCode() {
+    setDiscountInput("");
+    setAppliedCode(null);
+    setDiscountPreview(null);
+    setError(null);
+  }
+
   async function handleReserve() {
     if (!email.trim() || !drop) return;
     setReserving(true);
@@ -134,6 +175,7 @@ function CheckoutContent() {
         dropId: drop.id,
         sizeLabel: line!.sizeLabel,
         idempotencyKey,
+        discountCode: appliedCode ?? undefined,
       });
 
       if (isDevPaymentIntent(result.clientSecret)) {
@@ -154,6 +196,10 @@ function CheckoutContent() {
       });
     } catch (err) {
       if (err instanceof ApiError) {
+        if (err.status === 400 && appliedCode) {
+          setError("Invalid or expired discount code.");
+          return;
+        }
         router.push(
           buildCheckoutFailedUrl({
             reason: checkoutFailureFromHttpStatus(err.status),
@@ -178,8 +224,17 @@ function CheckoutContent() {
         <h1 className="font-semibold text-sakura-ink">{line.dropTitle}</h1>
         <p className="mt-1 text-sm text-sakura-mist">Size {line.sizeLabel}</p>
         <p className="mt-3 font-mono text-lg font-semibold text-sakura-dusk">
-          {formatPrice(line.priceCents, line.currency)}
+          {discountPreview?.valid
+            ? formatPrice(discountPreview.finalCents, line.currency)
+            : formatPrice(line.priceCents, line.currency)}
         </p>
+        {discountPreview?.valid && discountPreview.discountCents > 0 && (
+          <p className="mt-1 text-xs text-sakura-mist">
+            {formatPrice(discountPreview.subtotalCents, line.currency)} −{" "}
+            {formatPrice(discountPreview.discountCents, line.currency)} (
+            {appliedCode})
+          </p>
+        )}
       </section>
 
       <p className="text-sm font-medium text-sakura-warning">
@@ -232,6 +287,40 @@ function CheckoutContent() {
             <p className="mt-1 text-xs text-sakura-mist">
               Receipt and order updates go to your account email.
             </p>
+          </div>
+
+          <div>
+            <label htmlFor="checkout-discount" className="mb-1 block text-sm font-medium">
+              Discount code
+            </label>
+            <div className="flex gap-2">
+              <Input
+                id="checkout-discount"
+                placeholder="SAKURA10"
+                value={discountInput}
+                onChange={(e) => setDiscountInput(e.target.value.toUpperCase())}
+                disabled={reserving || validatingCode || !!appliedCode}
+              />
+              {appliedCode ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={reserving}
+                  onClick={handleClearCode}
+                >
+                  Remove
+                </Button>
+              ) : (
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={reserving || validatingCode || !discountInput.trim()}
+                  onClick={() => void handleApplyCode()}
+                >
+                  {validatingCode ? "Checking…" : "Apply"}
+                </Button>
+              )}
+            </div>
           </div>
 
           {error && (

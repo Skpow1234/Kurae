@@ -1,57 +1,93 @@
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { redirect } from "next/navigation";
 
-const codes = [
-  { code: "SAKURA10", type: "10% off", uses: "12 / 50", expires: "2026-07-01" },
-  { code: "EARLYBIRD", type: "$5 off", uses: "48 / 100", expires: "2026-06-30" },
-];
+import { DiscountDeleteButton } from "@/components/dashboard/discount-delete-button";
+import { DiscountForm } from "@/components/dashboard/discount-form";
+import { listDiscountCodes } from "@/lib/api/discounts-server";
+import { listSellerDrops } from "@/lib/api/drops-server";
+import { authUrl } from "@/lib/auth/safe-redirect";
+import { getSellerSession } from "@/lib/auth/session";
+import type { DiscountCode } from "@/lib/types/discount";
+import { formatPrice } from "@/lib/utils";
 
-export default function DiscountsPage() {
+function formatDiscountLabel(code: DiscountCode): string {
+  if (code.type === "percent") {
+    return `${code.value}% off`;
+  }
+  return `${formatPrice(code.value, "USD")} off`;
+}
+
+function formatUses(code: DiscountCode): string {
+  if (code.maxUses != null) {
+    return `${code.usesCount} / ${code.maxUses}`;
+  }
+  return String(code.usesCount);
+}
+
+function formatExpires(expiresAt?: string): string {
+  if (!expiresAt) return "—";
+  return new Date(expiresAt).toLocaleDateString();
+}
+
+export default async function DiscountsPage() {
+  const session = await getSellerSession();
+  if (!session) redirect(authUrl({ role: "seller", next: "/dashboard/discounts" }));
+
+  const [codes, drops] = await Promise.all([
+    listDiscountCodes(),
+    listSellerDrops(session.sellerSlug),
+  ]);
+
   return (
     <div className="space-y-8">
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold text-sakura-ink">Discount codes</h1>
-          <p className="mt-1 text-sm text-sakura-mist">
-            Create codes for checkout — mock UI (phase 2).
-          </p>
+      <div>
+        <h1 className="text-2xl font-semibold text-sakura-ink">Discount codes</h1>
+        <p className="mt-1 text-sm text-sakura-mist">
+          Create codes buyers can apply at checkout. Discounts are validated server-side.
+        </p>
+      </div>
+
+      {codes.length === 0 ? (
+        <div className="rounded-lg border border-dashed border-sakura-petal p-8 text-center text-sm text-sakura-stone">
+          No discount codes yet. Create one below.
         </div>
-        <Button type="button" disabled className="bg-sakura-dusk">
-          New code
-        </Button>
-      </div>
-
-      <div className="overflow-hidden rounded-lg border border-sakura-petal">
-        <table className="w-full text-left text-sm">
-          <thead className="border-b border-sakura-petal bg-sakura-surface text-xs uppercase tracking-wide text-sakura-mist">
-            <tr>
-              <th className="px-4 py-3">Code</th>
-              <th className="px-4 py-3">Discount</th>
-              <th className="px-4 py-3">Uses</th>
-              <th className="px-4 py-3">Expires</th>
-            </tr>
-          </thead>
-          <tbody>
-            {codes.map((c) => (
-              <tr key={c.code} className="border-b border-sakura-petal last:border-0">
-                <td className="px-4 py-3 font-mono font-medium">{c.code}</td>
-                <td className="px-4 py-3">{c.type}</td>
-                <td className="px-4 py-3 font-mono">{c.uses}</td>
-                <td className="px-4 py-3 text-sakura-mist">{c.expires}</td>
+      ) : (
+        <div className="overflow-hidden rounded-lg border border-sakura-petal">
+          <table className="w-full text-left text-sm">
+            <thead className="border-b border-sakura-petal bg-sakura-surface text-xs uppercase tracking-wide text-sakura-mist">
+              <tr>
+                <th className="px-4 py-3">Code</th>
+                <th className="px-4 py-3">Discount</th>
+                <th className="px-4 py-3">Scope</th>
+                <th className="px-4 py-3">Uses</th>
+                <th className="px-4 py-3">Expires</th>
+                <th className="px-4 py-3" />
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody>
+              {codes.map((c) => (
+                <tr key={c.id} className="border-b border-sakura-petal last:border-0">
+                  <td className="px-4 py-3 font-mono font-medium">{c.code}</td>
+                  <td className="px-4 py-3">{formatDiscountLabel(c)}</td>
+                  <td className="px-4 py-3 text-sakura-mist">
+                    {c.dropTitle ?? "All drops"}
+                  </td>
+                  <td className="px-4 py-3 font-mono">{formatUses(c)}</td>
+                  <td className="px-4 py-3 text-sakura-mist">{formatExpires(c.expiresAt)}</td>
+                  <td className="px-4 py-3">
+                    <DiscountDeleteButton
+                      id={c.id}
+                      code={c.code}
+                      usesCount={c.usesCount}
+                    />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
 
-      <section className="max-w-md space-y-3 rounded-lg border border-dashed border-sakura-petal p-5">
-        <h2 className="text-sm font-medium">Create code (preview)</h2>
-        <Input placeholder="CODE" disabled />
-        <Input placeholder="Percentage or fixed amount" disabled />
-        <Button type="button" disabled>
-          Create
-        </Button>
-      </section>
+      <DiscountForm drops={drops} />
     </div>
   );
 }

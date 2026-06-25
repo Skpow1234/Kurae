@@ -19,6 +19,7 @@ export async function POST(request: Request) {
     dropId?: string;
     sizeLabel?: string;
     idempotencyKey?: string;
+    discountCode?: string;
   };
 
   if (!body.dropId?.trim() || !body.sizeLabel?.trim()) {
@@ -47,6 +48,7 @@ export async function POST(request: Request) {
       buyerEmail: session.email,
       sizeLabel: body.sizeLabel.trim(),
       idempotencyKey,
+      discountCode: body.discountCode?.trim(),
     }),
   });
   const data = await res.json();
