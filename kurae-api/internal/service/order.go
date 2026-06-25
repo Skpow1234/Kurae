@@ -329,3 +329,35 @@ func (o *OrderService) syncPaymentFromProvider(ctx context.Context, orderID stri
 
 	return o.MarkPaid(ctx, orderID, payment.ProviderPaymentID)
 }
+
+func (o *OrderService) ListForBuyer(ctx context.Context, email string, page, pageSize int) ([]domain.BuyerOrderListItem, int, error) {
+	if page < 1 {
+		page = 1
+	}
+	if pageSize <= 0 {
+		pageSize = 20
+	}
+	offset := (page - 1) * pageSize
+
+	records, total, err := o.orders.ListForBuyerEmail(ctx, email, pageSize, offset)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	items := make([]domain.BuyerOrderListItem, 0, len(records))
+	for _, r := range records {
+		items = append(items, domain.BuyerOrderListItem{
+			OrderID:     r.ID,
+			Status:      r.Status,
+			SellerSlug:  r.SellerSlug,
+			DropSlug:    r.DropSlug,
+			DropTitle:   r.DropTitle,
+			SizeLabel:   r.SizeLabel,
+			AmountCents: r.AmountCents,
+			Currency:    r.Currency,
+			CreatedAt:   r.CreatedAt.UTC().Format(time.RFC3339),
+			UpdatedAt:   r.UpdatedAt.UTC().Format(time.RFC3339),
+		})
+	}
+	return items, total, nil
+}

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -263,6 +264,44 @@ func (r *OrderRepository) ListForSeller(ctx context.Context, f ListOrdersFilter)
 	listArgs = append(listArgs, f.Limit, f.Offset)
 
 	rows, err := r.store.pool.Query(ctx, listQuery, listArgs...)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer rows.Close()
+
+	var orders []OrderRecord
+	for rows.Next() {
+		o, err := r.scanOrder(rows)
+		if err != nil {
+			return nil, 0, err
+		}
+		orders = append(orders, o)
+	}
+	return orders, total, rows.Err()
+}
+
+func (r *OrderRepository) ListForBuyerEmail(ctx context.Context, email string, limit, offset int) ([]OrderRecord, int, error) {
+	if limit <= 0 {
+		limit = 20
+	}
+	if limit > 100 {
+		limit = 100
+	}
+
+	normalized := strings.ToLower(strings.TrimSpace(email))
+
+	var total int
+	if err := r.store.pool.QueryRow(ctx, `
+		SELECT COUNT(*) FROM orders WHERE lower(buyer_email) = $1
+	`, normalized).Scan(&total); err != nil {
+		return nil, 0, err
+	}
+
+	rows, err := r.store.pool.Query(ctx, orderSelect+`
+		WHERE lower(o.buyer_email) = $1
+		ORDER BY o.created_at DESC
+		LIMIT $2 OFFSET $3
+	`, normalized, limit, offset)
 	if err != nil {
 		return nil, 0, err
 	}

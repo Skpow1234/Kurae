@@ -77,6 +77,7 @@ func NewServer(cfg config.Config, s *store.Store, q *queue.RedisQueue) *Server {
 		buyerAuth.Use(BuyerAuthMiddleware(authSvc))
 		buyerAuth.Patch("/auth/buyer/profile", authH.BuyerUpdateProfile)
 		buyerAuth.Patch("/auth/buyer/password", authH.BuyerChangePassword)
+		buyerAuth.Get("/buyer/orders", orderH.BuyerList)
 	})
 
 	r.Get("/public/drops", publicH.ListDrops)

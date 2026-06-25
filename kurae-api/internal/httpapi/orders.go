@@ -183,6 +183,29 @@ func (h *OrderHandler) BuyerStatus(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, status)
 }
 
+func (h *OrderHandler) BuyerList(w http.ResponseWriter, r *http.Request) {
+	claims, ok := claimsFromContext(r.Context())
+	if !ok || !claims.IsBuyer() {
+		writeError(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+
+	page, _ := strconv.Atoi(r.URL.Query().Get("page"))
+	pageSize, _ := strconv.Atoi(r.URL.Query().Get("pageSize"))
+
+	orders, total, err := h.orders.ListForBuyer(r.Context(), claims.Email, page, pageSize)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "Could not list orders")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]any{
+		"orders": orders,
+		"total":  total,
+		"page":   max(page, 1),
+	})
+}
+
 func max(a, b int) int {
 	if a > b {
 		return a
