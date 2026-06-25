@@ -11,7 +11,7 @@ export default async function DropsPage() {
   const session = await getSellerSession();
   if (!session) redirect(authUrl({ role: "seller", next: "/dashboard" }));
 
-  const drops = await listSellerDrops(session.sellerSlug);
+  const drops = await listSellerDrops();
 
   return (
     <div className="space-y-6">

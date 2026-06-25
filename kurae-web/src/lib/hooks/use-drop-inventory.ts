@@ -32,18 +32,6 @@ export function useDropInventory({
   const [status, setStatus] = useState(initialStatus);
 
   useEffect(() => {
-    setRemaining(initialRemaining);
-    setTotal(initialTotal);
-    setStatus(initialStatus);
-  }, [
-    dropSlug,
-    initialRemaining,
-    initialStatus,
-    initialTotal,
-    sellerSlug,
-  ]);
-
-  useEffect(() => {
     if (isTerminalStatus(initialStatus)) return;
 
     let cancelled = false;

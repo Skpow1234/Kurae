@@ -26,7 +26,7 @@ export default async function DashboardLayout({
   children: React.ReactNode;
 }) {
   const session = await getSellerSession();
-  const drops = session ? await listSellerDrops(session.sellerSlug) : [];
+  const drops = session ? await listSellerDrops() : [];
   const storefrontPreview = getStorefrontPreview(drops);
 
   return (

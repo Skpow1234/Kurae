@@ -39,7 +39,7 @@ export const fetchPublicDrop = cache(
   },
 );
 
-export async function listSellerDrops(_sellerSlug: string): Promise<SellerDrop[]> {
+export async function listSellerDrops(): Promise<SellerDrop[]> {
   const data = await apiServerFetch<{ drops: SellerDrop[] }>("/drops");
   return data.drops;
 }

@@ -12,8 +12,8 @@ export default async function DashboardPage() {
   const session = await getSellerSession();
   if (!session) redirect(authUrl({ role: "seller", next: "/dashboard" }));
 
-  const stats = await fetchDashboardStats(session.sellerSlug);
-  const drops = await listSellerDrops(session.sellerSlug);
+  const stats = await fetchDashboardStats();
+  const drops = await listSellerDrops();
   const liveDrops = drops.filter(
     (d) => d.publishStatus === "published",
   ).length;

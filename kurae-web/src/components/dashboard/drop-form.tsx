@@ -27,7 +27,7 @@ type DropFormProps = {
   drop?: SellerDrop;
 };
 
-function defaultValues(session: SellerSession): DropFormValues {
+function defaultValues(): DropFormValues {
   const start = new Date(Date.now() + 24 * 60 * 60 * 1000);
   const end = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
 
@@ -87,7 +87,7 @@ function toPayload(values: DropFormValues) {
 export function DropForm({ session, drop }: DropFormProps) {
   const router = useRouter();
   const [values, setValues] = useState<DropFormValues>(
-    drop ? fromSellerDrop(drop) : defaultValues(session),
+    drop ? fromSellerDrop(drop) : defaultValues(),
   );
   const [errors, setErrors] = useState<DropFormErrors>({});
   const [saving, setSaving] = useState(false);

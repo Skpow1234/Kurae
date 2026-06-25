@@ -4,7 +4,6 @@ import {
   createContext,
   useCallback,
   useContext,
-  useEffect,
   useMemo,
   useState,
 } from "react";
@@ -33,11 +32,7 @@ function readStorage(): CartLine | null {
 }
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
-  const [line, setLine] = useState<CartLine | null>(null);
-
-  useEffect(() => {
-    setLine(readStorage());
-  }, []);
+  const [line, setLine] = useState<CartLine | null>(() => readStorage());
 
   const persist = useCallback((next: CartLine | null) => {
     setLine(next);

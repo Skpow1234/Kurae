@@ -25,7 +25,7 @@ export default async function ReferralsPage() {
 
   const [codes, drops] = await Promise.all([
     listReferralCodes(),
-    listSellerDrops(session.sellerSlug),
+    listSellerDrops(),
   ]);
 
   const suggestedCode = session.sellerSlug.replace(/-/g, "").toUpperCase().slice(0, 32);

@@ -90,7 +90,7 @@ export default async function HomePage() {
   const sellerSession = await getSellerSession();
 
   if (sellerSession) {
-    const drops = await listSellerDrops(sellerSession.sellerSlug);
+    const drops = await listSellerDrops();
     const preview = getStorefrontPreview(drops);
     const publishedCount = drops.filter(
       (d) => d.publishStatus === "published",

@@ -1,5 +1,4 @@
 import { cookies } from "next/headers";
-import { cache } from "react";
 
 import { TOKEN_COOKIE } from "@/lib/auth/constants";
 import { requireApiBase } from "@/lib/api/config";

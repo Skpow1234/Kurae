@@ -21,9 +21,7 @@ export type SellerOrdersListResult = {
   page: number;
 };
 
-export async function fetchDashboardStats(
-  _sellerSlug: string,
-): Promise<DashboardStats> {
+export async function fetchDashboardStats(): Promise<DashboardStats> {
   return apiServerFetch<DashboardStats>("/dashboard/stats");
 }
 

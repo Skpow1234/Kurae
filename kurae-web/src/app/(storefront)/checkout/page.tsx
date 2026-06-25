@@ -33,8 +33,31 @@ type CheckoutSession = {
 };
 
 function CheckoutContent() {
-  const router = useRouter();
   const { line } = useCart();
+
+  if (!line) {
+    return (
+      <div className="text-center">
+        <p className="text-sakura-stone">Your cart is empty.</p>
+        <NextLink
+          href="/"
+          className="mt-4 inline-block text-sm text-sakura-dusk hover:underline"
+        >
+          Browse drops
+        </NextLink>
+      </div>
+    );
+  }
+
+  return <CheckoutWithLine line={line} />;
+}
+
+function CheckoutWithLine({
+  line,
+}: {
+  line: NonNullable<ReturnType<typeof useCart>["line"]>;
+}) {
+  const router = useRouter();
   const [drop, setDrop] = useState<PublicDrop | null>(null);
   const [loadingDrop, setLoadingDrop] = useState(true);
   const [email, setEmail] = useState("");
@@ -68,11 +91,6 @@ function CheckoutContent() {
   }, [router]);
 
   useEffect(() => {
-    if (!line) {
-      setLoadingDrop(false);
-      return;
-    }
-
     fetch(`/api/public/${line.sellerSlug}/${line.dropSlug}`)
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
@@ -80,21 +98,7 @@ function CheckoutContent() {
         setLoadingDrop(false);
       })
       .catch(() => setLoadingDrop(false));
-  }, [line]);
-
-  if (!line) {
-    return (
-      <div className="text-center">
-        <p className="text-sakura-stone">Your cart is empty.</p>
-        <NextLink
-          href="/"
-          className="mt-4 inline-block text-sm text-sakura-dusk hover:underline"
-        >
-          Browse drops
-        </NextLink>
-      </div>
-    );
-  }
+  }, [line.dropSlug, line.sellerSlug]);
 
   if (loadingDrop || loadingBuyer) {
     return <Skeleton className="h-64 w-full" />;

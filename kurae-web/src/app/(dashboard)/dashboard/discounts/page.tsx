@@ -34,7 +34,7 @@ export default async function DiscountsPage() {
 
   const [codes, drops] = await Promise.all([
     listDiscountCodes(),
-    listSellerDrops(session.sellerSlug),
+    listSellerDrops(),
   ]);
 
   return (
