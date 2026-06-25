@@ -10,11 +10,12 @@ import (
 )
 
 type AuthHandler struct {
-	auth *service.AuthService
+	auth      *service.AuthService
+	referrals *service.ReferralService
 }
 
-func NewAuthHandler(auth *service.AuthService) *AuthHandler {
-	return &AuthHandler{auth: auth}
+func NewAuthHandler(auth *service.AuthService, referrals *service.ReferralService) *AuthHandler {
+	return &AuthHandler{auth: auth, referrals: referrals}
 }
 
 func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
@@ -92,9 +93,11 @@ func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
 
 func (h *AuthHandler) RegisterBuyer(w http.ResponseWriter, r *http.Request) {
 	var body struct {
-		Email    string `json:"email"`
-		Password string `json:"password"`
-		Name     string `json:"name"`
+		Email        string `json:"email"`
+		Password     string `json:"password"`
+		Name         string `json:"name"`
+		ReferralCode string `json:"referralCode"`
+		SellerSlug   string `json:"sellerSlug"`
 	}
 	if err := decodeJSON(r, &body); err != nil {
 		writeError(w, http.StatusBadRequest, "Invalid JSON")
@@ -121,6 +124,10 @@ func (h *AuthHandler) RegisterBuyer(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "Could not register")
 		return
+	}
+
+	if h.referrals != nil && strings.TrimSpace(body.ReferralCode) != "" {
+		_ = h.referrals.RecordSignup(r.Context(), body.SellerSlug, body.ReferralCode)
 	}
 
 	writeJSON(w, http.StatusCreated, map[string]any{

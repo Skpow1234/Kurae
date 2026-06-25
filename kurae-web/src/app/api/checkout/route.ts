@@ -1,8 +1,10 @@
+import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
 import { requireApiBase } from "@/lib/api/config";
 import { readToken } from "@/lib/api/proxy";
 import { getBuyerSession } from "@/lib/auth/session";
+import { parseReferralCookie, REFERRAL_COOKIE } from "@/lib/referral";
 
 export async function POST(request: Request) {
   const session = await getBuyerSession();
@@ -40,6 +42,9 @@ export async function POST(request: Request) {
     headers["Idempotency-Key"] = idempotencyKey;
   }
 
+  const cookieStore = await cookies();
+  const referral = parseReferralCookie(cookieStore.get(REFERRAL_COOKIE)?.value);
+
   const res = await fetch(`${requireApiBase()}/checkout`, {
     method: "POST",
     headers,
@@ -49,6 +54,7 @@ export async function POST(request: Request) {
       sizeLabel: body.sizeLabel.trim(),
       idempotencyKey,
       discountCode: body.discountCode?.trim(),
+      referralCode: referral?.code,
     }),
   });
   const data = await res.json();

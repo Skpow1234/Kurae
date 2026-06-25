@@ -7,7 +7,7 @@ import { getSellerSession } from "@/lib/auth/session";
 
 type PageProps = {
   params: Promise<{ seller: string; drop: string }>;
-  searchParams: Promise<{ preview?: string }>;
+  searchParams: Promise<{ preview?: string; ref?: string }>;
 };
 
 export async function generateMetadata({
@@ -47,7 +47,7 @@ export default async function PublicDropPage({
   searchParams,
 }: PageProps) {
   const { seller, drop: dropSlug } = await params;
-  const { preview } = await searchParams;
+  const { preview, ref } = await searchParams;
   const session = await getSellerSession();
   const allowDraft = preview === "1" && session?.sellerSlug === seller;
   const drop = await fetchPublicDrop(seller, dropSlug, { allowDraft });
@@ -56,5 +56,5 @@ export default async function PublicDropPage({
     notFound();
   }
 
-  return <DropPageView drop={drop} isPreview={allowDraft} />;
+  return <DropPageView drop={drop} isPreview={allowDraft} refCode={ref} />;
 }

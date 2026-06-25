@@ -4,6 +4,7 @@ import Image from "next/image";
 import { useCallback, useRef, useState } from "react";
 
 import { DropHero } from "@/components/drop/drop-hero";
+import { ReferralCapture } from "@/components/referral/referral-capture";
 import { DropStatusBanner } from "@/components/drop/drop-status-banner";
 import { PromoStrip } from "@/components/drop/promo-strip";
 import { PublicNav } from "@/components/drop/public-nav";
@@ -19,11 +20,13 @@ import type { PublicDrop } from "@/lib/types";
 type DropPageViewProps = {
   drop: PublicDrop;
   isPreview?: boolean;
+  refCode?: string;
 };
 
 export function DropPageView({
   drop: initialDrop,
   isPreview = false,
+  refCode,
 }: DropPageViewProps) {
   const { count } = useCart();
   const inventory = useDropInventory({
@@ -59,6 +62,11 @@ export function DropPageView({
 
   return (
     <div className="min-h-screen bg-sakura-paper pb-24 sm:pb-0">
+      <ReferralCapture
+        dropId={drop.id}
+        sellerSlug={drop.sellerSlug}
+        refCode={refCode}
+      />
       {isPreview && (
         <div className="bg-sakura-petal px-4 py-2 text-center text-xs font-medium text-sakura-dusk">
           Draft preview — only visible to you

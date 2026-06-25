@@ -41,6 +41,7 @@ type CheckoutRequest struct {
 	SizeLabel      string
 	IdempotencyKey string
 	DiscountCode   string
+	ReferralCode   string
 }
 
 type CheckoutResponse struct {
@@ -94,6 +95,7 @@ func (o *OrderService) Checkout(ctx context.Context, req CheckoutRequest) (Check
 		SizeLabel:      req.SizeLabel,
 		SubtotalCents:  drop.PriceCents,
 		DiscountCode:   req.DiscountCode,
+		ReferralCode:   req.ReferralCode,
 		Currency:       drop.Currency,
 		IdempotencyKey: req.IdempotencyKey,
 		ExpiresAt:      expiresAt,

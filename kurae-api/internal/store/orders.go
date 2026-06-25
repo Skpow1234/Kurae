@@ -37,6 +37,8 @@ type OrderRecord struct {
 	DiscountCents        int
 	DiscountCodeID       *string
 	DiscountCodeSnapshot *string
+	ReferralCodeID       *string
+	ReferralCodeSnapshot *string
 	AmountCents          int
 	Currency             string
 	IdempotencyKey       *string
@@ -61,6 +63,7 @@ type CheckoutInput struct {
 	SizeLabel      string
 	SubtotalCents  int
 	DiscountCode   string
+	ReferralCode   string
 	Currency       string
 	IdempotencyKey string
 	ExpiresAt      time.Time
@@ -83,7 +86,8 @@ func (r *OrderRepository) GetByIdempotencyKey(ctx context.Context, key string) (
 const orderSelect = `
 	SELECT o.id, o.seller_id, s.slug, o.drop_id, d.title, d.slug,
 		o.buyer_email, o.size_label, o.status, o.subtotal_cents, o.discount_cents,
-		o.discount_code_id, o.discount_code_snapshot, o.amount_cents, o.currency,
+		o.discount_code_id, o.discount_code_snapshot, o.referral_code_id, o.referral_code_snapshot,
+		o.amount_cents, o.currency,
 		o.idempotency_key, o.created_at, o.updated_at
 	FROM orders o
 	JOIN sellers s ON s.id = o.seller_id
@@ -96,7 +100,8 @@ func (r *OrderRepository) scanOrder(row pgx.Row) (OrderRecord, error) {
 	if err := row.Scan(
 		&o.ID, &o.SellerID, &o.SellerSlug, &o.DropID, &o.DropTitle, &o.DropSlug,
 		&o.BuyerEmail, &o.SizeLabel, &o.Status, &o.SubtotalCents, &o.DiscountCents,
-		&o.DiscountCodeID, &o.DiscountCodeSnapshot, &o.AmountCents, &o.Currency,
+		&o.DiscountCodeID, &o.DiscountCodeSnapshot, &o.ReferralCodeID, &o.ReferralCodeSnapshot,
+		&o.AmountCents, &o.Currency,
 		&idem, &o.CreatedAt, &o.UpdatedAt,
 	); err != nil {
 		return OrderRecord{}, err
@@ -146,6 +151,16 @@ func (r *OrderRepository) ReserveInventory(ctx context.Context, in CheckoutInput
 		discountCodeSnapshot = &dc.Code
 	}
 
+	var referralCodeID *string
+	var referralCodeSnapshot *string
+	if strings.TrimSpace(in.ReferralCode) != "" {
+		rc, err := r.store.Referrals().lookupForAttributionTx(ctx, tx, in.SellerID, in.DropID, in.ReferralCode)
+		if err == nil {
+			referralCodeID = &rc.ID
+			referralCodeSnapshot = &rc.Code
+		}
+	}
+
 	finalAmount := subtotal - discountCents
 	if finalAmount < 0 {
 		finalAmount = 0
@@ -164,12 +179,14 @@ func (r *OrderRepository) ReserveInventory(ctx context.Context, in CheckoutInput
 		INSERT INTO orders (
 			seller_id, drop_id, buyer_email, size_label, status,
 			subtotal_cents, discount_cents, discount_code_id, discount_code_snapshot,
+			referral_code_id, referral_code_snapshot,
 			amount_cents, currency, idempotency_key
 		)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
 		RETURNING id
 	`, in.SellerID, in.DropID, in.BuyerEmail, in.SizeLabel, domain.OrderReserved,
 		subtotal, discountCents, discountCodeID, discountCodeSnapshot,
+		referralCodeID, referralCodeSnapshot,
 		finalAmount, in.Currency, in.IdempotencyKey).Scan(&orderID)
 	if err != nil {
 		if isUniqueViolation(err) {
@@ -567,6 +584,13 @@ func (r *OrderRepository) MarkPaymentPaid(ctx context.Context, orderID, provider
 	}
 	if tag.RowsAffected() == 0 {
 		return ErrNotFound
+	}
+
+	var referralCodeID *string
+	if err := tx.QueryRow(ctx, `
+		SELECT referral_code_id FROM orders WHERE id = $1
+	`, orderID).Scan(&referralCodeID); err == nil && referralCodeID != nil {
+		_ = r.store.Referrals().RecordOrderPaidTx(ctx, tx, *referralCodeID)
 	}
 
 	if err := r.insertAudit(ctx, tx, "order", orderID, "paid", map[string]any{

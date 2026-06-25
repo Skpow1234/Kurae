@@ -1,5 +1,6 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
+import { cookies } from "next/headers";
 
 import {
   clearAuthCookies,
@@ -8,6 +9,7 @@ import {
   setAuthCookies,
 } from "@/lib/api/proxy";
 import type { KuraeSession } from "@/lib/types";
+import { parseReferralCookie, REFERRAL_COOKIE } from "@/lib/referral";
 
 type AuthPayload = { ok: boolean; session: KuraeSession; token: string };
 
@@ -85,12 +87,17 @@ export async function handleBuyerSignup(request: NextRequest) {
     );
   }
 
+  const cookieStore = await cookies();
+  const referral = parseReferralCookie(cookieStore.get(REFERRAL_COOKIE)?.value);
+
   const res = await proxyToApi("/auth/buyer/register", {
     method: "POST",
     body: JSON.stringify({
       email: body.email.trim().toLowerCase(),
       password: body.password,
       name: body.name?.trim() ?? "",
+      referralCode: referral?.code,
+      sellerSlug: referral?.sellerSlug,
     }),
   });
   const data = (await res.json()) as AuthPayload | { error?: string };
