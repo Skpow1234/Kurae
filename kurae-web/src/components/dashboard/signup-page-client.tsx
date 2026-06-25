@@ -1,15 +1,22 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { safeRedirectPath } from "@/lib/auth/safe-redirect";
 import { slugify } from "@/lib/validation/drop";
 
-export function SignupPageClient() {
+type SignupPageClientProps = {
+  variant?: "dashboard" | "storefront";
+  defaultNext?: string;
+};
+
+function SignupForm({ variant, defaultNext }: SignupPageClientProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [sellerName, setSellerName] = useState("");
   const [sellerSlug, setSellerSlug] = useState("");
   const [slugTouched, setSlugTouched] = useState(false);
@@ -17,6 +24,11 @@ export function SignupPageClient() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  const next = safeRedirectPath(searchParams.get("next"), defaultNext ?? "/dashboard/drops/new");
+  const loginBase = variant === "storefront" ? "/login" : "/dashboard/login";
+  const loginHref = `${loginBase}?next=${encodeURIComponent(next)}`;
+  const isStorefront = variant === "storefront";
 
   function handleNameChange(name: string) {
     setSellerName(name);
@@ -31,7 +43,12 @@ export function SignupPageClient() {
     const res = await fetch("/api/auth/signup", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password, sellerName, sellerSlug }),
+      body: JSON.stringify({
+        email,
+        password,
+        sellerName: sellerName.trim(),
+        sellerSlug: sellerSlug.trim() || slugify(sellerName),
+      }),
     });
 
     setLoading(false);
@@ -42,30 +59,25 @@ export function SignupPageClient() {
       return;
     }
 
-    router.push("/dashboard/drops/new");
+    router.push(next);
     router.refresh();
   }
 
   return (
-    <div className="mx-auto max-w-sm space-y-6">
+    <form onSubmit={handleSubmit} className="space-y-4">
       <div>
-        <h1 className="text-2xl font-semibold text-sakura-ink">Create account</h1>
-        <p className="mt-1 text-sm text-sakura-mist">
-          Set up your seller brand on Kurae.
-        </p>
+        <label htmlFor="sellerName" className="mb-1 block text-sm font-medium">
+          {isStorefront ? "Your name" : "Brand name"}
+        </label>
+        <Input
+          id="sellerName"
+          value={sellerName}
+          onChange={(e) => handleNameChange(e.target.value)}
+          required
+          autoComplete="name"
+        />
       </div>
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <label htmlFor="sellerName" className="mb-1 block text-sm font-medium">
-            Brand name
-          </label>
-          <Input
-            id="sellerName"
-            value={sellerName}
-            onChange={(e) => handleNameChange(e.target.value)}
-            required
-          />
-        </div>
+      {!isStorefront && (
         <div>
           <label htmlFor="sellerSlug" className="mb-1 block text-sm font-medium">
             Brand URL
@@ -83,49 +95,73 @@ export function SignupPageClient() {
             />
           </div>
         </div>
-        <div>
-          <label htmlFor="email" className="mb-1 block text-sm font-medium">
-            Email
-          </label>
-          <Input
-            id="email"
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-          />
-        </div>
-        <div>
-          <label htmlFor="password" className="mb-1 block text-sm font-medium">
-            Password
-          </label>
-          <Input
-            id="password"
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-          />
-        </div>
-        {error && (
-          <p className="text-sm text-sakura-warning" role="alert">
-            {error}
-          </p>
-        )}
-        <Button
-          type="submit"
-          className="w-full bg-sakura-dusk hover:bg-sakura-bloom"
-          disabled={loading}
-        >
-          {loading ? "Creating…" : "Create account"}
-        </Button>
-      </form>
+      )}
+      <div>
+        <label htmlFor="email" className="mb-1 block text-sm font-medium">
+          Email
+        </label>
+        <Input
+          id="email"
+          type="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          required
+          autoComplete="email"
+        />
+      </div>
+      <div>
+        <label htmlFor="password" className="mb-1 block text-sm font-medium">
+          Password
+        </label>
+        <Input
+          id="password"
+          type="password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          required
+          autoComplete="new-password"
+          minLength={8}
+        />
+      </div>
+      {error && (
+        <p className="text-sm text-sakura-warning" role="alert">
+          {error}
+        </p>
+      )}
+      <Button
+        type="submit"
+        className="w-full bg-sakura-dusk hover:bg-sakura-bloom"
+        disabled={loading}
+      >
+        {loading ? "Creating…" : "Create account"}
+      </Button>
       <p className="text-center text-sm text-sakura-mist">
         Already have an account?{" "}
-        <Link href="/dashboard/login" className="text-sakura-dusk hover:underline">
+        <Link href={loginHref} className="text-sakura-dusk hover:underline">
           Sign in
         </Link>
       </p>
+    </form>
+  );
+}
+
+export function SignupPageClient({
+  variant = "dashboard",
+  defaultNext = "/dashboard/drops/new",
+}: SignupPageClientProps) {
+  return (
+    <div className="mx-auto max-w-sm space-y-6">
+      <div>
+        <h1 className="text-2xl font-semibold text-sakura-ink">Create account</h1>
+        <p className="mt-1 text-sm text-sakura-mist">
+          {variant === "storefront"
+            ? "Create an account to check out. Your cart is saved."
+            : "Set up your seller brand on Kurae."}
+        </p>
+      </div>
+      <Suspense fallback={<p className="text-sm text-sakura-mist">Loading…</p>}>
+        <SignupForm variant={variant} defaultNext={defaultNext} />
+      </Suspense>
     </div>
   );
 }

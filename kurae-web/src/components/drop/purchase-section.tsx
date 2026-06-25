@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { SizePicker } from "@/components/drop/size-picker";
 import { Button } from "@/components/ui/button";
 import { useCart } from "@/contexts/cart-context";
+import { loginUrl } from "@/lib/auth/safe-redirect";
 import type { PublicDrop } from "@/lib/types";
 import { formatPrice, cn } from "@/lib/utils";
 
@@ -28,10 +29,17 @@ export function PurchaseSection({
   const router = useRouter();
   const { addItem } = useCart();
 
-  function handleBuy() {
+  async function handleBuy() {
     if (!selectedSizeId) return;
     addItem(drop, selectedSizeId);
-    router.push("/checkout");
+
+    const me = await fetch("/api/auth/me");
+    if (me.ok) {
+      router.push("/checkout");
+      return;
+    }
+
+    router.push(loginUrl("/checkout"));
   }
 
   return (

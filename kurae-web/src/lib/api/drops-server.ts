@@ -1,6 +1,15 @@
 import type { PublicDrop, SellerDrop } from "@/lib/types";
 import { apiServerFetch, getAuthToken } from "@/lib/api/server";
 
+export async function listPublicDrops(): Promise<PublicDrop[]> {
+  try {
+    const data = await apiServerFetch<{ drops: PublicDrop[] }>("/public/drops");
+    return data.drops ?? [];
+  } catch {
+    return [];
+  }
+}
+
 export async function fetchPublicDrop(
   sellerSlug: string,
   dropSlug: string,
