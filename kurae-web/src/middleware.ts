@@ -32,10 +32,10 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  if (pathname === "/account") {
+  if (pathname === "/account" || pathname.startsWith("/account/")) {
     if (!session || session.role !== "buyer") {
       return NextResponse.redirect(
-        new URL(authUrl({ role: "buyer", next: "/account" }), request.url),
+        new URL(authUrl({ role: "buyer", next: pathname }), request.url),
       );
     }
     return NextResponse.next();
@@ -80,5 +80,5 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/checkout", "/account", "/dashboard/:path*", "/signup"],
+  matcher: ["/checkout", "/account", "/account/:path*", "/dashboard/:path*", "/signup"],
 };
