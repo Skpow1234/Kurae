@@ -151,6 +151,47 @@ func (a *AuthService) GetBuyerSession(ctx context.Context, buyerID string) (doma
 	return buyerSession(buyer), nil
 }
 
+func (a *AuthService) UpdateBuyerProfile(ctx context.Context, buyerID, name string) (domain.BuyerSession, string, error) {
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return domain.BuyerSession{}, "", errors.New("name is required")
+	}
+
+	buyer, err := a.buyers.UpdateName(ctx, buyerID, name)
+	if err != nil {
+		return domain.BuyerSession{}, "", err
+	}
+
+	session := buyerSession(buyer)
+	token, err := a.issueBuyerToken(buyer)
+	if err != nil {
+		return domain.BuyerSession{}, "", err
+	}
+	return session, token, nil
+}
+
+func (a *AuthService) ChangeBuyerPassword(ctx context.Context, buyerID, currentPassword, newPassword string) error {
+	if len(newPassword) < minPasswordLength {
+		return ErrWeakPassword
+	}
+
+	buyer, err := a.buyers.GetByID(ctx, buyerID)
+	if err != nil {
+		return err
+	}
+
+	if err := bcrypt.CompareHashAndPassword([]byte(buyer.PasswordHash), []byte(currentPassword)); err != nil {
+		return ErrInvalidCredentials
+	}
+
+	hash, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
+	if err != nil {
+		return err
+	}
+
+	return a.buyers.UpdatePasswordHash(ctx, buyerID, string(hash))
+}
+
 func (a *AuthService) Login(ctx context.Context, email, password string) (domain.SellerSession, string, error) {
 	normalized, err := validate.NormalizeEmail(email)
 	if err != nil {

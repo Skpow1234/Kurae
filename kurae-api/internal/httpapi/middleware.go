@@ -50,6 +50,25 @@ func SellerAuthMiddleware(auth *service.AuthService) func(http.Handler) http.Han
 	}
 }
 
+func BuyerAuthMiddleware(auth *service.AuthService) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			token := bearerToken(r)
+			if token == "" {
+				writeError(w, http.StatusUnauthorized, "Unauthorized")
+				return
+			}
+			claims, err := auth.ParseToken(token)
+			if err != nil || !claims.IsBuyer() {
+				writeError(w, http.StatusForbidden, "Buyer account required")
+				return
+			}
+			ctx := context.WithValue(r.Context(), sellerClaimsKey, claims)
+			next.ServeHTTP(w, r.WithContext(ctx))
+		})
+	}
+}
+
 func bearerToken(r *http.Request) string {
 	h := r.Header.Get("Authorization")
 	if strings.HasPrefix(h, "Bearer ") {

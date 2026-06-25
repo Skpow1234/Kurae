@@ -73,6 +73,12 @@ func NewServer(cfg config.Config, s *store.Store, q *queue.RedisQueue) *Server {
 	r.Get("/auth/buyer/me", authH.BuyerMe)
 	r.Post("/auth/logout", authH.Logout)
 
+	r.Group(func(buyerAuth chi.Router) {
+		buyerAuth.Use(BuyerAuthMiddleware(authSvc))
+		buyerAuth.Patch("/auth/buyer/profile", authH.BuyerUpdateProfile)
+		buyerAuth.Patch("/auth/buyer/password", authH.BuyerChangePassword)
+	})
+
 	r.Get("/public/drops", publicH.ListDrops)
 	r.Get("/public/{seller}/{drop}", publicH.GetDrop)
 	r.With(RateLimit(waitlistLimiter)).Post("/drops/{id}/waitlist", publicH.JoinWaitlist)

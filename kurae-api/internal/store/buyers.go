@@ -65,3 +65,34 @@ func (r *BuyerRepository) GetByID(ctx context.Context, id string) (domain.Buyer,
 	}
 	return buyer, nil
 }
+
+func (r *BuyerRepository) UpdateName(ctx context.Context, buyerID, name string) (domain.Buyer, error) {
+	row := r.store.pool.QueryRow(ctx, `
+		UPDATE buyers SET name = $2
+		WHERE id = $1
+		RETURNING id, email, password_hash, name, created_at
+	`, buyerID, name)
+
+	var buyer domain.Buyer
+	if err := row.Scan(&buyer.ID, &buyer.Email, &buyer.PasswordHash, &buyer.Name, &buyer.CreatedAt); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return domain.Buyer{}, ErrNotFound
+		}
+		return domain.Buyer{}, err
+	}
+	return buyer, nil
+}
+
+func (r *BuyerRepository) UpdatePasswordHash(ctx context.Context, buyerID, passwordHash string) error {
+	tag, err := r.store.pool.Exec(ctx, `
+		UPDATE buyers SET password_hash = $2
+		WHERE id = $1
+	`, buyerID, passwordHash)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
