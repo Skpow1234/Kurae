@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { PublicDropsSection } from "@/components/home/public-drops-section";
 import { PublicDropsSkeleton } from "@/components/home/public-drops-skeleton";
 import { listSellerDrops } from "@/lib/api/drops-server";
+import { authUrl } from "@/lib/auth/safe-redirect";
 import { getSellerSession } from "@/lib/auth/session";
 import { getStorefrontPreview } from "@/lib/storefront-preview";
 
@@ -25,12 +26,9 @@ export default async function HomePage() {
     ).length;
 
     return (
-      <main className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-b from-sakura-petal/40 to-sakura-paper px-4">
+      <main className="flex min-h-[calc(100vh-3.5rem)] flex-col items-center justify-center bg-gradient-to-b from-sakura-petal/40 to-sakura-paper px-4">
         <div className="max-w-lg text-center">
-          <p className="text-xs uppercase tracking-[0.3em] text-sakura-bloom">
-            Kurae
-          </p>
-          <h1 className="mt-3 text-4xl font-bold tracking-tight text-sakura-ink">
+          <h1 className="text-4xl font-bold tracking-tight text-sakura-ink">
             Welcome back, {session.sellerName}
           </h1>
           <p className="mt-4 text-sakura-stone">
@@ -69,23 +67,7 @@ export default async function HomePage() {
   }
 
   return (
-    <main className="min-h-screen bg-gradient-to-b from-sakura-petal/40 to-sakura-paper">
-      <header className="border-b border-sakura-petal/60 bg-sakura-paper/80 backdrop-blur">
-        <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4">
-          <span className="text-xs font-semibold uppercase tracking-[0.3em] text-sakura-bloom">
-            Kurae
-          </span>
-          <div className="flex items-center gap-2">
-            <Link href="/login" className={textLinkClass}>
-              Sign in
-            </Link>
-            <Link href="/dashboard/signup" className={primaryButtonClass}>
-              Sell on Kurae
-            </Link>
-          </div>
-        </div>
-      </header>
-
+    <main className="min-h-[calc(100vh-3.5rem)] bg-gradient-to-b from-sakura-petal/40 to-sakura-paper">
       <section className="mx-auto max-w-6xl px-4 py-16 text-center">
         <h1 className="text-4xl font-bold tracking-tight text-sakura-ink sm:text-5xl">
           Limited drops, done right
@@ -117,14 +99,16 @@ export default async function HomePage() {
             Countdowns, waitlists, limited inventory, and checkout — built for
             hype releases.
           </p>
-          <div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row">
-            <Link href="/dashboard/signup" className={primaryButtonClass}>
-              Create seller account
-            </Link>
-            <Link href="/dashboard/login" className={secondaryButtonClass}>
-              Seller sign in
-            </Link>
-          </div>
+          <Link
+            href={authUrl({
+              mode: "signup",
+              role: "seller",
+              next: "/dashboard/drops/new",
+            })}
+            className={`mt-6 ${primaryButtonClass}`}
+          >
+            Get started as a seller
+          </Link>
         </div>
       </section>
     </main>

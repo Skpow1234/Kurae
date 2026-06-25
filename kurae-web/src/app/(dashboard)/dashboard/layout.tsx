@@ -3,6 +3,7 @@ import Link from "next/link";
 import { DashboardHeaderActions } from "@/components/dashboard/dashboard-header-actions";
 import { listSellerDrops } from "@/lib/api/drops-server";
 import { getSellerSession } from "@/lib/auth/session";
+import { authUrl } from "@/lib/auth/safe-redirect";
 import { getStorefrontPreview } from "@/lib/storefront-preview";
 
 const mainNav = [
@@ -32,9 +33,7 @@ export default async function DashboardLayout({
     <div className="min-h-screen bg-sakura-paper">
       <header className="border-b border-sakura-petal bg-sakura-paper">
         <div className="mx-auto flex h-14 max-w-5xl items-center justify-between px-4">
-          <Link href="/dashboard" className="text-sm font-semibold text-sakura-ink">
-            Kurae Dashboard
-          </Link>
+          <span className="text-sm font-semibold text-sakura-ink">Dashboard</span>
           <nav className="hidden items-center gap-5 text-sm text-sakura-stone lg:flex">
             {mainNav.map((item) => (
               <Link key={item.href} href={item.href} className="hover:text-sakura-dusk">
@@ -59,7 +58,7 @@ export default async function DashboardLayout({
             />
           ) : (
             <Link
-              href="/dashboard/login"
+              href={authUrl({ role: "seller", next: "/dashboard" })}
               className="text-sm text-sakura-mist hover:text-sakura-dusk"
             >
               Sign in

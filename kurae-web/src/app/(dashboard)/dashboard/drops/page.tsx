@@ -8,7 +8,7 @@ import { toPublicDrop } from "@/lib/drop-status";
 
 export default async function DropsPage() {
   const session = await getSellerSession();
-  if (!session) redirect("/dashboard/login");
+  if (!session) redirect(authUrl({ role: "seller", next: "/dashboard" }));
 
   const drops = await listSellerDrops(session.sellerSlug);
 

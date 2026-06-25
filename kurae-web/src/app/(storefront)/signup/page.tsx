@@ -1,9 +1,18 @@
-import { SignupPageClient } from "@/components/dashboard/signup-page-client";
+import { redirect } from "next/navigation";
 
-export default function StorefrontSignupPage() {
-  return (
-    <main className="flex min-h-screen items-center justify-center bg-sakura-paper px-4 py-12">
-      <SignupPageClient variant="storefront" defaultNext="/checkout" />
-    </main>
+import { authUrl, safeRedirectPath } from "@/lib/auth/safe-redirect";
+
+type PageProps = {
+  searchParams: Promise<{ next?: string }>;
+};
+
+export default async function SignupRedirectPage({ searchParams }: PageProps) {
+  const { next } = await searchParams;
+  redirect(
+    authUrl({
+      mode: "signup",
+      role: "buyer",
+      next: safeRedirectPath(next, "/"),
+    }),
   );
 }

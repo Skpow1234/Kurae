@@ -14,7 +14,7 @@ type PageProps = {
 
 export default async function OrderDetailPage({ params }: PageProps) {
   const session = await getSellerSession();
-  if (!session) redirect("/dashboard/login");
+  if (!session) redirect(authUrl({ role: "seller", next: "/dashboard" }));
 
   const { id } = await params;
   const order = await fetchSellerOrder(session.sellerSlug, id);

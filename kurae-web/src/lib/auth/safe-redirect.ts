@@ -9,6 +9,25 @@ export function safeRedirectPath(
   return path;
 }
 
+type AuthUrlOptions = {
+  mode?: "signin" | "signup";
+  role?: "buyer" | "seller";
+  next?: string;
+};
+
+export function authUrl({
+  mode = "signin",
+  role = "buyer",
+  next,
+}: AuthUrlOptions = {}): string {
+  const params = new URLSearchParams();
+  if (mode === "signup") params.set("mode", "signup");
+  if (role === "seller") params.set("role", "seller");
+  if (next) params.set("next", next);
+  const qs = params.toString();
+  return qs ? `/login?${qs}` : "/login";
+}
+
 export function loginUrl(next: string): string {
-  return `/login?next=${encodeURIComponent(next)}`;
+  return authUrl({ role: "buyer", next });
 }

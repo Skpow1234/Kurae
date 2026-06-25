@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 import type { StorefrontPreview } from "@/lib/storefront-preview";
+import { authUrl } from "@/lib/auth/safe-redirect";
 import type { SellerSession } from "@/lib/types";
 
 type DashboardHeaderActionsProps = {
@@ -19,7 +20,7 @@ export function DashboardHeaderActions({
 
   async function handleSignOut() {
     await fetch("/api/auth/logout", { method: "POST" });
-    router.push("/dashboard/login");
+    router.push(authUrl({ role: "seller", next: "/dashboard" }));
     router.refresh();
   }
 

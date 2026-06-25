@@ -10,7 +10,7 @@ type PageProps = {
 
 export default async function EditDropPage({ params }: PageProps) {
   const session = await getSellerSession();
-  if (!session) redirect("/dashboard/login");
+  if (!session) redirect(authUrl({ role: "seller", next: "/dashboard" }));
 
   const { id } = await params;
   const drop = await getSellerDrop(id);

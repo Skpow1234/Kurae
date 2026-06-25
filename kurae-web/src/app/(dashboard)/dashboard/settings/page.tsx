@@ -5,7 +5,7 @@ import { getSellerSession } from "@/lib/auth/session";
 
 export default async function SettingsPage() {
   const session = await getSellerSession();
-  if (!session) redirect("/dashboard/login");
+  if (!session) redirect(authUrl({ role: "seller", next: "/dashboard" }));
 
   return (
     <div className="max-w-xl space-y-8">

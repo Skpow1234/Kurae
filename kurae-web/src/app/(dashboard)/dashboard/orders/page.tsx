@@ -16,7 +16,7 @@ type PageProps = {
 
 export default async function OrdersPage({ searchParams }: PageProps) {
   const session = await getSellerSession();
-  if (!session) redirect("/dashboard/login");
+  if (!session) redirect(authUrl({ role: "seller", next: "/dashboard" }));
 
   const params = await searchParams;
   const page = Math.max(1, parseInt(params.page ?? "1", 10) || 1);

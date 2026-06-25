@@ -1,5 +1,19 @@
-import { LoginPageClient } from "@/components/dashboard/login-page-client";
+import { redirect } from "next/navigation";
 
-export default function LoginPage() {
-  return <LoginPageClient />;
+import { authUrl, safeRedirectPath } from "@/lib/auth/safe-redirect";
+
+type PageProps = {
+  searchParams: Promise<{ next?: string }>;
+};
+
+export default async function DashboardLoginRedirectPage({
+  searchParams,
+}: PageProps) {
+  const { next } = await searchParams;
+  redirect(
+    authUrl({
+      role: "seller",
+      next: safeRedirectPath(next, "/dashboard"),
+    }),
+  );
 }

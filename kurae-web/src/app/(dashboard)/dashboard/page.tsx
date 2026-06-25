@@ -9,7 +9,7 @@ import { formatPrice } from "@/lib/utils";
 
 export default async function DashboardPage() {
   const session = await getSellerSession();
-  if (!session) redirect("/dashboard/login");
+  if (!session) redirect(authUrl({ role: "seller", next: "/dashboard" }));
 
   const stats = await fetchDashboardStats(session.sellerSlug);
   const drops = await listSellerDrops(session.sellerSlug);
