@@ -1,44 +1,78 @@
-const metrics = [
-  { label: "Page views (7d)", value: "2,847", delta: "+12%" },
-  { label: "Waitlist signups", value: "512", delta: "+8%" },
-  { label: "Conversion rate", value: "3.2%", delta: "+0.4%" },
-  { label: "Revenue (7d)", value: "$4,272", delta: "+18%" },
-];
+import { redirect } from "next/navigation";
 
-export default function AnalyticsPage() {
+import { FunnelChart } from "@/components/analytics/funnel-chart";
+import { MetricCard } from "@/components/analytics/metric-card";
+import { TrafficChart } from "@/components/analytics/traffic-chart";
+import { fetchSellerAnalytics } from "@/lib/api/analytics-server";
+import { authUrl } from "@/lib/auth/safe-redirect";
+import { getSellerSession } from "@/lib/auth/session";
+import { formatPrice } from "@/lib/utils";
+
+export default async function AnalyticsPage() {
+  const session = await getSellerSession();
+  if (!session) redirect(authUrl({ role: "seller", next: "/dashboard/analytics" }));
+
+  const analytics = await fetchSellerAnalytics();
+
+  if (!analytics) {
+    return (
+      <div className="rounded-lg border border-sakura-petal p-8 text-center text-sm text-sakura-stone">
+        Could not load analytics. Check that kurae-api is running.
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-8">
       <div>
         <h1 className="text-2xl font-semibold text-sakura-ink">Analytics</h1>
         <p className="mt-1 text-sm text-sakura-mist">
-          PostHog dashboards — mock UI (phase 2).
+          Drop traffic, waitlist growth, conversion, and revenue — last 7 days vs the prior week.
         </p>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {metrics.map((m) => (
-          <div
-            key={m.label}
-            className="rounded-lg border border-sakura-petal bg-sakura-surface p-4"
-          >
-            <p className="text-xs uppercase tracking-wide text-sakura-mist">
-              {m.label}
-            </p>
-            <p className="mt-2 font-mono text-2xl font-semibold text-sakura-ink">
-              {m.value}
-            </p>
-            <p className="mt-1 text-xs text-sakura-success">{m.delta}</p>
-          </div>
-        ))}
+        <MetricCard
+          label="Page views (7d)"
+          value={analytics.pageViews7d.toLocaleString()}
+          current={analytics.pageViews7d}
+          previous={analytics.pageViewsPrev7d}
+        />
+        <MetricCard
+          label="Waitlist signups (7d)"
+          value={analytics.waitlistSignups7d.toLocaleString()}
+          current={analytics.waitlistSignups7d}
+          previous={analytics.waitlistSignupsPrev7d}
+        />
+        <MetricCard
+          label="Conversion rate"
+          value={`${analytics.conversionRate.toFixed(1)}%`}
+          current={Math.round(analytics.conversionRate * 10)}
+          previous={Math.round(analytics.conversionRatePrev * 10)}
+        />
+        <MetricCard
+          label="Revenue (7d)"
+          value={formatPrice(analytics.revenue7dCents, "USD")}
+          current={analytics.revenue7dCents}
+          previous={analytics.revenuePrev7dCents}
+        />
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <div className="flex h-48 items-center justify-center rounded-lg border border-dashed border-sakura-petal bg-sakura-surface/50 text-sm text-sakura-mist">
-          Traffic chart placeholder
-        </div>
-        <div className="flex h-48 items-center justify-center rounded-lg border border-dashed border-sakura-petal bg-sakura-surface/50 text-sm text-sakura-mist">
-          Conversion funnel placeholder
-        </div>
+        <section className="rounded-lg border border-sakura-petal bg-sakura-surface/40 p-5">
+          <h2 className="text-sm font-medium text-sakura-ink">Daily traffic</h2>
+          <p className="mt-1 text-xs text-sakura-mist">Unique page loads per day</p>
+          <div className="mt-4">
+            <TrafficChart data={analytics.dailyTraffic} />
+          </div>
+        </section>
+        <section className="rounded-lg border border-sakura-petal bg-sakura-surface/40 p-5">
+          <h2 className="text-sm font-medium text-sakura-ink">Conversion funnel (7d)</h2>
+          <p className="mt-1 text-xs text-sakura-mist">Views → checkout → paid</p>
+          <div className="mt-6">
+            <FunnelChart funnel={analytics.funnel} />
+          </div>
+        </section>
       </div>
     </div>
   );
