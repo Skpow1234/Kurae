@@ -3,34 +3,9 @@ import Link from "next/link";
 import { AccountNav } from "@/components/account/account-nav";
 import { OrderStatusBadge } from "@/components/dashboard/order-status-badge";
 import { buyerOrderHref } from "@/lib/buyer-order-link";
-import { requireApiBase } from "@/lib/api/config";
-import { readToken } from "@/lib/api/proxy";
+import { fetchBuyerOrders } from "@/lib/api/buyer-orders-server";
 import { getBuyerSession } from "@/lib/auth/session";
-import type { BuyerOrderListItem } from "@/lib/types/buyer-order";
 import { formatPrice } from "@/lib/utils";
-
-async function loadBuyerOrders(
-  page: number,
-): Promise<{ orders: BuyerOrderListItem[]; total: number }> {
-  const token = await readToken();
-  if (!token) return { orders: [], total: 0 };
-
-  const qs = new URLSearchParams({
-    page: String(page),
-    pageSize: "20",
-  });
-  const res = await fetch(`${requireApiBase()}/buyer/orders?${qs.toString()}`, {
-    headers: { Authorization: `Bearer ${token}` },
-    cache: "no-store",
-  });
-  if (!res.ok) return { orders: [], total: 0 };
-
-  const data = (await res.json()) as {
-    orders?: BuyerOrderListItem[];
-    total?: number;
-  };
-  return { orders: data.orders ?? [], total: data.total ?? 0 };
-}
 
 type PageProps = {
   searchParams: Promise<{ page?: string }>;
@@ -42,7 +17,9 @@ export default async function BuyerOrdersPage({ searchParams }: PageProps) {
 
   const { page: pageParam } = await searchParams;
   const page = Math.max(1, Number(pageParam) || 1);
-  const { orders, total } = await loadBuyerOrders(page);
+  const ordersPage = await fetchBuyerOrders(page, 20);
+  const orders = ordersPage?.orders ?? [];
+  const total = ordersPage?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / 20));
 
   return (

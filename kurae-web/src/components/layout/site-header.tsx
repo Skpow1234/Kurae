@@ -11,7 +11,7 @@ export async function SiteHeader() {
   let accountLabel = "Account";
 
   if (session?.role === "buyer") {
-    accountHref = "/account";
+    accountHref = "/account/orders";
     accountLabel = session.name || "Account";
   } else if (session?.role === "seller") {
     accountHref = "/dashboard/settings";
