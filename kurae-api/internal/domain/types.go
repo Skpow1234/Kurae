@@ -92,19 +92,22 @@ type OrderEvent struct {
 }
 
 type SellerOrder struct {
-	ID          string      `json:"id"`
-	SellerSlug  string      `json:"sellerSlug"`
-	DropID      string      `json:"dropId"`
-	DropTitle   string      `json:"dropTitle"`
-	DropSlug    string      `json:"dropSlug"`
-	BuyerEmail  string      `json:"buyerEmail"`
-	SizeLabel   string      `json:"sizeLabel"`
-	Status      OrderStatus `json:"status"`
-	AmountCents int         `json:"amountCents"`
-	Currency    string      `json:"currency"`
-	CreatedAt   string      `json:"createdAt"`
-	UpdatedAt   string      `json:"updatedAt"`
-	Events      []OrderEvent `json:"events"`
+	ID                   string       `json:"id"`
+	SellerSlug           string       `json:"sellerSlug"`
+	DropID               string       `json:"dropId"`
+	DropTitle            string       `json:"dropTitle"`
+	DropSlug             string       `json:"dropSlug"`
+	BuyerEmail           string       `json:"buyerEmail"`
+	SizeLabel            string       `json:"sizeLabel"`
+	Status               OrderStatus  `json:"status"`
+	SubtotalCents        int          `json:"subtotalCents"`
+	DiscountCents        int          `json:"discountCents"`
+	DiscountCode         *string      `json:"discountCode,omitempty"`
+	AmountCents          int          `json:"amountCents"`
+	Currency             string       `json:"currency"`
+	CreatedAt            string       `json:"createdAt"`
+	UpdatedAt            string       `json:"updatedAt"`
+	Events               []OrderEvent `json:"events"`
 }
 
 type Seller struct {

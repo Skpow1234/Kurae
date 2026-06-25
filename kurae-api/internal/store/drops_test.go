@@ -97,7 +97,7 @@ func TestDeleteDropBlockedWhenOrdersExist(t *testing.T) {
 		DropID:         drop.ID,
 		BuyerEmail:     "buyer@test.local",
 		SizeLabel:      "M",
-		AmountCents:    1000,
+		SubtotalCents:  1000,
 		Currency:       "USD",
 		IdempotencyKey: "delete-blocked-key",
 		ExpiresAt:      time.Now().Add(15 * time.Minute),

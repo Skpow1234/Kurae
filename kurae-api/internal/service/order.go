@@ -40,14 +40,17 @@ type CheckoutRequest struct {
 	BuyerEmail     string
 	SizeLabel      string
 	IdempotencyKey string
+	DiscountCode   string
 }
 
 type CheckoutResponse struct {
-	OrderID          string            `json:"orderId"`
-	ClientSecret     string            `json:"clientSecret"`
-	AmountCents      int               `json:"amountCents"`
-	Currency         string            `json:"currency"`
-	ReservationUntil string            `json:"reservationUntil"`
+	OrderID          string             `json:"orderId"`
+	ClientSecret     string             `json:"clientSecret"`
+	SubtotalCents    int                `json:"subtotalCents"`
+	DiscountCents    int                `json:"discountCents"`
+	AmountCents      int                `json:"amountCents"`
+	Currency         string             `json:"currency"`
+	ReservationUntil string             `json:"reservationUntil"`
 	Status           domain.OrderStatus `json:"status"`
 }
 
@@ -62,10 +65,12 @@ func (o *OrderService) Checkout(ctx context.Context, req CheckoutRequest) (Check
 		existing, err := o.orders.GetByIdempotencyKey(ctx, req.IdempotencyKey)
 		if err == nil {
 			return CheckoutResponse{
-				OrderID:     existing.ID,
-				AmountCents: existing.AmountCents,
-				Currency:    existing.Currency,
-				Status:      existing.Status,
+				OrderID:       existing.ID,
+				SubtotalCents: existing.SubtotalCents,
+				DiscountCents: existing.DiscountCents,
+				AmountCents:   existing.AmountCents,
+				Currency:      existing.Currency,
+				Status:        existing.Status,
 			}, nil
 		}
 		if !errors.Is(err, store.ErrNotFound) {
@@ -87,7 +92,8 @@ func (o *OrderService) Checkout(ctx context.Context, req CheckoutRequest) (Check
 		DropID:         req.DropID,
 		BuyerEmail:     req.BuyerEmail,
 		SizeLabel:      req.SizeLabel,
-		AmountCents:    drop.PriceCents,
+		SubtotalCents:  drop.PriceCents,
+		DiscountCode:   req.DiscountCode,
 		Currency:       drop.Currency,
 		IdempotencyKey: req.IdempotencyKey,
 		ExpiresAt:      expiresAt,
@@ -95,13 +101,18 @@ func (o *OrderService) Checkout(ctx context.Context, req CheckoutRequest) (Check
 	if errors.Is(err, store.ErrSoldOut) {
 		return CheckoutResponse{}, err
 	}
+	if errors.Is(err, store.ErrInvalidDiscount) {
+		return CheckoutResponse{}, err
+	}
 	if err != nil {
 		return CheckoutResponse{}, err
 	}
 
+	finalAmount := result.Order.AmountCents
+
 	intent, err := o.provider.CreatePaymentIntent(ctx, payments.IntentInput{
 		OrderID:     result.Order.ID,
-		AmountCents: drop.PriceCents,
+		AmountCents: finalAmount,
 		Currency:    drop.Currency,
 		Email:       req.BuyerEmail,
 	})
@@ -109,7 +120,7 @@ func (o *OrderService) Checkout(ctx context.Context, req CheckoutRequest) (Check
 		return CheckoutResponse{}, err
 	}
 
-	if err := o.orders.CreatePayment(ctx, result.Order.ID, intent.ID, drop.PriceCents, drop.Currency); err != nil {
+	if err := o.orders.CreatePayment(ctx, result.Order.ID, intent.ID, finalAmount, drop.Currency); err != nil {
 		return CheckoutResponse{}, err
 	}
 
@@ -122,7 +133,9 @@ func (o *OrderService) Checkout(ctx context.Context, req CheckoutRequest) (Check
 	return CheckoutResponse{
 		OrderID:          result.Order.ID,
 		ClientSecret:     intent.ClientSecret,
-		AmountCents:      drop.PriceCents,
+		SubtotalCents:    result.Order.SubtotalCents,
+		DiscountCents:    result.Order.DiscountCents,
+		AmountCents:      finalAmount,
 		Currency:         drop.Currency,
 		ReservationUntil: expiresAt.UTC().Format(time.RFC3339),
 		Status:           domain.OrderPaymentPending,
@@ -175,23 +188,30 @@ func (o *OrderService) ListForSeller(ctx context.Context, sellerID, status strin
 	out := make([]domain.SellerOrder, len(records))
 	for i, r := range records {
 		events, _ := o.orders.ListAuditEvents(ctx, "order", r.ID)
-		out[i] = domain.SellerOrder{
-			ID:          r.ID,
-			SellerSlug:  r.SellerSlug,
-			DropID:      r.DropID,
-			DropTitle:   r.DropTitle,
-			DropSlug:    r.DropSlug,
-			BuyerEmail:  r.BuyerEmail,
-			SizeLabel:   r.SizeLabel,
-			Status:      r.Status,
-			AmountCents: r.AmountCents,
-			Currency:    r.Currency,
-			CreatedAt:   r.CreatedAt.UTC().Format(time.RFC3339),
-			UpdatedAt:   r.UpdatedAt.UTC().Format(time.RFC3339),
-			Events:      events,
-		}
+		out[i] = sellerOrderFromRecord(r, events)
 	}
 	return out, total, nil
+}
+
+func sellerOrderFromRecord(r store.OrderRecord, events []domain.OrderEvent) domain.SellerOrder {
+	return domain.SellerOrder{
+		ID:            r.ID,
+		SellerSlug:    r.SellerSlug,
+		DropID:        r.DropID,
+		DropTitle:     r.DropTitle,
+		DropSlug:      r.DropSlug,
+		BuyerEmail:    r.BuyerEmail,
+		SizeLabel:     r.SizeLabel,
+		Status:        r.Status,
+		SubtotalCents: r.SubtotalCents,
+		DiscountCents: r.DiscountCents,
+		DiscountCode:  r.DiscountCodeSnapshot,
+		AmountCents:   r.AmountCents,
+		Currency:      r.Currency,
+		CreatedAt:     r.CreatedAt.UTC().Format(time.RFC3339),
+		UpdatedAt:     r.UpdatedAt.UTC().Format(time.RFC3339),
+		Events:        events,
+	}
 }
 
 func (o *OrderService) GetForSeller(ctx context.Context, sellerID, orderID string) (domain.SellerOrder, error) {
@@ -200,21 +220,7 @@ func (o *OrderService) GetForSeller(ctx context.Context, sellerID, orderID strin
 		return domain.SellerOrder{}, err
 	}
 	events, _ := o.orders.ListAuditEvents(ctx, "order", r.ID)
-	return domain.SellerOrder{
-		ID:          r.ID,
-		SellerSlug:  r.SellerSlug,
-		DropID:      r.DropID,
-		DropTitle:   r.DropTitle,
-		DropSlug:    r.DropSlug,
-		BuyerEmail:  r.BuyerEmail,
-		SizeLabel:   r.SizeLabel,
-		Status:      r.Status,
-		AmountCents: r.AmountCents,
-		Currency:    r.Currency,
-		CreatedAt:   r.CreatedAt.UTC().Format(time.RFC3339),
-		UpdatedAt:   r.UpdatedAt.UTC().Format(time.RFC3339),
-		Events:      events,
-	}, nil
+	return sellerOrderFromRecord(r, events), nil
 }
 
 func (o *OrderService) UpdateForSeller(ctx context.Context, sellerID, orderID, action string) (domain.SellerOrder, error) {
@@ -294,17 +300,20 @@ func (o *OrderService) GetBuyerOrderStatus(ctx context.Context, orderID, email s
 	}
 	events, _ := o.orders.ListAuditEvents(ctx, "order", r.ID)
 	return domain.BuyerOrderStatus{
-		OrderID:     r.ID,
-		Status:      r.Status,
-		SellerSlug:  r.SellerSlug,
-		DropSlug:    r.DropSlug,
-		DropTitle:   r.DropTitle,
-		SizeLabel:   r.SizeLabel,
-		AmountCents: r.AmountCents,
-		Currency:    r.Currency,
-		BuyerEmail:  r.BuyerEmail,
-		UpdatedAt:   r.UpdatedAt.UTC().Format(time.RFC3339),
-		Events:      events,
+		OrderID:       r.ID,
+		Status:        r.Status,
+		SellerSlug:    r.SellerSlug,
+		DropSlug:      r.DropSlug,
+		DropTitle:     r.DropTitle,
+		SizeLabel:     r.SizeLabel,
+		SubtotalCents: r.SubtotalCents,
+		DiscountCents: r.DiscountCents,
+		DiscountCode:  r.DiscountCodeSnapshot,
+		AmountCents:   r.AmountCents,
+		Currency:      r.Currency,
+		BuyerEmail:    r.BuyerEmail,
+		UpdatedAt:     r.UpdatedAt.UTC().Format(time.RFC3339),
+		Events:        events,
 	}, nil
 }
 

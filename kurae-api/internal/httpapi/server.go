@@ -30,6 +30,7 @@ func NewServer(cfg config.Config, s *store.Store, q *queue.RedisQueue) *Server {
 
 	waitlistSvc := service.NewWaitlistService(s)
 	dashboardSvc := service.NewDashboardService(s)
+	discountSvc := service.NewDiscountService(s)
 	provider := payments.NewFromConfig(cfg.StripeSecretKey, cfg.StripeWebhook, cfg.IsProduction())
 	orderSvc := service.NewOrderService(s, provider, q, cfg.ReservationTTL, !cfg.IsProduction())
 
@@ -39,6 +40,7 @@ func NewServer(cfg config.Config, s *store.Store, q *queue.RedisQueue) *Server {
 	dropH := NewDropHandler(dropSvc, authSvc)
 	publicH := NewPublicHandler(dropSvc, waitlistSvc, authSvc)
 	orderH := NewOrderHandler(orderSvc, authSvc)
+	discountH := NewDiscountHandler(discountSvc, orderSvc)
 	webhookH := NewWebhookHandler(s, provider, orderSvc)
 	dashboardH := NewDashboardHandler(dashboardSvc)
 	uploadH := NewUploadHandler(s3Storage)
@@ -84,6 +86,7 @@ func NewServer(cfg config.Config, s *store.Store, q *queue.RedisQueue) *Server {
 	r.Get("/public/{seller}/{drop}", publicH.GetDrop)
 	r.With(RateLimit(waitlistLimiter)).Post("/drops/{id}/waitlist", publicH.JoinWaitlist)
 	r.With(RateLimit(checkoutLimiter)).Post("/checkout", orderH.Checkout)
+	r.With(RateLimit(checkoutLimiter)).Post("/checkout/discount/validate", discountH.ValidateCheckout)
 	r.Get("/checkout/orders/{id}/status", orderH.BuyerStatus)
 	r.Post("/webhooks/stripe", webhookH.Stripe)
 
@@ -98,6 +101,9 @@ func NewServer(cfg config.Config, s *store.Store, q *queue.RedisQueue) *Server {
 		protected.Get("/orders/{id}", orderH.Get)
 		protected.Patch("/orders/{id}", orderH.Update)
 		protected.Get("/dashboard/stats", dashboardH.Stats)
+		protected.Get("/discount-codes", discountH.List)
+		protected.Post("/discount-codes", discountH.Create)
+		protected.Delete("/discount-codes/{id}", discountH.Delete)
 		protected.Post("/uploads/presign", uploadH.Presign)
 		protected.Get("/auth/me", authH.Me)
 		protected.Patch("/auth/profile", authH.UpdateProfile)

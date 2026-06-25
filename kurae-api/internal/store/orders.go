@@ -24,20 +24,24 @@ func (s *Store) Orders() *OrderRepository {
 }
 
 type OrderRecord struct {
-	ID             string
-	SellerID       string
-	SellerSlug     string
-	DropID         string
-	DropTitle      string
-	DropSlug       string
-	BuyerEmail     string
-	SizeLabel      string
-	Status         domain.OrderStatus
-	AmountCents    int
-	Currency       string
-	IdempotencyKey *string
-	CreatedAt      time.Time
-	UpdatedAt      time.Time
+	ID                   string
+	SellerID             string
+	SellerSlug           string
+	DropID               string
+	DropTitle            string
+	DropSlug             string
+	BuyerEmail           string
+	SizeLabel            string
+	Status               domain.OrderStatus
+	SubtotalCents        int
+	DiscountCents        int
+	DiscountCodeID       *string
+	DiscountCodeSnapshot *string
+	AmountCents          int
+	Currency             string
+	IdempotencyKey       *string
+	CreatedAt            time.Time
+	UpdatedAt            time.Time
 }
 
 type ReservationRecord struct {
@@ -55,7 +59,8 @@ type CheckoutInput struct {
 	DropID         string
 	BuyerEmail     string
 	SizeLabel      string
-	AmountCents    int
+	SubtotalCents  int
+	DiscountCode   string
 	Currency       string
 	IdempotencyKey string
 	ExpiresAt      time.Time
@@ -77,7 +82,8 @@ func (r *OrderRepository) GetByIdempotencyKey(ctx context.Context, key string) (
 
 const orderSelect = `
 	SELECT o.id, o.seller_id, s.slug, o.drop_id, d.title, d.slug,
-		o.buyer_email, o.size_label, o.status, o.amount_cents, o.currency,
+		o.buyer_email, o.size_label, o.status, o.subtotal_cents, o.discount_cents,
+		o.discount_code_id, o.discount_code_snapshot, o.amount_cents, o.currency,
 		o.idempotency_key, o.created_at, o.updated_at
 	FROM orders o
 	JOIN sellers s ON s.id = o.seller_id
@@ -89,7 +95,8 @@ func (r *OrderRepository) scanOrder(row pgx.Row) (OrderRecord, error) {
 	var idem *string
 	if err := row.Scan(
 		&o.ID, &o.SellerID, &o.SellerSlug, &o.DropID, &o.DropTitle, &o.DropSlug,
-		&o.BuyerEmail, &o.SizeLabel, &o.Status, &o.AmountCents, &o.Currency,
+		&o.BuyerEmail, &o.SizeLabel, &o.Status, &o.SubtotalCents, &o.DiscountCents,
+		&o.DiscountCodeID, &o.DiscountCodeSnapshot, &o.AmountCents, &o.Currency,
 		&idem, &o.CreatedAt, &o.UpdatedAt,
 	); err != nil {
 		return OrderRecord{}, err
@@ -121,6 +128,29 @@ func (r *OrderRepository) ReserveInventory(ctx context.Context, in CheckoutInput
 		return CheckoutResult{}, ErrSoldOut
 	}
 
+	subtotal := in.SubtotalCents
+	discountCents := 0
+	var discountCodeID *string
+	var discountCodeSnapshot *string
+
+	if strings.TrimSpace(in.DiscountCode) != "" {
+		dc, err := r.store.Discounts().lookupForCheckoutTx(ctx, tx, in.SellerID, in.DropID, in.DiscountCode)
+		if err != nil {
+			return CheckoutResult{}, err
+		}
+		discountCents = ComputeDiscountCents(subtotal, dc.Type, dc.Value)
+		if err := r.store.Discounts().incrementUseTx(ctx, tx, dc.ID); err != nil {
+			return CheckoutResult{}, err
+		}
+		discountCodeID = &dc.ID
+		discountCodeSnapshot = &dc.Code
+	}
+
+	finalAmount := subtotal - discountCents
+	if finalAmount < 0 {
+		finalAmount = 0
+	}
+
 	_, err = tx.Exec(ctx, `
 		UPDATE drops SET inventory_remaining = inventory_remaining - 1, updated_at = now()
 		WHERE id = $1
@@ -131,11 +161,16 @@ func (r *OrderRepository) ReserveInventory(ctx context.Context, in CheckoutInput
 
 	var orderID string
 	err = tx.QueryRow(ctx, `
-		INSERT INTO orders (seller_id, drop_id, buyer_email, size_label, status, amount_cents, currency, idempotency_key)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+		INSERT INTO orders (
+			seller_id, drop_id, buyer_email, size_label, status,
+			subtotal_cents, discount_cents, discount_code_id, discount_code_snapshot,
+			amount_cents, currency, idempotency_key
+		)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
 		RETURNING id
 	`, in.SellerID, in.DropID, in.BuyerEmail, in.SizeLabel, domain.OrderReserved,
-		in.AmountCents, in.Currency, in.IdempotencyKey).Scan(&orderID)
+		subtotal, discountCents, discountCodeID, discountCodeSnapshot,
+		finalAmount, in.Currency, in.IdempotencyKey).Scan(&orderID)
 	if err != nil {
 		if isUniqueViolation(err) {
 			return CheckoutResult{}, ErrConflict
@@ -422,6 +457,12 @@ func (r *OrderRepository) ExpireStaleReservations(ctx context.Context, now time.
 			WHERE id = $1 AND status IN ('reserved', 'payment_pending')
 		`, e.orderID, domain.OrderCancelled); err != nil {
 			return 0, err
+		}
+		var discountCodeID *string
+		if err := tx.QueryRow(ctx, `
+			SELECT discount_code_id FROM orders WHERE id = $1
+		`, e.orderID).Scan(&discountCodeID); err == nil && discountCodeID != nil {
+			_ = r.store.Discounts().restoreUseTx(ctx, tx, *discountCodeID)
 		}
 	}
 

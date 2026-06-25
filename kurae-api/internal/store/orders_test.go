@@ -57,7 +57,7 @@ func TestReserveInventorySoldOutRace(t *testing.T) {
 				DropID:         drop.ID,
 				BuyerEmail:     "buyer@test.local",
 				SizeLabel:      "M",
-				AmountCents:    1000,
+				SubtotalCents:  1000,
 				Currency:       "USD",
 				IdempotencyKey: "key-" + string(rune('a'+n)),
 				ExpiresAt:      time.Now().Add(15 * time.Minute),

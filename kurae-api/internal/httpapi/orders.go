@@ -119,6 +119,7 @@ func (h *OrderHandler) Checkout(w http.ResponseWriter, r *http.Request) {
 		BuyerEmail     string `json:"buyerEmail"`
 		SizeLabel      string `json:"sizeLabel"`
 		IdempotencyKey string `json:"idempotencyKey"`
+		DiscountCode   string `json:"discountCode"`
 	}
 	if err := decodeJSON(r, &body); err != nil {
 		writeError(w, http.StatusBadRequest, "Invalid JSON")
@@ -146,9 +147,14 @@ func (h *OrderHandler) Checkout(w http.ResponseWriter, r *http.Request) {
 		BuyerEmail:     buyerEmail,
 		SizeLabel:      body.SizeLabel,
 		IdempotencyKey: idem,
+		DiscountCode:   body.DiscountCode,
 	})
 	if errors.Is(err, store.ErrSoldOut) {
 		writeError(w, http.StatusConflict, "Sold out")
+		return
+	}
+	if errors.Is(err, store.ErrInvalidDiscount) {
+		writeError(w, http.StatusBadRequest, "Invalid or expired discount code")
 		return
 	}
 	if errors.Is(err, store.ErrNotFound) {
