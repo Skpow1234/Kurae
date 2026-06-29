@@ -1,0 +1,3 @@
+ALTER TABLE sellers DROP COLUMN IF EXISTS brand_bio;
+ALTER TABLE sellers DROP COLUMN IF EXISTS brand_accent;
+ALTER TABLE sellers DROP COLUMN IF EXISTS brand_logo_url;

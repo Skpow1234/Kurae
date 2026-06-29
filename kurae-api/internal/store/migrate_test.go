@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
+	"strings"
 	"testing"
 
 	"github.com/jackc/pgx/v5"
@@ -55,12 +57,18 @@ func runMigrationsUp(ctx context.Context, conn *pgx.Conn, dir string) error {
 		return err
 	}
 
+	var files []string
 	for _, entry := range entries {
 		name := entry.Name()
-		if entry.IsDir() || len(name) < 8 || name[len(name)-7:] != ".up.sql" {
+		if entry.IsDir() || !strings.HasSuffix(name, ".up.sql") {
 			continue
 		}
-		version := name[:len(name)-7]
+		files = append(files, name)
+	}
+	sort.Strings(files)
+
+	for _, name := range files {
+		version := strings.TrimSuffix(name, ".up.sql")
 
 		var exists bool
 		if err := conn.QueryRow(ctx,
