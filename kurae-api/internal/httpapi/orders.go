@@ -155,6 +155,22 @@ func (h *OrderHandler) Checkout(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusConflict, "Sold out")
 		return
 	}
+	if errors.Is(err, service.ErrDropNotCheckoutable) {
+		writeError(w, http.StatusNotFound, "Not found")
+		return
+	}
+	if errors.Is(err, service.ErrDropNotStarted) {
+		writeError(w, http.StatusConflict, "Drop has not started yet")
+		return
+	}
+	if errors.Is(err, service.ErrDropEnded) {
+		writeError(w, http.StatusConflict, "Drop has ended")
+		return
+	}
+	if errors.Is(err, service.ErrInvalidSize) {
+		writeError(w, http.StatusBadRequest, "Invalid or unavailable size")
+		return
+	}
 	if errors.Is(err, store.ErrInvalidDiscount) {
 		writeError(w, http.StatusBadRequest, "Invalid or expired discount code")
 		return

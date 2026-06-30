@@ -87,6 +87,10 @@ func (o *OrderService) Checkout(ctx context.Context, req CheckoutRequest) (Check
 		return CheckoutResponse{}, err
 	}
 
+	if err := validateCheckoutDrop(drop, req.SizeLabel, time.Now()); err != nil {
+		return CheckoutResponse{}, err
+	}
+
 	expiresAt := time.Now().Add(o.ttl)
 	result, err := o.orders.ReserveInventory(ctx, store.CheckoutInput{
 		SellerID:       drop.SellerID,
