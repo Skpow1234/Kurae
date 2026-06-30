@@ -70,9 +70,8 @@ func NewServer(cfg config.Config, s *store.Store, q *queue.RedisQueue) *Server {
 
 	RegisterSwagger(r)
 
-	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
-	})
+	healthH := NewHealthHandler(s, q, cfg.IsProduction())
+	r.Get("/health", healthH.ServeHTTP)
 
 	r.With(RateLimit(authLimiter)).Post("/auth/register", authH.Register)
 	r.With(RateLimit(authLimiter)).Post("/auth/login", authH.Login)

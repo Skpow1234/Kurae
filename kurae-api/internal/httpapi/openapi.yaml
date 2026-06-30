@@ -21,18 +21,20 @@ paths:
   /health:
     get:
       tags: [health]
-      summary: Liveness check
+      summary: Health check (postgres + redis)
       responses:
         "200":
-          description: OK
+          description: Dependencies healthy
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    example: ok
+                $ref: "#/components/schemas/HealthReport"
+        "503":
+          description: One or more dependency checks failed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthReport"
   /auth/register:
     post:
       tags: [auth]
@@ -495,6 +497,21 @@ components:
               error:
                 type: string
   schemas:
+    HealthReport:
+      type: object
+      required: [status, checks]
+      properties:
+        status:
+          type: string
+          enum: [ok, error]
+        checks:
+          type: object
+          additionalProperties:
+            type: string
+            enum: [ok, error, skipped]
+          example:
+            postgres: ok
+            redis: ok
     RegisterRequest:
       type: object
       required: [email, password, name]

@@ -51,7 +51,7 @@ make docker-seed
 | Postgres | `localhost:5432` |
 | Redis | `localhost:6379` |
 
-Smoke check: `curl http://localhost:8080/health` → `{"status":"ok"}`.
+Smoke check: `curl http://localhost:8080/health` → `{"status":"ok","checks":{"postgres":"ok","redis":"ok"}}` (redis may be `"skipped"` in dev without Redis).
 
 ### Restarting services (Docker)
 

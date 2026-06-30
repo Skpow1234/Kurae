@@ -159,3 +159,10 @@ func (q *RedisQueue) Close() error {
 	}
 	return q.client.Close()
 }
+
+func (q *RedisQueue) Ping(ctx context.Context) error {
+	if q == nil || q.client == nil {
+		return ErrQueueDisabled
+	}
+	return q.client.Ping(ctx).Err()
+}
