@@ -16,6 +16,7 @@ type EmailSender struct {
 	from          string
 	resendKey     string
 	postmarkToken string
+	production    bool
 	httpClient    *http.Client
 }
 
@@ -24,6 +25,7 @@ func NewEmailSender(cfg config.Config) *EmailSender {
 		from:          cfg.EmailFrom,
 		resendKey:     cfg.ResendAPIKey,
 		postmarkToken: cfg.PostmarkToken,
+		production:    cfg.IsProduction(),
 		httpClient:    &http.Client{Timeout: 15 * time.Second},
 	}
 }
@@ -37,6 +39,9 @@ func (s *EmailSender) SendOrderConfirmation(ctx context.Context, orderID, to, dr
 	}
 	if s.postmarkToken != "" {
 		return s.sendPostmark(ctx, to, subject, html)
+	}
+	if s.production {
+		return fmt.Errorf("email provider not configured")
 	}
 
 	log.Printf("email: order confirmation order=%s to=%s drop=%q from=%s", orderID, to, dropTitle, s.from)

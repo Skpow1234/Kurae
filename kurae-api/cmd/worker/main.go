@@ -34,14 +34,12 @@ func main() {
 	orderSvc := service.NewOrderService(db, payments.NewNoopProvider(), nil, cfg.ReservationTTL, false)
 	emailSender := jobs.NewEmailSender(cfg)
 
-	var redisQueue *queue.RedisQueue
-	if cfg.RedisURL != "" {
-		redisQueue, err = queue.NewRedisQueue(cfg.RedisURL)
-		if err != nil {
-			log.Printf("redis: %v", err)
-		} else {
-			defer redisQueue.Close()
-		}
+	redisQueue, err := connectRedisQueue(cfg)
+	if err != nil {
+		log.Fatalf("redis: %v", err)
+	}
+	if redisQueue != nil {
+		defer redisQueue.Close()
 	}
 
 	log.Println("kurae-worker started (reservation expiry + email queue)")
@@ -80,9 +78,7 @@ func main() {
 
 		job, err := redisQueue.DequeueEmail(ctx, 5*time.Second)
 		if err == nil {
-			if err := emailSender.SendOrderConfirmation(ctx, job.OrderID, job.BuyerEmail, job.DropTitle); err != nil {
-				log.Printf("send email: %v", err)
-			}
+			processEmailJob(ctx, redisQueue, emailSender, job)
 			continue
 		}
 		if errors.Is(err, redis.Nil) {
@@ -95,10 +91,41 @@ func main() {
 			continue
 		}
 		if errors.Is(err, queue.ErrQueueDisabled) {
-			<-stop
-			log.Println("kurae-worker stopped")
-			return
+			log.Fatalf("redis: email queue disabled")
 		}
 		log.Printf("dequeue email: %v", err)
+	}
+}
+
+func connectRedisQueue(cfg config.Config) (*queue.RedisQueue, error) {
+	if cfg.RedisURL == "" {
+		if cfg.IsProduction() {
+			return nil, errors.New("REDIS_URL is required in production")
+		}
+		log.Println("redis: not configured (email queue disabled in development)")
+		return nil, nil
+	}
+
+	redisQueue, err := queue.NewRedisQueue(cfg.RedisURL)
+	if err != nil {
+		if cfg.IsProduction() {
+			return nil, err
+		}
+		log.Printf("redis: %v (email queue disabled)", err)
+		return nil, nil
+	}
+	return redisQueue, nil
+}
+
+func processEmailJob(ctx context.Context, redisQueue *queue.RedisQueue, emailSender *jobs.EmailSender, job queue.EmailJob) {
+	if err := emailSender.SendOrderConfirmation(ctx, job.OrderID, job.BuyerEmail, job.DropTitle); err != nil {
+		log.Printf("send email order=%s attempt=%d: %v", job.OrderID, job.Attempt+1, err)
+		if requeueErr := redisQueue.RequeueEmail(ctx, job, err.Error()); requeueErr != nil {
+			log.Printf("requeue email order=%s: %v", job.OrderID, requeueErr)
+		}
+		return
+	}
+	if job.Attempt > 0 {
+		log.Printf("send email order=%s succeeded on attempt %d", job.OrderID, job.Attempt+1)
 	}
 }

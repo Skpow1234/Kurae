@@ -33,10 +33,15 @@ func main() {
 	if cfg.RedisURL != "" {
 		redisQueue, err = queue.NewRedisQueue(cfg.RedisURL)
 		if err != nil {
+			if cfg.IsProduction() {
+				log.Fatalf("redis: %v", err)
+			}
 			log.Printf("redis: %v (email queue disabled)", err)
 		} else {
 			defer redisQueue.Close()
 		}
+	} else if cfg.IsProduction() {
+		log.Fatalf("redis: REDIS_URL is required in production")
 	}
 
 	srv := httpapi.NewServer(cfg, db, redisQueue)

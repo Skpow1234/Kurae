@@ -17,6 +17,16 @@ func TestValidateProductionGuards(t *testing.T) {
 	}
 
 	cfg.JWTSecret = "this-is-a-secure-production-jwt-secret-key"
+	if err := cfg.Validate(); err == nil {
+		t.Fatal("expected REDIS_URL validation error")
+	}
+
+	cfg.RedisURL = "redis://localhost:6379"
+	if err := cfg.Validate(); err == nil {
+		t.Fatal("expected email provider validation error")
+	}
+
+	cfg.ResendAPIKey = "re_test"
 	if err := cfg.Validate(); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

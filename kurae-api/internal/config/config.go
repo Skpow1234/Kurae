@@ -37,6 +37,10 @@ func (c Config) IsProduction() bool {
 	return strings.EqualFold(c.Environment, "production")
 }
 
+func (c Config) HasEmailProvider() bool {
+	return strings.TrimSpace(c.ResendAPIKey) != "" || strings.TrimSpace(c.PostmarkToken) != ""
+}
+
 func Load() (Config, error) {
 	cfg := Config{
 		Port:            envOr("PORT", DefaultPort),
@@ -87,6 +91,12 @@ func (c Config) Validate() error {
 		}
 		if c.StripeWebhook == "" {
 			return fmt.Errorf("STRIPE_WEBHOOK_SECRET is required in production")
+		}
+		if strings.TrimSpace(c.RedisURL) == "" {
+			return fmt.Errorf("REDIS_URL is required in production")
+		}
+		if !c.HasEmailProvider() {
+			return fmt.Errorf("RESEND_API_KEY or POSTMARK_SERVER_TOKEN is required in production")
 		}
 	}
 	return nil

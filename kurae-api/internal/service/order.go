@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"log"
 	"strings"
 	"time"
 
@@ -184,11 +185,13 @@ func (o *OrderService) MarkPaid(ctx context.Context, orderID, paymentIntentID st
 	if o.queue != nil {
 		order, err := o.orders.GetByID(ctx, orderID)
 		if err == nil {
-			_ = o.queue.EnqueueEmail(ctx, queue.EmailJob{
+			if err := o.queue.EnqueueEmail(ctx, queue.EmailJob{
 				OrderID:    order.ID,
 				BuyerEmail: order.BuyerEmail,
 				DropTitle:  order.DropTitle,
-			})
+			}); err != nil {
+				log.Printf("enqueue order confirmation email order=%s: %v", order.ID, err)
+			}
 		}
 	}
 	return nil

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/redis/go-redis/v9"
@@ -11,6 +12,8 @@ import (
 
 const (
 	emailQueueKey = "kurae:jobs:email"
+	emailRetryKey = "kurae:jobs:email:retry"
+	emailDLQKey   = "kurae:jobs:email:dlq"
 )
 
 var ErrQueueDisabled = errors.New("redis not configured")
@@ -19,6 +22,13 @@ type EmailJob struct {
 	OrderID    string `json:"orderId"`
 	BuyerEmail string `json:"buyerEmail"`
 	DropTitle  string `json:"dropTitle"`
+	Attempt    int    `json:"attempt,omitempty"`
+}
+
+type EmailDLQEntry struct {
+	Job      EmailJob `json:"job"`
+	Reason   string   `json:"reason"`
+	FailedAt string   `json:"failedAt"`
 }
 
 type RedisQueue struct {
@@ -44,7 +54,7 @@ func NewRedisQueue(redisURL string) (*RedisQueue, error) {
 
 func (q *RedisQueue) EnqueueEmail(ctx context.Context, job EmailJob) error {
 	if q == nil || q.client == nil {
-		return nil
+		return ErrQueueDisabled
 	}
 	payload, err := json.Marshal(job)
 	if err != nil {
@@ -53,10 +63,49 @@ func (q *RedisQueue) EnqueueEmail(ctx context.Context, job EmailJob) error {
 	return q.client.LPush(ctx, emailQueueKey, payload).Err()
 }
 
+func (q *RedisQueue) RequeueEmail(ctx context.Context, job EmailJob, reason string) error {
+	if q == nil || q.client == nil {
+		return ErrQueueDisabled
+	}
+	job.Attempt++
+	if job.Attempt >= MaxEmailAttempts {
+		return q.EnqueueEmailDLQ(ctx, job, reason)
+	}
+	payload, err := json.Marshal(job)
+	if err != nil {
+		return err
+	}
+	runAt := float64(time.Now().Add(EmailRetryDelay(job.Attempt)).UnixMilli())
+	return q.client.ZAdd(ctx, emailRetryKey, redis.Z{Score: runAt, Member: payload}).Err()
+}
+
+func (q *RedisQueue) EnqueueEmailDLQ(ctx context.Context, job EmailJob, reason string) error {
+	if q == nil || q.client == nil {
+		return ErrQueueDisabled
+	}
+	entry := EmailDLQEntry{
+		Job:      job,
+		Reason:   reason,
+		FailedAt: time.Now().UTC().Format(time.RFC3339),
+	}
+	payload, err := json.Marshal(entry)
+	if err != nil {
+		return err
+	}
+	return q.client.LPush(ctx, emailDLQKey, payload).Err()
+}
+
 func (q *RedisQueue) DequeueEmail(ctx context.Context, timeout time.Duration) (EmailJob, error) {
 	if q == nil || q.client == nil {
 		return EmailJob{}, ErrQueueDisabled
 	}
+
+	if job, ok, err := q.dequeueDueRetry(ctx); ok {
+		return job, err
+	} else if err != nil && !errors.Is(err, redis.Nil) {
+		return EmailJob{}, err
+	}
+
 	result, err := q.client.BRPop(ctx, timeout, emailQueueKey).Result()
 	if err != nil {
 		return EmailJob{}, err
@@ -69,6 +118,39 @@ func (q *RedisQueue) DequeueEmail(ctx context.Context, timeout time.Duration) (E
 		return EmailJob{}, err
 	}
 	return job, nil
+}
+
+func (q *RedisQueue) dequeueDueRetry(ctx context.Context) (EmailJob, bool, error) {
+	now := fmt.Sprintf("%f", float64(time.Now().UnixMilli()))
+	items, err := q.client.ZRangeByScore(ctx, emailRetryKey, &redis.ZRangeBy{
+		Min:   "0",
+		Max:   now,
+		Count: 1,
+	}).Result()
+	if err != nil {
+		if errors.Is(err, redis.Nil) {
+			return EmailJob{}, false, nil
+		}
+		return EmailJob{}, false, err
+	}
+	if len(items) == 0 {
+		return EmailJob{}, false, nil
+	}
+
+	member := items[0]
+	removed, err := q.client.ZRem(ctx, emailRetryKey, member).Result()
+	if err != nil {
+		return EmailJob{}, false, err
+	}
+	if removed == 0 {
+		return EmailJob{}, false, nil
+	}
+
+	var job EmailJob
+	if err := json.Unmarshal([]byte(member), &job); err != nil {
+		return EmailJob{}, false, err
+	}
+	return job, true, nil
 }
 
 func (q *RedisQueue) Close() error {
