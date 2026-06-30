@@ -1,3 +1,5 @@
+"use client";
+
 import Image from "next/image";
 
 import { Countdown } from "@/components/drop/countdown";
@@ -10,6 +12,7 @@ import type { DropStatus, PublicDrop } from "@/lib/types";
 
 type DropHeroProps = {
   drop: PublicDrop;
+  onCountdownComplete?: () => void;
 };
 
 function badgeVariant(status: DropStatus) {
@@ -25,7 +28,7 @@ function badgeVariant(status: DropStatus) {
   }
 }
 
-export function DropHero({ drop }: DropHeroProps) {
+export function DropHero({ drop, onCountdownComplete }: DropHeroProps) {
   const countdownTarget =
     drop.status === "upcoming" ? drop.startsAt : drop.endsAt;
   const countdownLabel =
@@ -62,7 +65,12 @@ export function DropHero({ drop }: DropHeroProps) {
         </p>
 
         <div className="mt-8 grid gap-6 sm:grid-cols-2 sm:gap-8">
-          <Countdown targetDate={countdownTarget} label={countdownLabel} />
+          <Countdown
+            key={countdownTarget}
+            targetDate={countdownTarget}
+            label={countdownLabel}
+            onComplete={onCountdownComplete}
+          />
           {(drop.status === "live" || drop.status === "sold_out") && (
             <InventoryBar
               remaining={drop.inventoryRemaining}

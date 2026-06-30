@@ -39,6 +39,8 @@ export function DropPageView({
     initialRemaining: initialDrop.inventoryRemaining,
     total: initialDrop.inventoryTotal,
     status: initialDrop.status,
+    startsAt: initialDrop.startsAt,
+    endsAt: initialDrop.endsAt,
   });
 
   const drop: PublicDrop = {
@@ -85,7 +87,7 @@ export function DropPageView({
         cartCount={count}
       />
 
-      <DropHero drop={drop} />
+      <DropHero drop={drop} onCountdownComplete={inventory.refresh} />
 
       <SellerBrandCard
         sellerName={drop.sellerName}

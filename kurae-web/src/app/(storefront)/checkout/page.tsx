@@ -106,6 +106,8 @@ function CheckoutLiveForm({
     initialRemaining: initialDrop.inventoryRemaining,
     total: initialDrop.inventoryTotal,
     status: initialDrop.status,
+    startsAt: initialDrop.startsAt,
+    endsAt: initialDrop.endsAt,
     initialSizes: initialDrop.sizes,
     pollMs: 8_000,
   });

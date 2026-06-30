@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { cn } from "@/lib/utils";
 
@@ -8,6 +8,7 @@ type CountdownProps = {
   targetDate: string;
   label: string;
   className?: string;
+  onComplete?: () => void;
 };
 
 type TimeLeft = {
@@ -38,10 +39,20 @@ function pad(n: number) {
   return n.toString().padStart(2, "0");
 }
 
-export function Countdown({ targetDate, label, className }: CountdownProps) {
+export function Countdown({
+  targetDate,
+  label,
+  className,
+  onComplete,
+}: CountdownProps) {
   const [timeLeft, setTimeLeft] = useState<TimeLeft>(() =>
     getTimeLeft(targetDate),
   );
+  const completedRef = useRef(false);
+
+  useEffect(() => {
+    completedRef.current = false;
+  }, [targetDate]);
 
   useEffect(() => {
     const id = setInterval(() => {
@@ -49,6 +60,12 @@ export function Countdown({ targetDate, label, className }: CountdownProps) {
     }, 1000);
     return () => clearInterval(id);
   }, [targetDate]);
+
+  useEffect(() => {
+    if (!timeLeft.done || completedRef.current) return;
+    completedRef.current = true;
+    onComplete?.();
+  }, [onComplete, timeLeft.done]);
 
   return (
     <div className={cn("space-y-2", className)}>
