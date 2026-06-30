@@ -1,20 +1,27 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { useRef, useState } from "react";
 
+import { Button } from "@/components/ui/button";
 import { ACCENT_PRESETS } from "@/lib/branding/accents";
 import { shouldUnoptimizeImageSrc } from "@/lib/images";
+import type { StorefrontPreview } from "@/lib/storefront-preview";
 import type { BrandAccent, SellerBranding } from "@/lib/types";
 import { uploadProductImage } from "@/lib/uploads/product-image";
-import { Button } from "@/components/ui/button";
 
 type BrandingFormProps = {
   initial: SellerBranding;
   sellerName: string;
+  storefrontPreview: StorefrontPreview | null;
 };
 
-export function BrandingForm({ initial, sellerName }: BrandingFormProps) {
+export function BrandingForm({
+  initial,
+  sellerName,
+  storefrontPreview,
+}: BrandingFormProps) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [logoUrl, setLogoUrl] = useState(initial.logoUrl);
   const [accent, setAccent] = useState<BrandAccent>(initial.accent || "blush");
@@ -209,6 +216,37 @@ export function BrandingForm({ initial, sellerName }: BrandingFormProps) {
           style={{ backgroundColor: ACCENT_PRESETS.find((p) => p.id === accent)?.primary }}
         >
           Accent preview
+        </div>
+        <div className="mt-6 border-t border-sakura-petal pt-4">
+          {storefrontPreview ? (
+            <>
+              <p className="text-sm text-sakura-stone">
+                See logo, accent, and bio on your public drop page
+                {storefrontPreview.dropTitle
+                  ? ` (${storefrontPreview.dropTitle})`
+                  : ""}
+                .
+              </p>
+              <Link
+                href={storefrontPreview.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-3 inline-flex h-10 items-center justify-center rounded-md border border-sakura-petal bg-sakura-paper px-4 text-sm font-medium text-sakura-ink hover:bg-sakura-surface"
+              >
+                Open live drop page
+              </Link>
+            </>
+          ) : (
+            <p className="text-sm text-sakura-mist">
+              Publish a drop to preview branding on a live page.{" "}
+              <Link
+                href="/dashboard/drops/new"
+                className="font-medium text-sakura-dusk hover:underline"
+              >
+                Create a drop
+              </Link>
+            </p>
+          )}
         </div>
       </section>
     </form>

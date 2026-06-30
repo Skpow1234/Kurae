@@ -13,7 +13,10 @@ export function SellerBrandCard({
   logoUrl,
   bio,
 }: SellerBrandCardProps) {
-  if (!bio?.trim()) {
+  const hasBio = Boolean(bio?.trim());
+  const hasLogo = Boolean(logoUrl?.trim());
+
+  if (!hasBio && !hasLogo) {
     return null;
   }
 
