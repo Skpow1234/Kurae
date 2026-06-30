@@ -1,4 +1,5 @@
 import type { SellerOrder } from "@/lib/types/orders";
+import { ApiError } from "@/lib/api/client";
 import { apiServerFetch } from "@/lib/api/server";
 
 export type DashboardStats = {
@@ -57,7 +58,10 @@ export async function fetchSellerOrder(
       `/orders/${orderId}`,
     );
     return data.order;
-  } catch {
-    return null;
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 404) {
+      return null;
+    }
+    throw err;
   }
 }

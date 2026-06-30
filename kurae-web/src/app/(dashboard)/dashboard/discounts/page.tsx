@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 
 import { DiscountDeleteButton } from "@/components/dashboard/discount-delete-button";
 import { DiscountForm } from "@/components/dashboard/discount-form";
+import { ApiLoadError } from "@/components/ui/api-load-error";
 import { listDiscountCodes } from "@/lib/api/discounts-server";
 import { listSellerDrops } from "@/lib/api/drops-server";
 import { authUrl } from "@/lib/auth/safe-redirect";
@@ -32,10 +33,23 @@ export default async function DiscountsPage() {
   const session = await getSellerSession();
   if (!session) redirect(authUrl({ role: "seller", next: "/dashboard/discounts" }));
 
-  const [codes, drops] = await Promise.all([
-    listDiscountCodes(),
-    listSellerDrops(),
-  ]);
+  let codes;
+  let drops;
+  try {
+    [codes, drops] = await Promise.all([
+      listDiscountCodes(),
+      listSellerDrops(),
+    ]);
+  } catch {
+    return (
+      <div className="space-y-8">
+        <div>
+          <h1 className="text-2xl font-semibold text-sakura-ink">Discount codes</h1>
+        </div>
+        <ApiLoadError message="Could not load discount codes. Check that kurae-api is running." />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8">

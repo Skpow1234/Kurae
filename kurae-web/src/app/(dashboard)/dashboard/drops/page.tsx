@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { DropDeleteButton } from "@/components/dashboard/drop-delete-button";
+import { ApiLoadError } from "@/components/ui/api-load-error";
 import { listSellerDrops } from "@/lib/api/drops-server";
 import { getSellerSession } from "@/lib/auth/session";
 import { authUrl } from "@/lib/auth/safe-redirect";
@@ -11,7 +12,17 @@ export default async function DropsPage() {
   const session = await getSellerSession();
   if (!session) redirect(authUrl({ role: "seller", next: "/dashboard" }));
 
-  const drops = await listSellerDrops();
+  let drops;
+  try {
+    drops = await listSellerDrops();
+  } catch {
+    return (
+      <div className="space-y-6">
+        <h1 className="text-2xl font-semibold text-sakura-ink">Drops</h1>
+        <ApiLoadError message="Could not load drops. Check that kurae-api is running." />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

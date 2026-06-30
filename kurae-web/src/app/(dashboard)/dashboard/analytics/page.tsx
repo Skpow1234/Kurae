@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { FunnelChart } from "@/components/analytics/funnel-chart";
 import { MetricCard } from "@/components/analytics/metric-card";
 import { TrafficChart } from "@/components/analytics/traffic-chart";
+import { ApiLoadError } from "@/components/ui/api-load-error";
 import { fetchSellerAnalytics } from "@/lib/api/analytics-server";
 import { authUrl } from "@/lib/auth/safe-redirect";
 import { getSellerSession } from "@/lib/auth/session";
@@ -12,12 +13,16 @@ export default async function AnalyticsPage() {
   const session = await getSellerSession();
   if (!session) redirect(authUrl({ role: "seller", next: "/dashboard/analytics" }));
 
-  const analytics = await fetchSellerAnalytics();
-
-  if (!analytics) {
+  let analytics;
+  try {
+    analytics = await fetchSellerAnalytics();
+  } catch {
     return (
-      <div className="rounded-lg border border-sakura-petal p-8 text-center text-sm text-sakura-stone">
-        Could not load analytics. Check that kurae-api is running.
+      <div className="space-y-8">
+        <div>
+          <h1 className="text-2xl font-semibold text-sakura-ink">Analytics</h1>
+        </div>
+        <ApiLoadError message="Could not load analytics. Check that kurae-api is running." />
       </div>
     );
   }

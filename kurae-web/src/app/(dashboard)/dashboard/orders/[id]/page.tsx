@@ -4,6 +4,7 @@ import { notFound, redirect } from "next/navigation";
 import { OrderActions } from "@/components/dashboard/order-actions";
 import { OrderStatusBadge } from "@/components/dashboard/order-status-badge";
 import { OrderTimeline } from "@/components/dashboard/order-timeline";
+import { ApiLoadError } from "@/components/ui/api-load-error";
 import { fetchSellerOrder } from "@/lib/api/orders";
 import { getSellerSession } from "@/lib/auth/session";
 import { authUrl } from "@/lib/auth/safe-redirect";
@@ -18,7 +19,23 @@ export default async function OrderDetailPage({ params }: PageProps) {
   if (!session) redirect(authUrl({ role: "seller", next: "/dashboard" }));
 
   const { id } = await params;
-  const order = await fetchSellerOrder(session.sellerSlug, id);
+
+  let order;
+  try {
+    order = await fetchSellerOrder(session.sellerSlug, id);
+  } catch {
+    return (
+      <div className="space-y-6">
+        <Link
+          href="/dashboard/orders"
+          className="text-sm text-sakura-mist hover:text-sakura-dusk"
+        >
+          ← Back to orders
+        </Link>
+        <ApiLoadError message="Could not load this order. Check that kurae-api is running." />
+      </div>
+    );
+  }
 
   if (!order) {
     notFound();

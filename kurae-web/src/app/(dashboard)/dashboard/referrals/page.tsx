@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { ReferralDeleteButton } from "@/components/dashboard/referral-delete-button";
 import { ReferralForm } from "@/components/dashboard/referral-form";
 import { ReferralLinkCopy } from "@/components/dashboard/referral-link-copy";
+import { ApiLoadError } from "@/components/ui/api-load-error";
 import { listSellerDrops } from "@/lib/api/drops-server";
 import { listReferralCodes } from "@/lib/api/referrals-server";
 import { authUrl } from "@/lib/auth/safe-redirect";
@@ -23,10 +24,23 @@ export default async function ReferralsPage() {
   const session = await getSellerSession();
   if (!session) redirect(authUrl({ role: "seller", next: "/dashboard/referrals" }));
 
-  const [codes, drops] = await Promise.all([
-    listReferralCodes(),
-    listSellerDrops(),
-  ]);
+  let codes;
+  let drops;
+  try {
+    [codes, drops] = await Promise.all([
+      listReferralCodes(),
+      listSellerDrops(),
+    ]);
+  } catch {
+    return (
+      <div className="max-w-3xl space-y-8">
+        <div>
+          <h1 className="text-2xl font-semibold text-sakura-ink">Referrals</h1>
+        </div>
+        <ApiLoadError message="Could not load referral codes. Check that kurae-api is running." />
+      </div>
+    );
+  }
 
   const suggestedCode = session.sellerSlug.replace(/-/g, "").toUpperCase().slice(0, 32);
 
