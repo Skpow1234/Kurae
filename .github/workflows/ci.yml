@@ -24,7 +24,8 @@ jobs:
 
     services:
       postgres:
-        image: postgres:16-alpine
+        # AWS Public ECR mirror of Docker Hub library/postgres — avoids Hub pull timeouts on GHA
+        image: public.ecr.aws/docker/library/postgres:16-alpine
         env:
           POSTGRES_USER: kurae
           POSTGRES_PASSWORD: kurae
