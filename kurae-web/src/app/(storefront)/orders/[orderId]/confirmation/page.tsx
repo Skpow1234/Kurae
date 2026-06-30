@@ -109,12 +109,20 @@ export default async function OrderConfirmationPage({
           </div>
         </div>
 
-        <Link
-          href={`/${order.sellerSlug}/${order.dropSlug}`}
-          className="mt-8 flex h-10 w-full items-center justify-center rounded-md bg-sakura-blush text-sm font-medium text-sakura-ink hover:bg-sakura-bloom"
-        >
-          Back to drop
-        </Link>
+        <div className="mt-8 flex flex-col gap-3">
+          <Link
+            href={`/account/orders/${order.orderId}`}
+            className="flex h-10 w-full items-center justify-center rounded-md bg-sakura-blush text-sm font-medium text-sakura-ink hover:bg-sakura-bloom"
+          >
+            View in my orders
+          </Link>
+          <Link
+            href={`/${order.sellerSlug}/${order.dropSlug}`}
+            className="flex h-10 w-full items-center justify-center rounded-md border border-sakura-petal bg-sakura-paper text-sm font-medium text-sakura-ink hover:bg-sakura-surface"
+          >
+            Back to drop
+          </Link>
+        </div>
       </div>
     </main>
   );
