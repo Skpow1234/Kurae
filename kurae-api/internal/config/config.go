@@ -31,6 +31,8 @@ type Config struct {
 	ResendAPIKey    string
 	PostmarkToken   string
 	EmailFrom       string
+
+	corsOriginsExplicit bool
 }
 
 func (c Config) IsProduction() bool {
@@ -64,7 +66,8 @@ func Load() (Config, error) {
 	if origins == "" {
 		cfg.CORSOrigins = []string{"http://localhost:3000"}
 	} else {
-		cfg.CORSOrigins = strings.Split(origins, ",")
+		cfg.corsOriginsExplicit = true
+		cfg.CORSOrigins = parseCORSOrigins(origins)
 	}
 
 	if cfg.DatabaseURL == "" {
@@ -98,8 +101,58 @@ func (c Config) Validate() error {
 		if !c.HasEmailProvider() {
 			return fmt.Errorf("RESEND_API_KEY or POSTMARK_SERVER_TOKEN is required in production")
 		}
+		if err := validateProductionStripe(c.StripeSecretKey); err != nil {
+			return err
+		}
+		if err := validateProductionCORS(c.corsOriginsExplicit, c.CORSOrigins); err != nil {
+			return err
+		}
 	}
 	return nil
+}
+
+func validateProductionStripe(secretKey string) error {
+	if strings.HasPrefix(secretKey, "sk_test_") {
+		return fmt.Errorf("STRIPE_SECRET_KEY must not be a test key in production")
+	}
+	if !strings.HasPrefix(secretKey, "sk_live_") {
+		return fmt.Errorf("STRIPE_SECRET_KEY must be a live key (sk_live_) in production")
+	}
+	return nil
+}
+
+func validateProductionCORS(explicit bool, origins []string) error {
+	if !explicit {
+		return fmt.Errorf("CORS_ORIGINS must be set explicitly in production")
+	}
+	if len(origins) == 0 {
+		return fmt.Errorf("CORS_ORIGINS must include at least one origin in production")
+	}
+	for _, origin := range origins {
+		if !isLocalhostOrigin(origin) {
+			return nil
+		}
+	}
+	return fmt.Errorf("CORS_ORIGINS must include a non-localhost origin in production")
+}
+
+func isLocalhostOrigin(origin string) bool {
+	origin = strings.ToLower(strings.TrimSpace(origin))
+	return strings.HasPrefix(origin, "http://localhost:") ||
+		strings.HasPrefix(origin, "https://localhost:") ||
+		strings.HasPrefix(origin, "http://127.0.0.1:") ||
+		strings.HasPrefix(origin, "https://127.0.0.1:")
+}
+
+func parseCORSOrigins(raw string) []string {
+	parts := strings.Split(raw, ",")
+	out := make([]string, 0, len(parts))
+	for _, part := range parts {
+		if trimmed := strings.TrimSpace(part); trimmed != "" {
+			out = append(out, trimmed)
+		}
+	}
+	return out
 }
 
 func envOr(key, fallback string) string {

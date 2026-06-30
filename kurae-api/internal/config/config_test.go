@@ -27,6 +27,22 @@ func TestValidateProductionGuards(t *testing.T) {
 	}
 
 	cfg.ResendAPIKey = "re_test"
+	if err := cfg.Validate(); err == nil {
+		t.Fatal("expected stripe live key validation error")
+	}
+
+	cfg.StripeSecretKey = "sk_live_abc"
+	if err := cfg.Validate(); err == nil {
+		t.Fatal("expected CORS_ORIGINS validation error")
+	}
+
+	cfg.corsOriginsExplicit = true
+	cfg.CORSOrigins = []string{"http://localhost:3000"}
+	if err := cfg.Validate(); err == nil {
+		t.Fatal("expected non-localhost CORS validation error")
+	}
+
+	cfg.CORSOrigins = []string{"https://kurae.example.com"}
 	if err := cfg.Validate(); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -41,5 +57,36 @@ func TestValidateDevelopmentAllowsNoStripe(t *testing.T) {
 	}
 	if err := cfg.Validate(); err != nil {
 		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestValidateProductionStripe(t *testing.T) {
+	t.Parallel()
+
+	if err := validateProductionStripe("sk_test_abc"); err == nil {
+		t.Fatal("expected test key rejection")
+	}
+	if err := validateProductionStripe("sk_live_abc"); err != nil {
+		t.Fatalf("expected live key to pass, got %v", err)
+	}
+}
+
+func TestParseCORSOrigins(t *testing.T) {
+	t.Parallel()
+
+	got := parseCORSOrigins(" https://a.com , ,https://b.com ")
+	if len(got) != 2 || got[0] != "https://a.com" || got[1] != "https://b.com" {
+		t.Fatalf("unexpected origins: %#v", got)
+	}
+}
+
+func TestIsLocalhostOrigin(t *testing.T) {
+	t.Parallel()
+
+	if !isLocalhostOrigin("http://localhost:3000") {
+		t.Fatal("expected localhost")
+	}
+	if isLocalhostOrigin("https://kurae.example.com") {
+		t.Fatal("expected non-localhost")
 	}
 }
