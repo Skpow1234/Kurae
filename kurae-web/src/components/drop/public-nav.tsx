@@ -7,12 +7,14 @@ import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { shouldUnoptimizeImageSrc } from "@/lib/images";
+import type { DropStatus } from "@/lib/types";
 
 type PublicNavProps = {
   sellerName: string;
   sellerLogoUrl?: string;
   dropTitle: string;
   cartCount?: number;
+  dropStatus: DropStatus;
 };
 
 export function PublicNav({
@@ -20,8 +22,13 @@ export function PublicNav({
   sellerLogoUrl,
   dropTitle,
   cartCount = 0,
+  dropStatus,
 }: PublicNavProps) {
   const [open, setOpen] = useState(false);
+
+  const showWaitlistLink =
+    dropStatus === "upcoming" || dropStatus === "sold_out";
+  const showPurchaseLink = dropStatus === "live";
 
   return (
     <header className="sticky top-0 z-40 border-b border-sakura-petal bg-sakura-paper/95 backdrop-blur">
@@ -67,7 +74,7 @@ export function PublicNav({
             variant="ghost"
             size="icon"
             className="sm:hidden"
-            onClick={() => setOpen((v) => !v)}
+            onClick={() => setOpen((value) => !value)}
             aria-label="Menu"
           >
             {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
@@ -79,17 +86,42 @@ export function PublicNav({
         <nav className="border-t border-sakura-petal px-4 py-3 sm:hidden">
           <ul className="space-y-2 text-sm">
             <li>
-              <Link href="/checkout" className="block py-2" onClick={() => setOpen(false)}>
+              <Link
+                href="/checkout"
+                className="block py-2"
+                onClick={() => setOpen(false)}
+              >
                 Cart {cartCount > 0 ? `(${cartCount})` : ""}
               </Link>
             </li>
+            {showPurchaseLink && (
+              <li>
+                <a
+                  href="#purchase"
+                  className="block py-2"
+                  onClick={() => setOpen(false)}
+                >
+                  Buy
+                </a>
+              </li>
+            )}
+            {showWaitlistLink && (
+              <li>
+                <a
+                  href="#waitlist"
+                  className="block py-2"
+                  onClick={() => setOpen(false)}
+                >
+                  Waitlist
+                </a>
+              </li>
+            )}
             <li>
-              <a href="#waitlist" className="block py-2" onClick={() => setOpen(false)}>
-                Waitlist
-              </a>
-            </li>
-            <li>
-              <a href="#story" className="block py-2" onClick={() => setOpen(false)}>
+              <a
+                href="#story"
+                className="block py-2"
+                onClick={() => setOpen(false)}
+              >
                 Story
               </a>
             </li>

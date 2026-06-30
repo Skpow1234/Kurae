@@ -121,42 +121,45 @@ export default async function HomePage() {
     ).length;
 
     return (
-      <main className="flex min-h-[calc(100vh-3.5rem)] flex-col items-center justify-center bg-gradient-to-b from-sakura-petal/40 to-sakura-paper px-4">
-        <div className="max-w-lg text-center">
-          <h1 className="text-4xl font-bold tracking-tight text-sakura-ink">
-            Welcome back, {sellerSession.sellerName}
-          </h1>
-          <p className="mt-4 text-sakura-stone">
-            {publishedCount > 0
-              ? `You have ${publishedCount} published drop${publishedCount === 1 ? "" : "s"}.`
-              : "Launch your first drop when you're ready."}
-          </p>
-          <div className="mt-8 flex flex-col gap-3">
-            <Link href="/dashboard" className={primaryButtonClass}>
-              Open dashboard
-            </Link>
-            {preview ? (
-              <Link
-                href={preview.href}
-                target="_blank"
-                rel="noopener noreferrer"
-                className={secondaryButtonClass}
-              >
-                {preview.label} — {preview.dropTitle}
+      <main className="min-h-[calc(100vh-3.5rem)] bg-gradient-to-b from-sakura-petal/40 to-sakura-paper">
+        <section className="flex flex-col items-center justify-center px-4 py-16">
+          <div className="max-w-lg text-center">
+            <h1 className="text-4xl font-bold tracking-tight text-sakura-ink">
+              Welcome back, {sellerSession.sellerName}
+            </h1>
+            <p className="mt-4 text-sakura-stone">
+              {publishedCount > 0
+                ? `You have ${publishedCount} published drop${publishedCount === 1 ? "" : "s"}.`
+                : "Launch your first drop when you're ready."}
+            </p>
+            <div className="mt-8 flex flex-col gap-3">
+              <Link href="/dashboard" className={primaryButtonClass}>
+                Open dashboard
               </Link>
-            ) : (
-              <Link href="/dashboard/drops/new" className={secondaryButtonClass}>
-                Create your first drop
+              {preview ? (
+                <Link
+                  href={preview.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={secondaryButtonClass}
+                >
+                  {preview.label} — {preview.dropTitle}
+                </Link>
+              ) : (
+                <Link href="/dashboard/drops/new" className={secondaryButtonClass}>
+                  Create your first drop
+                </Link>
+              )}
+              <Link href="/dashboard/drops" className={textLinkClass}>
+                Manage drops
               </Link>
-            )}
-            <Link href="/dashboard/drops" className={textLinkClass}>
-              Manage drops
-            </Link>
-            <Link href="/#drops" className={textLinkClass}>
-              Browse all drops
-            </Link>
+              <a href="#drops" className={textLinkClass}>
+                Browse all drops
+              </a>
+            </div>
           </div>
-        </div>
+        </section>
+        <BuyerBrowseSection />
       </main>
     );
   }

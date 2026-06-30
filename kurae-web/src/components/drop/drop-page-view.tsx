@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { useCallback, useRef, useState } from "react";
 
 import { PageViewCapture } from "@/components/analytics/page-view-capture";
@@ -85,6 +86,7 @@ export function DropPageView({
         sellerLogoUrl={drop.sellerLogoUrl}
         dropTitle={drop.title}
         cartCount={count}
+        dropStatus={drop.status}
       />
 
       <DropHero drop={drop} onCountdownComplete={inventory.refresh} />
@@ -157,12 +159,12 @@ export function DropPageView({
           © {new Date().getFullYear()} {drop.sellerName} · Powered by Kurae
         </p>
         <div className="mt-2 flex justify-center gap-4">
-          <a href="#" className="hover:text-sakura-dusk">
+          <Link href="/privacy" className="hover:text-sakura-dusk">
             Privacy
-          </a>
-          <a href="#" className="hover:text-sakura-dusk">
+          </Link>
+          <Link href="/terms" className="hover:text-sakura-dusk">
             Terms
-          </a>
+          </Link>
         </div>
       </footer>
 
