@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-import type { DropStatus, PublicDrop } from "@/lib/types";
+import type { DropSize, DropStatus, PublicDrop } from "@/lib/types";
 
 type UseDropInventoryOptions = {
   sellerSlug: string;
@@ -11,6 +11,7 @@ type UseDropInventoryOptions = {
   initialRemaining: number;
   total: number;
   status: DropStatus;
+  initialSizes?: DropSize[];
   pollMs?: number;
 };
 
@@ -25,11 +26,13 @@ export function useDropInventory({
   initialRemaining,
   total: initialTotal,
   status: initialStatus,
+  initialSizes = [],
   pollMs = 12_000,
 }: UseDropInventoryOptions) {
   const [remaining, setRemaining] = useState(initialRemaining);
   const [total, setTotal] = useState(initialTotal);
   const [status, setStatus] = useState(initialStatus);
+  const [sizes, setSizes] = useState(initialSizes);
 
   useEffect(() => {
     if (isTerminalStatus(initialStatus)) return;
@@ -52,6 +55,9 @@ export function useDropInventory({
         setRemaining(data.drop.inventoryRemaining);
         setTotal(data.drop.inventoryTotal);
         setStatus(data.drop.status);
+        if (data.drop.sizes?.length) {
+          setSizes(data.drop.sizes);
+        }
 
         if (isTerminalStatus(data.drop.status) && intervalId) {
           clearInterval(intervalId);
@@ -79,6 +85,7 @@ export function useDropInventory({
     remaining,
     total,
     status,
+    sizes,
     lowStock: total > 0 && remaining / total <= 0.2,
     critical: remaining > 0 && remaining <= 5,
   };

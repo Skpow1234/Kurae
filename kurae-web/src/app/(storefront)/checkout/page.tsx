@@ -18,6 +18,7 @@ import {
   buildCheckoutFailedUrl,
   checkoutFailureFromHttpStatus,
 } from "@/lib/checkout-failure";
+import { useDropInventory } from "@/lib/hooks/use-drop-inventory";
 import {
   getStripe,
   isDevPaymentIntent,
@@ -57,9 +58,65 @@ function CheckoutWithLine({
 }: {
   line: NonNullable<ReturnType<typeof useCart>["line"]>;
 }) {
-  const router = useRouter();
   const [drop, setDrop] = useState<PublicDrop | null>(null);
   const [loadingDrop, setLoadingDrop] = useState(true);
+
+  useEffect(() => {
+    fetch(`/api/public/${line.sellerSlug}/${line.dropSlug}`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        setDrop(data?.drop ?? null);
+        setLoadingDrop(false);
+      })
+      .catch(() => setLoadingDrop(false));
+  }, [line.dropSlug, line.sellerSlug]);
+
+  if (loadingDrop) {
+    return <Skeleton className="h-64 w-full" />;
+  }
+
+  if (!drop || drop.status !== "live") {
+    return (
+      <div className="text-center">
+        <p className="text-sakura-stone">This drop isn&apos;t available for checkout.</p>
+        <NextLink
+          href={`/${line.sellerSlug}/${line.dropSlug}`}
+          className="mt-4 inline-block text-sm text-sakura-dusk hover:underline"
+        >
+          Back to drop
+        </NextLink>
+      </div>
+    );
+  }
+
+  return <CheckoutLiveForm line={line} initialDrop={drop} />;
+}
+
+function CheckoutLiveForm({
+  line,
+  initialDrop,
+}: {
+  line: NonNullable<ReturnType<typeof useCart>["line"]>;
+  initialDrop: PublicDrop;
+}) {
+  const router = useRouter();
+  const inventory = useDropInventory({
+    sellerSlug: line.sellerSlug,
+    dropSlug: line.dropSlug,
+    initialRemaining: initialDrop.inventoryRemaining,
+    total: initialDrop.inventoryTotal,
+    status: initialDrop.status,
+    initialSizes: initialDrop.sizes,
+    pollMs: 8_000,
+  });
+
+  const drop: PublicDrop = {
+    ...initialDrop,
+    inventoryRemaining: inventory.remaining,
+    status: inventory.status,
+    sizes: inventory.sizes.length > 0 ? inventory.sizes : initialDrop.sizes,
+  };
+
   const [email, setEmail] = useState("");
   const [loadingBuyer, setLoadingBuyer] = useState(true);
   const [session, setSession] = useState<CheckoutSession | null>(null);
@@ -71,6 +128,11 @@ function CheckoutWithLine({
     null,
   );
   const [validatingCode, setValidatingCode] = useState(false);
+
+  const sizeAvailable =
+    drop.sizes.find((size) => size.label === line.sizeLabel)?.available ?? true;
+  const canReserve =
+    drop.status === "live" && drop.inventoryRemaining > 0 && sizeAvailable;
 
   useEffect(() => {
     fetch("/api/auth/buyer/me")
@@ -90,24 +152,18 @@ function CheckoutWithLine({
       .finally(() => setLoadingBuyer(false));
   }, [router]);
 
-  useEffect(() => {
-    fetch(`/api/public/${line.sellerSlug}/${line.dropSlug}`)
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data) => {
-        setDrop(data?.drop ?? null);
-        setLoadingDrop(false);
-      })
-      .catch(() => setLoadingDrop(false));
-  }, [line.dropSlug, line.sellerSlug]);
-
-  if (loadingDrop || loadingBuyer) {
+  if (loadingBuyer) {
     return <Skeleton className="h-64 w-full" />;
   }
 
-  if (!drop || drop.status !== "live") {
+  if (!canReserve && !session) {
     return (
       <div className="text-center">
-        <p className="text-sakura-stone">This drop isn&apos;t available for checkout.</p>
+        <p className="text-sakura-stone">
+          {drop.status === "sold_out" || drop.inventoryRemaining <= 0
+            ? "This drop just sold out."
+            : "Your size is no longer available."}
+        </p>
         <NextLink
           href={`/${line.sellerSlug}/${line.dropSlug}`}
           className="mt-4 inline-block text-sm text-sakura-dusk hover:underline"
@@ -165,7 +221,7 @@ function CheckoutWithLine({
   }
 
   async function handleReserve() {
-    if (!email.trim() || !drop) return;
+    if (!email.trim() || !drop || !canReserve) return;
     setReserving(true);
     setError(null);
 
@@ -246,7 +302,16 @@ function CheckoutWithLine({
         <span className="font-mono text-sakura-dusk">
           {drop.inventoryRemaining} left
         </span>
+        {inventory.critical && drop.inventoryRemaining > 0 && (
+          <span className="ml-1 text-sakura-warning">— almost gone</span>
+        )}
       </p>
+
+      {!canReserve && session && (
+        <p className="text-sm text-sakura-mist" role="status">
+          Inventory is low — your reservation is held while you complete payment.
+        </p>
+      )}
 
       {session ? (
         <Elements
@@ -336,7 +401,7 @@ function CheckoutWithLine({
           <Button
             className="w-full bg-sakura-blush text-sakura-ink hover:bg-sakura-bloom"
             size="lg"
-            disabled={reserving || !email.trim()}
+            disabled={reserving || !email.trim() || !canReserve}
             onClick={handleReserve}
           >
             {reserving ? "Reserving your unit…" : "Continue to payment"}
