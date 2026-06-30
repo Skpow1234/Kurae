@@ -93,52 +93,99 @@ export function OrdersTable({
           No orders match your filters.
         </div>
       ) : (
-        <div className="overflow-hidden rounded-lg border border-sakura-petal">
-          <table className="w-full text-left text-sm">
-            <thead className="border-b border-sakura-petal bg-sakura-surface text-xs uppercase tracking-wide text-sakura-mist">
-              <tr>
-                <th className="px-4 py-3 font-medium">Order</th>
-                <th className="px-4 py-3 font-medium">Drop</th>
-                <th className="px-4 py-3 font-medium">Buyer</th>
-                <th className="px-4 py-3 font-medium">Status</th>
-                <th className="px-4 py-3 font-medium">Amount</th>
-                <th className="px-4 py-3 font-medium">Date</th>
-              </tr>
-            </thead>
-            <tbody>
-              {orders.map((order) => (
-                <tr
-                  key={order.id}
-                  className="border-b border-sakura-petal last:border-0"
-                >
-                  <td className="px-4 py-3 font-mono text-xs">
-                    <Link
-                      href={`/dashboard/orders/${order.id}`}
-                      className="hover:text-sakura-dusk"
+        <>
+          <div className="space-y-3 md:hidden">
+            {orders.map((order) => (
+              <article
+                key={order.id}
+                className="rounded-lg border border-sakura-petal p-4"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <Link
+                    href={`/dashboard/orders/${order.id}`}
+                    className="font-mono text-xs hover:text-sakura-dusk"
+                  >
+                    {order.id}
+                  </Link>
+                  <OrderStatusBadge status={order.status} />
+                </div>
+                <dl className="mt-3 grid gap-2 text-sm">
+                  <div className="flex justify-between gap-4">
+                    <dt className="text-sakura-mist">Drop</dt>
+                    <dd className="text-right text-sakura-ink">{order.dropTitle}</dd>
+                  </div>
+                  <div className="flex justify-between gap-4">
+                    <dt className="text-sakura-mist">Buyer</dt>
+                    <dd className="truncate text-right text-sakura-stone">
+                      {order.buyerEmail}
+                    </dd>
+                  </div>
+                  <div className="flex justify-between gap-4">
+                    <dt className="text-sakura-mist">Amount</dt>
+                    <dd className="font-mono">
+                      {formatPrice(order.amountCents, order.currency)}
+                    </dd>
+                  </div>
+                  <div className="flex justify-between gap-4">
+                    <dt className="text-sakura-mist">Date</dt>
+                    <dd className="text-sakura-mist">
+                      {new Date(order.createdAt).toLocaleDateString()}
+                    </dd>
+                  </div>
+                </dl>
+              </article>
+            ))}
+          </div>
+
+          <div className="hidden overflow-hidden rounded-lg border border-sakura-petal md:block">
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[720px] text-left text-sm">
+                <thead className="border-b border-sakura-petal bg-sakura-surface text-xs uppercase tracking-wide text-sakura-mist">
+                  <tr>
+                    <th className="px-4 py-3 font-medium">Order</th>
+                    <th className="px-4 py-3 font-medium">Drop</th>
+                    <th className="px-4 py-3 font-medium">Buyer</th>
+                    <th className="px-4 py-3 font-medium">Status</th>
+                    <th className="px-4 py-3 font-medium">Amount</th>
+                    <th className="px-4 py-3 font-medium">Date</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {orders.map((order) => (
+                    <tr
+                      key={order.id}
+                      className="border-b border-sakura-petal last:border-0"
                     >
-                      {order.id}
-                    </Link>
-                  </td>
-                  <td className="px-4 py-3">{order.dropTitle}</td>
-                  <td className="px-4 py-3 text-sakura-stone">{order.buyerEmail}</td>
-                  <td className="px-4 py-3">
-                    <OrderStatusBadge status={order.status} />
-                  </td>
-                  <td className="px-4 py-3 font-mono">
-                    {formatPrice(order.amountCents, order.currency)}
-                  </td>
-                  <td className="px-4 py-3 text-sakura-mist">
-                    {new Date(order.createdAt).toLocaleDateString()}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+                      <td className="px-4 py-3 font-mono text-xs">
+                        <Link
+                          href={`/dashboard/orders/${order.id}`}
+                          className="hover:text-sakura-dusk"
+                        >
+                          {order.id}
+                        </Link>
+                      </td>
+                      <td className="px-4 py-3">{order.dropTitle}</td>
+                      <td className="px-4 py-3 text-sakura-stone">{order.buyerEmail}</td>
+                      <td className="px-4 py-3">
+                        <OrderStatusBadge status={order.status} />
+                      </td>
+                      <td className="px-4 py-3 font-mono">
+                        {formatPrice(order.amountCents, order.currency)}
+                      </td>
+                      <td className="px-4 py-3 text-sakura-mist">
+                        {new Date(order.createdAt).toLocaleDateString()}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </>
       )}
 
       {total > 0 && (
-        <div className="flex items-center justify-between text-sm">
+        <div className="flex flex-col gap-3 text-sm sm:flex-row sm:items-center sm:justify-between">
           <p className="text-sakura-mist">
             Page {page} of {totalPages} · {total} orders
           </p>
