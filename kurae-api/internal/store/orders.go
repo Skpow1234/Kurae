@@ -606,6 +606,23 @@ type PaymentRecord struct {
 	Status            string
 }
 
+func (r *OrderRepository) GetReservationByOrderID(ctx context.Context, orderID string) (ReservationRecord, error) {
+	var res ReservationRecord
+	err := r.store.pool.QueryRow(ctx, `
+		SELECT id, drop_id, order_id, quantity, status, expires_at, created_at
+		FROM inventory_reservations
+		WHERE order_id = $1
+		ORDER BY created_at DESC
+		LIMIT 1
+	`, orderID).Scan(
+		&res.ID, &res.DropID, &res.OrderID, &res.Quantity, &res.Status, &res.ExpiresAt, &res.CreatedAt,
+	)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return ReservationRecord{}, ErrNotFound
+	}
+	return res, err
+}
+
 func (r *OrderRepository) GetPaymentByOrderID(ctx context.Context, orderID string) (PaymentRecord, error) {
 	var p PaymentRecord
 	err := r.store.pool.QueryRow(ctx, `

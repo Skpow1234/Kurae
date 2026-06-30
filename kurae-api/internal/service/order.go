@@ -14,6 +14,7 @@ import (
 )
 
 var ErrInvalidOrderAction = errors.New("invalid order action")
+var ErrCheckoutIncomplete = errors.New("checkout incomplete")
 
 type OrderService struct {
 	orders             *store.OrderRepository
@@ -65,14 +66,7 @@ func (o *OrderService) Checkout(ctx context.Context, req CheckoutRequest) (Check
 	if req.IdempotencyKey != "" {
 		existing, err := o.orders.GetByIdempotencyKey(ctx, req.IdempotencyKey)
 		if err == nil {
-			return CheckoutResponse{
-				OrderID:       existing.ID,
-				SubtotalCents: existing.SubtotalCents,
-				DiscountCents: existing.DiscountCents,
-				AmountCents:   existing.AmountCents,
-				Currency:      existing.Currency,
-				Status:        existing.Status,
-			}, nil
+			return o.checkoutResponseFromExisting(ctx, existing)
 		}
 		if !errors.Is(err, store.ErrNotFound) {
 			return CheckoutResponse{}, err
@@ -145,6 +139,37 @@ func (o *OrderService) Checkout(ctx context.Context, req CheckoutRequest) (Check
 		Currency:         drop.Currency,
 		ReservationUntil: expiresAt.UTC().Format(time.RFC3339),
 		Status:           domain.OrderPaymentPending,
+	}, nil
+}
+
+func (o *OrderService) checkoutResponseFromExisting(ctx context.Context, order store.OrderRecord) (CheckoutResponse, error) {
+	payment, err := o.orders.GetPaymentByOrderID(ctx, order.ID)
+	if errors.Is(err, store.ErrNotFound) {
+		return CheckoutResponse{}, ErrCheckoutIncomplete
+	}
+	if err != nil {
+		return CheckoutResponse{}, err
+	}
+
+	clientSecret, err := o.provider.ClientSecret(ctx, payment.ProviderPaymentID)
+	if err != nil {
+		return CheckoutResponse{}, err
+	}
+
+	reservationUntil := ""
+	if res, err := o.orders.GetReservationByOrderID(ctx, order.ID); err == nil {
+		reservationUntil = res.ExpiresAt.UTC().Format(time.RFC3339)
+	}
+
+	return CheckoutResponse{
+		OrderID:          order.ID,
+		ClientSecret:     clientSecret,
+		SubtotalCents:    order.SubtotalCents,
+		DiscountCents:    order.DiscountCents,
+		AmountCents:      order.AmountCents,
+		Currency:         order.Currency,
+		ReservationUntil: reservationUntil,
+		Status:           order.Status,
 	}, nil
 }
 

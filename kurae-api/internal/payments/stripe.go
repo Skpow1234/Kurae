@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/stripe/stripe-go/v81"
@@ -46,6 +47,18 @@ func (s *StripeProvider) CreatePaymentIntent(ctx context.Context, in IntentInput
 		ID:           pi.ID,
 		ClientSecret: pi.ClientSecret,
 	}, nil
+}
+
+func (s *StripeProvider) ClientSecret(ctx context.Context, providerPaymentID string) (string, error) {
+	_ = ctx
+	if providerPaymentID == "" {
+		return "", errors.New("missing payment intent id")
+	}
+	pi, err := paymentintent.Get(providerPaymentID, nil)
+	if err != nil {
+		return "", err
+	}
+	return pi.ClientSecret, nil
 }
 
 func (s *StripeProvider) RefundPayment(ctx context.Context, providerPaymentID string) error {
@@ -108,6 +121,17 @@ func (n *NoopProvider) CreatePaymentIntent(ctx context.Context, in IntentInput) 
 		ID:           id,
 		ClientSecret: fmt.Sprintf("%s_secret_dev", id),
 	}, nil
+}
+
+func (n *NoopProvider) ClientSecret(ctx context.Context, providerPaymentID string) (string, error) {
+	_ = ctx
+	if providerPaymentID == "" {
+		return "", errors.New("missing payment intent id")
+	}
+	if strings.HasPrefix(providerPaymentID, "pi_dev_") {
+		return fmt.Sprintf("%s_secret_dev", providerPaymentID), nil
+	}
+	return "", errors.New("unknown payment intent id")
 }
 
 func (n *NoopProvider) RefundPayment(ctx context.Context, providerPaymentID string) error {

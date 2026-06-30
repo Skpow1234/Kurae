@@ -151,6 +151,10 @@ func (h *OrderHandler) Checkout(w http.ResponseWriter, r *http.Request) {
 		DiscountCode:   body.DiscountCode,
 		ReferralCode:   body.ReferralCode,
 	})
+	if errors.Is(err, service.ErrCheckoutIncomplete) {
+		writeError(w, http.StatusConflict, "Checkout is still in progress; retry without the same idempotency key")
+		return
+	}
 	if errors.Is(err, store.ErrSoldOut) {
 		writeError(w, http.StatusConflict, "Sold out")
 		return
