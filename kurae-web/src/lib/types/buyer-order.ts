@@ -20,6 +20,9 @@ export type BuyerOrderStatus = {
   dropSlug: string;
   dropTitle: string;
   sizeLabel: string;
+  subtotalCents: number;
+  discountCents: number;
+  discountCode?: string | null;
   amountCents: number;
   currency: string;
   buyerEmail: string;

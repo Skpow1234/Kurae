@@ -12,7 +12,6 @@ const textLinkClass =
 
 type BuyerHomeWelcomeProps = {
   name: string;
-  email: string;
   orderTotal: number;
   pendingCount: number;
   recentOrders: BuyerOrderListItem[];
@@ -20,7 +19,6 @@ type BuyerHomeWelcomeProps = {
 
 export function BuyerHomeWelcome({
   name,
-  email,
   orderTotal,
   pendingCount,
   recentOrders,
@@ -78,7 +76,7 @@ export function BuyerHomeWelcome({
               {recentOrders.slice(0, 3).map((order) => (
                 <li key={order.orderId}>
                   <Link
-                    href={buyerOrderHref(order, email)}
+                    href={buyerOrderHref(order)}
                     className="flex items-center justify-between gap-4 rounded-md border border-sakura-petal bg-sakura-paper px-4 py-3 text-sm transition-colors hover:border-sakura-blush"
                   >
                     <span className="truncate font-medium text-sakura-ink">

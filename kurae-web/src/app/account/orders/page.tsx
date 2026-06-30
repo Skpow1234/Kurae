@@ -69,7 +69,7 @@ export default async function BuyerOrdersPage({ searchParams }: PageProps) {
           {orders.map((order) => (
             <li key={order.orderId}>
               <Link
-                href={buyerOrderHref(order, session.email)}
+                href={buyerOrderHref(order)}
                 className="block rounded-lg border border-sakura-petal bg-sakura-surface p-4 transition-colors hover:border-sakura-blush hover:bg-sakura-paper"
               >
                 <div className="flex items-start justify-between gap-3">

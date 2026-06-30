@@ -184,7 +184,6 @@ export default async function HomePage() {
         )}
         <BuyerHomeWelcome
           name={buyerSession.name || buyerSession.email}
-          email={buyerSession.email}
           orderTotal={orderTotal}
           pendingCount={countPendingOrders(orders)}
           recentOrders={orders}
