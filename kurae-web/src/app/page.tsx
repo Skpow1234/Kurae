@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { BuyerHomeWelcome } from "@/components/home/buyer-home-welcome";
 import { PublicDropsSection } from "@/components/home/public-drops-section";
 import { PublicDropsSkeleton } from "@/components/home/public-drops-skeleton";
+import { ApiLoadError } from "@/components/ui/api-load-error";
 import {
   countPendingOrders,
   fetchBuyerOrders,
@@ -90,7 +91,30 @@ export default async function HomePage() {
   const sellerSession = await getSellerSession();
 
   if (sellerSession) {
-    const drops = await listSellerDrops();
+    let drops;
+    try {
+      drops = await listSellerDrops();
+    } catch {
+      return (
+        <main className="flex min-h-[calc(100vh-3.5rem)] flex-col items-center justify-center bg-gradient-to-b from-sakura-petal/40 to-sakura-paper px-4">
+          <div className="max-w-lg w-full">
+            <h1 className="text-center text-2xl font-semibold text-sakura-ink">
+              Welcome back, {sellerSession.sellerName}
+            </h1>
+            <ApiLoadError
+              className="mt-6"
+              message="Could not load your drops. Check that kurae-api is running."
+            />
+            <div className="mt-6 text-center">
+              <Link href="/dashboard" className={primaryButtonClass}>
+                Open dashboard
+              </Link>
+            </div>
+          </div>
+        </main>
+      );
+    }
+
     const preview = getStorefrontPreview(drops);
     const publishedCount = drops.filter(
       (d) => d.publishStatus === "published",
@@ -140,12 +164,24 @@ export default async function HomePage() {
   const buyerSession = await getBuyerSession();
 
   if (buyerSession) {
-    const ordersPage = await fetchBuyerOrders(1, 20);
+    let ordersPage;
+    let ordersLoadFailed = false;
+    try {
+      ordersPage = await fetchBuyerOrders(1, 20);
+    } catch {
+      ordersLoadFailed = true;
+      ordersPage = null;
+    }
     const orders = ordersPage?.orders ?? [];
     const orderTotal = ordersPage?.total ?? 0;
 
     return (
       <main className="min-h-[calc(100vh-3.5rem)] bg-gradient-to-b from-sakura-petal/40 to-sakura-paper">
+        {ordersLoadFailed && (
+          <div className="mx-auto max-w-6xl px-4 pt-6">
+            <ApiLoadError message="Could not load your orders. Live drops below may still be available." />
+          </div>
+        )}
         <BuyerHomeWelcome
           name={buyerSession.name || buyerSession.email}
           email={buyerSession.email}

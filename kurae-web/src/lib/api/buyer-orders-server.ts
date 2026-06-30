@@ -1,5 +1,4 @@
-import { requireApiBase } from "@/lib/api/config";
-import { readToken } from "@/lib/api/proxy";
+import { apiServerFetch } from "@/lib/api/server";
 import { getBuyerSession } from "@/lib/auth/session";
 import type { BuyerOrderListItem } from "@/lib/types/buyer-order";
 
@@ -14,29 +13,14 @@ export async function fetchBuyerOrders(
   pageSize = 20,
 ): Promise<BuyerOrdersPage | null> {
   const session = await getBuyerSession();
-  const token = await readToken();
-  if (!session || !token) return null;
+  if (!session) return null;
 
   const qs = new URLSearchParams({
     page: String(page),
     pageSize: String(pageSize),
   });
-  const res = await fetch(`${requireApiBase()}/buyer/orders?${qs.toString()}`, {
-    headers: { Authorization: `Bearer ${token}` },
-    cache: "no-store",
-  });
-  if (!res.ok) return null;
 
-  const data = (await res.json()) as {
-    orders?: BuyerOrderListItem[];
-    total?: number;
-    page?: number;
-  };
-  return {
-    orders: data.orders ?? [],
-    total: data.total ?? 0,
-    page: data.page ?? page,
-  };
+  return apiServerFetch<BuyerOrdersPage>(`/buyer/orders?${qs.toString()}`);
 }
 
 export function countPendingOrders(orders: BuyerOrderListItem[]): number {

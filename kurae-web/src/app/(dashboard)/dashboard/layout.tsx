@@ -1,10 +1,12 @@
 import Link from "next/link";
 
 import { DashboardHeaderActions } from "@/components/dashboard/dashboard-header-actions";
+import { ApiLoadError } from "@/components/ui/api-load-error";
 import { listSellerDrops } from "@/lib/api/drops-server";
 import { getSellerSession } from "@/lib/auth/session";
 import { authUrl } from "@/lib/auth/safe-redirect";
 import { getStorefrontPreview } from "@/lib/storefront-preview";
+import type { SellerDrop } from "@/lib/types";
 
 const mainNav = [
   { href: "/dashboard", label: "Overview" },
@@ -26,7 +28,15 @@ export default async function DashboardLayout({
   children: React.ReactNode;
 }) {
   const session = await getSellerSession();
-  const drops = session ? await listSellerDrops() : [];
+  let dropsLoadFailed = false;
+  let drops: SellerDrop[] = [];
+  if (session) {
+    try {
+      drops = await listSellerDrops();
+    } catch {
+      dropsLoadFailed = true;
+    }
+  }
   const storefrontPreview = getStorefrontPreview(drops);
 
   return (
@@ -66,7 +76,15 @@ export default async function DashboardLayout({
           )}
         </div>
       </header>
-      <main className="mx-auto max-w-5xl px-4 py-8">{children}</main>
+      <main className="mx-auto max-w-5xl px-4 py-8">
+        {dropsLoadFailed && (
+          <ApiLoadError
+            className="mb-6"
+            message="Could not load drop preview data. Other dashboard pages may be unavailable."
+          />
+        )}
+        {children}
+      </main>
     </div>
   );
 }

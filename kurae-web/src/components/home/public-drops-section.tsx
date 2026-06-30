@@ -1,8 +1,16 @@
 import { DropBrowseCard } from "@/components/drop/drop-browse-card";
+import { ApiLoadError } from "@/components/ui/api-load-error";
 import { listPublicDrops } from "@/lib/api/drops-server";
 
 export async function PublicDropsSection() {
-  const publicDrops = await listPublicDrops();
+  let publicDrops;
+  try {
+    publicDrops = await listPublicDrops();
+  } catch {
+    return (
+      <ApiLoadError message="Could not load drops. Check that kurae-api is running." />
+    );
+  }
 
   return (
     <>
@@ -22,11 +30,7 @@ export async function PublicDropsSection() {
       {publicDrops.length > 0 ? (
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {publicDrops.map((drop, index) => (
-            <DropBrowseCard
-              key={drop.id}
-              drop={drop}
-              priority={index < 3}
-            />
+            <DropBrowseCard key={drop.id} drop={drop} priority={index < 3} />
           ))}
         </div>
       ) : (

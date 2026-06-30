@@ -4,12 +4,8 @@ import type { PublicDrop, SellerDrop } from "@/lib/types";
 import { apiPublicFetch, apiServerFetch, getAuthToken } from "@/lib/api/server";
 
 export const listPublicDrops = cache(async (): Promise<PublicDrop[]> => {
-  try {
-    const data = await apiPublicFetch<{ drops: PublicDrop[] }>("/public/drops");
-    return data.drops ?? [];
-  } catch {
-    return [];
-  }
+  const data = await apiPublicFetch<{ drops: PublicDrop[] }>("/public/drops");
+  return data.drops ?? [];
 });
 
 export const fetchPublicDrop = cache(

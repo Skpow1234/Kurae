@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
+import { ApiLoadError } from "@/components/ui/api-load-error";
 import { fetchDashboardStats } from "@/lib/api/orders";
 import { listSellerDrops } from "@/lib/api/drops-server";
 import { getSellerSession } from "@/lib/auth/session";
@@ -12,8 +13,27 @@ export default async function DashboardPage() {
   const session = await getSellerSession();
   if (!session) redirect(authUrl({ role: "seller", next: "/dashboard" }));
 
-  const stats = await fetchDashboardStats();
-  const drops = await listSellerDrops();
+  let stats;
+  let drops;
+  try {
+    [stats, drops] = await Promise.all([
+      fetchDashboardStats(),
+      listSellerDrops(),
+    ]);
+  } catch {
+    return (
+      <div className="space-y-8">
+        <div>
+          <h1 className="text-2xl font-semibold text-sakura-ink">Overview</h1>
+          <p className="mt-1 text-sm text-sakura-mist">
+            Welcome back, {session.sellerName}.
+          </p>
+        </div>
+        <ApiLoadError message="Could not load dashboard data. Check that kurae-api is running." />
+      </div>
+    );
+  }
+
   const liveDrops = drops.filter(
     (d) => d.publishStatus === "published",
   ).length;

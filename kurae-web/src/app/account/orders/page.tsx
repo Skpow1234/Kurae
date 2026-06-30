@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { AccountNav } from "@/components/account/account-nav";
 import { OrderStatusBadge } from "@/components/dashboard/order-status-badge";
+import { ApiLoadError } from "@/components/ui/api-load-error";
 import { buyerOrderHref } from "@/lib/buyer-order-link";
 import { fetchBuyerOrders } from "@/lib/api/buyer-orders-server";
 import { getBuyerSession } from "@/lib/auth/session";
@@ -17,9 +18,28 @@ export default async function BuyerOrdersPage({ searchParams }: PageProps) {
 
   const { page: pageParam } = await searchParams;
   const page = Math.max(1, Number(pageParam) || 1);
-  const ordersPage = await fetchBuyerOrders(page, 20);
-  const orders = ordersPage?.orders ?? [];
-  const total = ordersPage?.total ?? 0;
+
+  let ordersPage;
+  try {
+    ordersPage = await fetchBuyerOrders(page, 20);
+  } catch {
+    return (
+      <>
+        <div className="mb-2">
+          <h1 className="text-2xl font-semibold text-sakura-ink">Your orders</h1>
+        </div>
+        <AccountNav active="orders" />
+        <ApiLoadError message="Could not load your orders. Check that kurae-api is running." />
+      </>
+    );
+  }
+
+  if (!ordersPage) {
+    return null;
+  }
+
+  const orders = ordersPage.orders;
+  const total = ordersPage.total;
   const totalPages = Math.max(1, Math.ceil(total / 20));
 
   return (
