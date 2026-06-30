@@ -2,7 +2,7 @@ openapi: 3.0.3
 info:
   title: Kurae API
   description: REST API for Kurae — limited drops, inventory, checkout, and seller dashboard.
-  version: 0.1.0
+  version: 0.2.0
   contact:
     name: Kurae
 servers:
@@ -11,10 +11,15 @@ servers:
 tags:
   - name: health
   - name: auth
+  - name: buyer
   - name: public
   - name: drops
   - name: orders
   - name: checkout
+  - name: discounts
+  - name: referrals
+  - name: branding
+  - name: analytics
   - name: uploads
   - name: webhooks
 paths:
@@ -89,6 +94,15 @@ paths:
       responses:
         "200":
           description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  session:
+                    $ref: "#/components/schemas/SellerSession"
+        "401":
+          $ref: "#/components/responses/Error"
   /auth/profile:
     patch:
       tags: [auth]
@@ -136,6 +150,125 @@ paths:
           description: Password changed
         "401":
           $ref: "#/components/responses/Error"
+  /auth/buyer/register:
+    post:
+      tags: [buyer, auth]
+      summary: Register buyer account
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BuyerRegisterRequest"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "409":
+          $ref: "#/components/responses/Error"
+  /auth/buyer/login:
+    post:
+      tags: [buyer, auth]
+      summary: Buyer login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "401":
+          $ref: "#/components/responses/Error"
+  /auth/buyer/me:
+    get:
+      tags: [buyer, auth]
+      summary: Current buyer session
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  session:
+                    $ref: "#/components/schemas/BuyerSession"
+        "401":
+          $ref: "#/components/responses/Error"
+  /auth/buyer/profile:
+    patch:
+      tags: [buyer, auth]
+      summary: Update buyer display name
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name:
+                  type: string
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+  /auth/buyer/password:
+    patch:
+      tags: [buyer, auth]
+      summary: Change buyer password
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [currentPassword, newPassword]
+              properties:
+                currentPassword:
+                  type: string
+                newPassword:
+                  type: string
+                  minLength: 8
+      responses:
+        "200":
+          description: Password changed
+        "401":
+          $ref: "#/components/responses/Error"
+  /public/drops:
+    get:
+      tags: [public]
+      summary: Public feed of live drops
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  drops:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/PublicDrop"
   /public/{seller}/{drop}:
     get:
       tags: [public]
@@ -192,6 +325,59 @@ paths:
                     type: boolean
                   waitlistCount:
                     type: integer
+        "429":
+          $ref: "#/components/responses/Error"
+  /public/referrals/click:
+    post:
+      tags: [public, referrals]
+      summary: Record referral link click
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReferralClickRequest"
+      responses:
+        "200":
+          description: Recorded
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+        "404":
+          $ref: "#/components/responses/Error"
+        "429":
+          $ref: "#/components/responses/Error"
+  /public/analytics/view:
+    post:
+      tags: [public, analytics]
+      summary: Record drop page view
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [dropId]
+              properties:
+                dropId:
+                  type: string
+                  format: uuid
+      responses:
+        "200":
+          description: Recorded
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+        "404":
+          $ref: "#/components/responses/Error"
         "429":
           $ref: "#/components/responses/Error"
   /drops:
@@ -366,10 +552,183 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/DashboardStats"
+  /discount-codes:
+    get:
+      tags: [discounts]
+      summary: List seller discount codes
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  discountCodes:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/DiscountCode"
+    post:
+      tags: [discounts]
+      summary: Create discount code
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DiscountCodeInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  discountCode:
+                    $ref: "#/components/schemas/DiscountCode"
+        "409":
+          $ref: "#/components/responses/Error"
+  /discount-codes/{id}:
+    delete:
+      tags: [discounts]
+      summary: Delete discount code
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          $ref: "#/components/responses/Error"
+        "409":
+          description: Code has been used and cannot be deleted
+  /referral-codes:
+    get:
+      tags: [referrals]
+      summary: List seller referral codes
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  referralCodes:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/ReferralCode"
+    post:
+      tags: [referrals]
+      summary: Create referral code
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReferralCodeInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  referralCode:
+                    $ref: "#/components/schemas/ReferralCode"
+        "409":
+          $ref: "#/components/responses/Error"
+  /referral-codes/{id}:
+    delete:
+      tags: [referrals]
+      summary: Delete referral code
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          $ref: "#/components/responses/Error"
+        "409":
+          description: Code has activity and cannot be deleted
+  /branding:
+    get:
+      tags: [branding]
+      summary: Get seller branding
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  branding:
+                    $ref: "#/components/schemas/SellerBranding"
+    patch:
+      tags: [branding]
+      summary: Update seller branding
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SellerBrandingInput"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  branding:
+                    $ref: "#/components/schemas/SellerBranding"
+  /dashboard/analytics:
+    get:
+      tags: [analytics]
+      summary: Seller analytics (7-day traffic, funnel, revenue)
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SellerAnalytics"
   /checkout:
     post:
       tags: [checkout]
       summary: Reserve inventory and create payment intent
+      description: Buyer Bearer token is optional; when present, buyerEmail is taken from the token.
       parameters:
         - name: Idempotency-Key
           in: header
@@ -388,8 +747,38 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/CheckoutResponse"
+        "400":
+          description: Invalid size or discount code
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
         "409":
-          description: Sold out
+          description: Sold out, drop not started/ended, or idempotency replay in progress
+          $ref: "#/components/responses/Error"
+  /checkout/discount/validate:
+    post:
+      tags: [checkout, discounts]
+      summary: Preview discount for a drop (no reservation)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [dropId, code]
+              properties:
+                dropId:
+                  type: string
+                  format: uuid
+                code:
+                  type: string
+      responses:
+        "200":
+          description: Validation result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DiscountPreview"
   /checkout/orders/{id}/status:
     get:
       tags: [checkout]
@@ -415,6 +804,32 @@ paths:
               schema:
                 $ref: "#/components/schemas/BuyerOrderStatus"
         "404":
+          $ref: "#/components/responses/Error"
+  /buyer/orders:
+    get:
+      tags: [buyer, orders]
+      summary: Paginated buyer order history
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BuyerOrderListResponse"
+        "401":
           $ref: "#/components/responses/Error"
   /uploads/presign:
     post:
@@ -540,17 +955,50 @@ components:
         ok:
           type: boolean
         session:
-          $ref: "#/components/schemas/SellerSession"
+          oneOf:
+            - $ref: "#/components/schemas/SellerSession"
+            - $ref: "#/components/schemas/BuyerSession"
         token:
           type: string
+    BuyerRegisterRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 8
+        name:
+          type: string
+        referralCode:
+          type: string
+          description: Optional referral code to attribute signup
+        sellerSlug:
+          type: string
+          description: Seller slug when attributing referral signup
     SellerSession:
       type: object
       properties:
+        role:
+          type: string
+          enum: [seller]
         email:
           type: string
         sellerSlug:
           type: string
         sellerName:
+          type: string
+    BuyerSession:
+      type: object
+      properties:
+        role:
+          type: string
+          enum: [buyer]
+        email:
+          type: string
+        name:
           type: string
     PublicDrop:
       type: object
@@ -601,6 +1049,13 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/DropSize"
+        sellerLogoUrl:
+          type: string
+        sellerAccent:
+          type: string
+          enum: [blush, dusk, teal]
+        sellerBio:
+          type: string
     SellerDropRow:
       allOf:
         - $ref: "#/components/schemas/PublicDrop"
@@ -678,19 +1133,31 @@ components:
       properties:
         dropId:
           type: string
+          format: uuid
         buyerEmail:
           type: string
+          format: email
+          description: Ignored when a buyer Bearer token is present
         sizeLabel:
           type: string
         idempotencyKey:
+          type: string
+        discountCode:
+          type: string
+        referralCode:
           type: string
     CheckoutResponse:
       type: object
       properties:
         orderId:
           type: string
+          format: uuid
         clientSecret:
           type: string
+        subtotalCents:
+          type: integer
+        discountCents:
+          type: integer
         amountCents:
           type: integer
         currency:
@@ -699,8 +1166,43 @@ components:
           type: string
           format: date-time
         status:
-          type: string
+          $ref: "#/components/schemas/OrderStatus"
     BuyerOrderStatus:
+      type: object
+      properties:
+        orderId:
+          type: string
+        status:
+          $ref: "#/components/schemas/OrderStatus"
+        sellerSlug:
+          type: string
+        dropSlug:
+          type: string
+        dropTitle:
+          type: string
+        sizeLabel:
+          type: string
+        subtotalCents:
+          type: integer
+        discountCents:
+          type: integer
+        discountCode:
+          type: string
+          nullable: true
+        amountCents:
+          type: integer
+        currency:
+          type: string
+        buyerEmail:
+          type: string
+        updatedAt:
+          type: string
+          format: date-time
+        events:
+          type: array
+          items:
+            $ref: "#/components/schemas/OrderEvent"
+    BuyerOrderListItem:
       type: object
       properties:
         orderId:
@@ -719,15 +1221,224 @@ components:
           type: integer
         currency:
           type: string
-        buyerEmail:
+        createdAt:
           type: string
+          format: date-time
         updatedAt:
           type: string
           format: date-time
-        events:
+    BuyerOrderListResponse:
+      type: object
+      properties:
+        orders:
           type: array
           items:
-            type: object
+            $ref: "#/components/schemas/BuyerOrderListItem"
+        total:
+          type: integer
+        page:
+          type: integer
+    OrderEvent:
+      type: object
+      properties:
+        id:
+          type: string
+        label:
+          type: string
+        at:
+          type: string
+          format: date-time
+        detail:
+          type: string
+    DiscountType:
+      type: string
+      enum: [percent, fixed]
+    DiscountCode:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        code:
+          type: string
+        type:
+          $ref: "#/components/schemas/DiscountType"
+        value:
+          type: integer
+          description: Percent (1-100) or fixed amount in minor currency units
+        maxUses:
+          type: integer
+          nullable: true
+        usesCount:
+          type: integer
+        expiresAt:
+          type: string
+          format: date-time
+          nullable: true
+        dropId:
+          type: string
+          format: uuid
+          nullable: true
+        dropTitle:
+          type: string
+          nullable: true
+        active:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+    DiscountCodeInput:
+      type: object
+      required: [code, type, value]
+      properties:
+        code:
+          type: string
+        type:
+          $ref: "#/components/schemas/DiscountType"
+        value:
+          type: integer
+        maxUses:
+          type: integer
+          nullable: true
+        expiresAt:
+          type: string
+          description: RFC3339 or YYYY-MM-DD
+        dropId:
+          type: string
+          format: uuid
+          nullable: true
+    DiscountPreview:
+      type: object
+      properties:
+        valid:
+          type: boolean
+        code:
+          type: string
+        discountCents:
+          type: integer
+        subtotalCents:
+          type: integer
+        finalCents:
+          type: integer
+        currency:
+          type: string
+        message:
+          type: string
+    ReferralCode:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        code:
+          type: string
+        dropId:
+          type: string
+          format: uuid
+          nullable: true
+        dropTitle:
+          type: string
+          nullable: true
+        dropSlug:
+          type: string
+          nullable: true
+        clicksCount:
+          type: integer
+        signupsCount:
+          type: integer
+        ordersCount:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+    ReferralCodeInput:
+      type: object
+      required: [code]
+      properties:
+        code:
+          type: string
+        dropId:
+          type: string
+          format: uuid
+          nullable: true
+          description: Omit for seller-wide referral code
+    ReferralClickRequest:
+      type: object
+      required: [dropId, code]
+      properties:
+        dropId:
+          type: string
+          format: uuid
+        code:
+          type: string
+    SellerBranding:
+      type: object
+      properties:
+        logoUrl:
+          type: string
+        accent:
+          type: string
+          enum: [blush, dusk, teal]
+        bio:
+          type: string
+    SellerBrandingInput:
+      type: object
+      properties:
+        logoUrl:
+          type: string
+        accent:
+          type: string
+          enum: [blush, dusk, teal]
+        bio:
+          type: string
+    DailyAnalyticsPoint:
+      type: object
+      properties:
+        date:
+          type: string
+          format: date
+        views:
+          type: integer
+        orders:
+          type: integer
+        revenueCents:
+          type: integer
+    AnalyticsFunnel:
+      type: object
+      properties:
+        views:
+          type: integer
+        checkouts:
+          type: integer
+        paid:
+          type: integer
+    SellerAnalytics:
+      type: object
+      properties:
+        pageViews7d:
+          type: integer
+        pageViewsPrev7d:
+          type: integer
+        waitlistSignups7d:
+          type: integer
+        waitlistSignupsPrev7d:
+          type: integer
+        conversionRate:
+          type: number
+          format: double
+        conversionRatePrev:
+          type: number
+          format: double
+        revenue7dCents:
+          type: integer
+        revenuePrev7dCents:
+          type: integer
+        dailyTraffic:
+          type: array
+          items:
+            $ref: "#/components/schemas/DailyAnalyticsPoint"
+        funnel:
+          $ref: "#/components/schemas/AnalyticsFunnel"
     PresignResponse:
       type: object
       properties:
