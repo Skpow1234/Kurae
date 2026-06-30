@@ -46,6 +46,15 @@ type CreateDiscountInput struct {
 	DropID    *string
 }
 
+type UpdateDiscountInput struct {
+	Type      domain.DiscountType
+	Value     int
+	MaxUses   *int
+	ExpiresAt *time.Time
+	DropID    *string
+	Active    bool
+}
+
 const discountSelect = `
 	SELECT dc.id, dc.seller_id, dc.code, dc.type, dc.value, dc.max_uses, dc.uses_count,
 		dc.expires_at, dc.drop_id, d.title, dc.active, dc.created_at
@@ -102,6 +111,21 @@ func (r *DiscountRepository) Create(ctx context.Context, in CreateDiscountInput)
 		return DiscountRecord{}, err
 	}
 	return r.GetByIDForSeller(ctx, id, in.SellerID)
+}
+
+func (r *DiscountRepository) UpdateForSeller(ctx context.Context, id, sellerID string, in UpdateDiscountInput) (DiscountRecord, error) {
+	tag, err := r.store.pool.Exec(ctx, `
+		UPDATE discount_codes
+		SET type = $1, value = $2, max_uses = $3, expires_at = $4, drop_id = $5, active = $6
+		WHERE id = $7 AND seller_id = $8
+	`, in.Type, in.Value, in.MaxUses, in.ExpiresAt, in.DropID, in.Active, id, sellerID)
+	if err != nil {
+		return DiscountRecord{}, err
+	}
+	if tag.RowsAffected() == 0 {
+		return DiscountRecord{}, ErrNotFound
+	}
+	return r.GetByIDForSeller(ctx, id, sellerID)
 }
 
 func (r *DiscountRepository) GetByIDForSeller(ctx context.Context, id, sellerID string) (DiscountRecord, error) {

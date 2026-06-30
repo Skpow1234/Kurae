@@ -44,7 +44,7 @@ export default async function DiscountsPage() {
           No discount codes yet. Create one below.
         </div>
       ) : (
-        <DiscountsTable codes={codes} />
+        <DiscountsTable codes={codes} drops={drops} />
       )}
 
       <DiscountForm drops={drops} />

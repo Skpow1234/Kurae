@@ -594,6 +594,36 @@ paths:
         "409":
           $ref: "#/components/responses/Error"
   /discount-codes/{id}:
+    patch:
+      tags: [discounts]
+      summary: Update discount code
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DiscountCodeUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  discountCode:
+                    $ref: "#/components/schemas/DiscountCode"
+        "404":
+          $ref: "#/components/responses/Error"
     delete:
       tags: [discounts]
       summary: Delete discount code
@@ -1307,6 +1337,26 @@ components:
           type: string
           format: uuid
           nullable: true
+    DiscountCodeUpdate:
+      type: object
+      required: [type, value, active]
+      properties:
+        type:
+          $ref: "#/components/schemas/DiscountType"
+        value:
+          type: integer
+        maxUses:
+          type: integer
+          nullable: true
+        expiresAt:
+          type: string
+          description: RFC3339 or YYYY-MM-DD; omit or empty to clear
+        dropId:
+          type: string
+          format: uuid
+          nullable: true
+        active:
+          type: boolean
     DiscountPreview:
       type: object
       properties:

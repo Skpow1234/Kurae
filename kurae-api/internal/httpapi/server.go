@@ -114,6 +114,7 @@ func NewServer(cfg config.Config, s *store.Store, q *queue.RedisQueue) *Server {
 		protected.Get("/dashboard/stats", dashboardH.Stats)
 		protected.Get("/discount-codes", discountH.List)
 		protected.Post("/discount-codes", discountH.Create)
+		protected.Patch("/discount-codes/{id}", discountH.Update)
 		protected.Delete("/discount-codes/{id}", discountH.Delete)
 		protected.Get("/referral-codes", referralH.List)
 		protected.Post("/referral-codes", referralH.Create)

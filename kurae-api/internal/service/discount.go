@@ -35,6 +35,17 @@ type CreateDiscountRequest struct {
 	DropID    *string
 }
 
+type UpdateDiscountRequest struct {
+	SellerID  string
+	ID        string
+	Type      domain.DiscountType
+	Value     int
+	MaxUses   *int
+	ExpiresAt *time.Time
+	DropID    *string
+	Active    bool
+}
+
 func normalizeDiscountCode(code string) (string, error) {
 	code = strings.ToUpper(strings.TrimSpace(code))
 	if !discountCodePattern.MatchString(code) {
@@ -48,17 +59,12 @@ func (d *DiscountService) Create(ctx context.Context, req CreateDiscountRequest)
 	if err != nil {
 		return domain.DiscountCode{}, err
 	}
-	if req.Type != domain.DiscountPercent && req.Type != domain.DiscountFixed {
-		return domain.DiscountCode{}, errors.New("type must be percent or fixed")
-	}
-	if req.Type == domain.DiscountPercent && (req.Value < 1 || req.Value > 100) {
-		return domain.DiscountCode{}, errors.New("percent value must be between 1 and 100")
-	}
-	if req.Type == domain.DiscountFixed && req.Value < 1 {
-		return domain.DiscountCode{}, errors.New("fixed discount must be at least 1 cent")
-	}
-	if req.MaxUses != nil && *req.MaxUses < 1 {
-		return domain.DiscountCode{}, errors.New("max uses must be at least 1")
+	if err := validateDiscountFields(struct {
+		Type    domain.DiscountType
+		Value   int
+		MaxUses *int
+	}{req.Type, req.Value, req.MaxUses}); err != nil {
+		return domain.DiscountCode{}, err
 	}
 	if req.DropID != nil && strings.TrimSpace(*req.DropID) != "" {
 		if _, err := d.drops.GetByIDForSeller(ctx, *req.DropID, req.SellerID); err != nil {
@@ -76,6 +82,66 @@ func (d *DiscountService) Create(ctx context.Context, req CreateDiscountRequest)
 		MaxUses:   req.MaxUses,
 		ExpiresAt: req.ExpiresAt,
 		DropID:    req.DropID,
+	})
+	if err != nil {
+		return domain.DiscountCode{}, err
+	}
+	return rec.ToDomain(), nil
+}
+
+func validateDiscountFields(req struct {
+	Type    domain.DiscountType
+	Value   int
+	MaxUses *int
+}) error {
+	if req.Type != domain.DiscountPercent && req.Type != domain.DiscountFixed {
+		return errors.New("type must be percent or fixed")
+	}
+	if req.Type == domain.DiscountPercent && (req.Value < 1 || req.Value > 100) {
+		return errors.New("percent value must be between 1 and 100")
+	}
+	if req.Type == domain.DiscountFixed && req.Value < 1 {
+		return errors.New("fixed discount must be at least 1 cent")
+	}
+	if req.MaxUses != nil && *req.MaxUses < 1 {
+		return errors.New("max uses must be at least 1")
+	}
+	return nil
+}
+
+func (d *DiscountService) Update(ctx context.Context, req UpdateDiscountRequest) (domain.DiscountCode, error) {
+	existing, err := d.discounts.GetByIDForSeller(ctx, req.ID, req.SellerID)
+	if err != nil {
+		return domain.DiscountCode{}, err
+	}
+	if existing.UsesCount > 0 && (existing.Type != req.Type || existing.Value != req.Value) {
+		return domain.DiscountCode{}, errors.New("discount amount cannot change after a code has been used")
+	}
+	if err := validateDiscountFields(struct {
+		Type    domain.DiscountType
+		Value   int
+		MaxUses *int
+	}{req.Type, req.Value, req.MaxUses}); err != nil {
+		return domain.DiscountCode{}, err
+	}
+	if req.MaxUses != nil && *req.MaxUses < existing.UsesCount {
+		return domain.DiscountCode{}, errors.New("max uses cannot be less than current uses")
+	}
+	if req.DropID != nil && strings.TrimSpace(*req.DropID) != "" {
+		if _, err := d.drops.GetByIDForSeller(ctx, *req.DropID, req.SellerID); err != nil {
+			return domain.DiscountCode{}, errors.New("drop not found")
+		}
+	} else {
+		req.DropID = nil
+	}
+
+	rec, err := d.discounts.UpdateForSeller(ctx, req.ID, req.SellerID, store.UpdateDiscountInput{
+		Type:      req.Type,
+		Value:     req.Value,
+		MaxUses:   req.MaxUses,
+		ExpiresAt: req.ExpiresAt,
+		DropID:    req.DropID,
+		Active:    req.Active,
 	})
 	if err != nil {
 		return domain.DiscountCode{}, err

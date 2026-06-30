@@ -61,6 +61,32 @@ func (h *DiscountHandler) Create(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusCreated, map[string]any{"discountCode": code})
 }
 
+func (h *DiscountHandler) Update(w http.ResponseWriter, r *http.Request) {
+	claims, ok := claimsFromContext(r.Context())
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+
+	id := chi.URLParam(r, "id")
+	var body discountCodeUpdateBody
+	if err := decodeJSON(r, &body); err != nil {
+		writeError(w, http.StatusBadRequest, "Invalid JSON")
+		return
+	}
+
+	code, err := h.discounts.Update(r.Context(), body.toUpdateRequest(claims.SellerID, id))
+	if errors.Is(err, store.ErrNotFound) {
+		writeError(w, http.StatusNotFound, "Not found")
+		return
+	}
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"discountCode": code})
+}
+
 func (h *DiscountHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	claims, ok := claimsFromContext(r.Context())
 	if !ok {
@@ -108,31 +134,58 @@ func (h *DiscountHandler) ValidateCheckout(w http.ResponseWriter, r *http.Reques
 }
 
 type discountCodeBody struct {
-	Code      string             `json:"code"`
+	Code      string              `json:"code"`
 	Type      domain.DiscountType `json:"type"`
-	Value     int                `json:"value"`
-	MaxUses   *int               `json:"maxUses"`
-	ExpiresAt *string            `json:"expiresAt"`
-	DropID    *string            `json:"dropId"`
+	Value     int                 `json:"value"`
+	MaxUses   *int                `json:"maxUses"`
+	ExpiresAt *string             `json:"expiresAt"`
+	DropID    *string             `json:"dropId"`
+}
+
+type discountCodeUpdateBody struct {
+	Type      domain.DiscountType `json:"type"`
+	Value     int                 `json:"value"`
+	MaxUses   *int                `json:"maxUses"`
+	ExpiresAt *string             `json:"expiresAt"`
+	DropID    *string             `json:"dropId"`
+	Active    bool                `json:"active"`
+}
+
+func parseDiscountExpiresAt(raw *string) *time.Time {
+	if raw == nil || strings.TrimSpace(*raw) == "" {
+		return nil
+	}
+	if t, err := time.Parse(time.RFC3339, *raw); err == nil {
+		return &t
+	}
+	if t, err := time.Parse("2006-01-02", *raw); err == nil {
+		end := t.Add(24*time.Hour - time.Second)
+		return &end
+	}
+	return nil
 }
 
 func (b discountCodeBody) toRequest(sellerID string) service.CreateDiscountRequest {
-	var expiresAt *time.Time
-	if b.ExpiresAt != nil && strings.TrimSpace(*b.ExpiresAt) != "" {
-		if t, err := time.Parse(time.RFC3339, *b.ExpiresAt); err == nil {
-			expiresAt = &t
-		} else if t, err := time.Parse("2006-01-02", *b.ExpiresAt); err == nil {
-			end := t.Add(24*time.Hour - time.Second)
-			expiresAt = &end
-		}
-	}
 	return service.CreateDiscountRequest{
 		SellerID:  sellerID,
 		Code:      b.Code,
 		Type:      b.Type,
 		Value:     b.Value,
 		MaxUses:   b.MaxUses,
-		ExpiresAt: expiresAt,
+		ExpiresAt: parseDiscountExpiresAt(b.ExpiresAt),
 		DropID:    b.DropID,
+	}
+}
+
+func (b discountCodeUpdateBody) toUpdateRequest(sellerID, id string) service.UpdateDiscountRequest {
+	return service.UpdateDiscountRequest{
+		SellerID:  sellerID,
+		ID:        id,
+		Type:      b.Type,
+		Value:     b.Value,
+		MaxUses:   b.MaxUses,
+		ExpiresAt: parseDiscountExpiresAt(b.ExpiresAt),
+		DropID:    b.DropID,
+		Active:    b.Active,
 	}
 }
