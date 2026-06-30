@@ -73,7 +73,13 @@ export default async function OrderDetailPage({ params }: PageProps) {
               </dd>
             </div>
           </dl>
-          <OrderActions orderId={order.id} status={order.status} />
+          <OrderActions
+            orderId={order.id}
+            status={order.status}
+            amountCents={order.amountCents}
+            currency={order.currency}
+            buyerEmail={order.buyerEmail}
+          />
         </section>
 
         <section className="rounded-lg border border-sakura-petal bg-sakura-surface/50 p-5">

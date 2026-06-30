@@ -4,17 +4,29 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import type { OrderStatus } from "@/lib/types/orders";
+import { formatPrice } from "@/lib/utils";
 
 type OrderActionsProps = {
   orderId: string;
   status: OrderStatus;
+  amountCents?: number;
+  currency?: string;
+  buyerEmail?: string;
 };
 
-export function OrderActions({ orderId, status }: OrderActionsProps) {
+export function OrderActions({
+  orderId,
+  status,
+  amountCents,
+  currency = "USD",
+  buyerEmail,
+}: OrderActionsProps) {
   const router = useRouter();
   const [pending, setPending] = useState<"fulfill" | "refund" | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [refundDialogOpen, setRefundDialogOpen] = useState(false);
 
   const canFulfill = status === "paid";
   const canRefund = status === "paid" || status === "fulfilled";
@@ -40,6 +52,7 @@ export function OrderActions({ orderId, status }: OrderActionsProps) {
         return;
       }
 
+      setRefundDialogOpen(false);
       router.refresh();
     } catch {
       setError("Could not update order.");
@@ -47,6 +60,29 @@ export function OrderActions({ orderId, status }: OrderActionsProps) {
       setPending(null);
     }
   }
+
+  const refundDescription =
+    amountCents != null ? (
+      <>
+        This will refund{" "}
+        <span className="font-mono font-medium text-sakura-ink">
+          {formatPrice(amountCents, currency)}
+        </span>
+        {buyerEmail ? (
+          <>
+            {" "}
+            to <span className="font-medium text-sakura-ink">{buyerEmail}</span>
+          </>
+        ) : null}
+        . The payment will be reversed in Stripe and the order will be marked refunded.
+        This cannot be undone.
+      </>
+    ) : (
+      <>
+        The payment will be reversed and the order will be marked refunded. This
+        cannot be undone.
+      </>
+    );
 
   return (
     <div className="mt-6 space-y-2">
@@ -68,12 +104,29 @@ export function OrderActions({ orderId, status }: OrderActionsProps) {
             variant="outline"
             size="sm"
             disabled={pending !== null}
-            onClick={() => void runAction("refund")}
+            onClick={() => setRefundDialogOpen(true)}
+            className="border-sakura-warning/40 text-sakura-warning hover:bg-sakura-warning/10"
           >
-            {pending === "refund" ? "Issuing refund…" : "Issue refund"}
+            Issue refund
           </Button>
         )}
       </div>
+
+      <ConfirmDialog
+        open={refundDialogOpen}
+        title="Issue refund?"
+        description={refundDescription}
+        confirmLabel="Issue refund"
+        pending={pending === "refund"}
+        destructive
+        onConfirm={() => void runAction("refund")}
+        onCancel={() => {
+          if (pending !== "refund") {
+            setRefundDialogOpen(false);
+          }
+        }}
+      />
+
       {error && (
         <p className="text-sm text-sakura-warning" role="alert">
           {error}
