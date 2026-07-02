@@ -9,17 +9,15 @@ import { parseReferralCookie, REFERRAL_COOKIE } from "@/lib/referral";
 export async function POST(request: Request) {
   const body = (await request.json()) as {
     dropId?: string;
+    productId?: string;
     sizeLabel?: string;
     idempotencyKey?: string;
     discountCode?: string;
     buyerEmail?: string;
   };
 
-  if (!body.dropId?.trim() || !body.sizeLabel?.trim()) {
-    return NextResponse.json(
-      { error: "dropId and sizeLabel are required" },
-      { status: 400 },
-    );
+  if (!body.dropId?.trim()) {
+    return NextResponse.json({ error: "dropId is required" }, { status: 400 });
   }
 
   const session = await getBuyerSession();
@@ -58,8 +56,9 @@ export async function POST(request: Request) {
     headers,
     body: JSON.stringify({
       dropId: body.dropId.trim(),
+      productId: body.productId?.trim(),
       buyerEmail,
-      sizeLabel: body.sizeLabel.trim(),
+      sizeLabel: body.sizeLabel?.trim() ?? "",
       idempotencyKey,
       discountCode: body.discountCode?.trim(),
       referralCode: referral?.code,

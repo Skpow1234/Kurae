@@ -13,6 +13,7 @@ export type CheckoutResult = {
 
 export async function createCheckout(input: {
   dropId: string;
+  productId: string;
   sizeLabel: string;
   buyerEmail: string;
   idempotencyKey?: string;
@@ -30,6 +31,7 @@ export async function createCheckout(input: {
     headers,
     body: JSON.stringify({
       dropId: input.dropId,
+      productId: input.productId,
       sizeLabel: input.sizeLabel,
       buyerEmail: input.buyerEmail.trim(),
       idempotencyKey: input.idempotencyKey,

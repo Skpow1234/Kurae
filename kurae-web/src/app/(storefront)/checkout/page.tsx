@@ -19,7 +19,7 @@ import { createCheckout, type CheckoutResult } from "@/lib/api/checkout";
 import { writeGuestCheckoutEmail, readGuestCheckoutEmail } from "@/lib/checkout/guest-email";
 import { validateDiscountCode } from "@/lib/api/discount";
 import { getAccentPreset } from "@/lib/branding/accents";
-import { buildCheckoutPricing } from "@/lib/checkout/pricing";
+import { findDropProduct } from "@/lib/drop-products";
 import { cartLineKey } from "@/lib/cart/keys";
 import {
   buildCheckoutFailedUrl,
@@ -178,10 +178,14 @@ function CheckoutLiveForm({
     return referral?.sellerSlug === line.sellerSlug ? referral.code : null;
   }, [line.sellerSlug]);
 
+  const checkoutProduct = findDropProduct(drop, line.productId);
+  const productSizes = checkoutProduct?.sizes ?? drop.sizes;
+
   const sizeAvailable =
-    drop.sizes.find((size) => size.label === line.sizeLabel)?.available ?? true;
+    productSizes.find((size) => size.label === line.sizeLabel)?.available ?? true;
+  const productRemaining = checkoutProduct?.inventoryRemaining ?? drop.inventoryRemaining;
   const canReserve =
-    drop.status === "live" && drop.inventoryRemaining > 0 && sizeAvailable;
+    drop.status === "live" && productRemaining > 0 && sizeAvailable;
 
   useEffect(() => {
     fetch("/api/auth/buyer/me")
@@ -284,7 +288,8 @@ function CheckoutLiveForm({
 
       const result = await createCheckout({
         dropId: drop.id,
-        sizeLabel: line!.sizeLabel,
+        productId: line.productId,
+        sizeLabel: line.sizeLabel,
         buyerEmail: email.trim(),
         idempotencyKey: idempotencyKeyRef.current,
         discountCode: appliedCode ?? undefined,

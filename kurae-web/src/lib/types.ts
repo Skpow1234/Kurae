@@ -8,6 +8,19 @@ export type DropSize = {
   available: boolean;
 };
 
+export type DropProduct = {
+  id: string;
+  slug: string;
+  name: string;
+  description: string;
+  priceCents: number;
+  imageUrl: string;
+  sortOrder: number;
+  inventoryTotal: number;
+  inventoryRemaining: number;
+  sizes: DropSize[];
+};
+
 export type PublicDrop = {
   id: string;
   sellerSlug: string;
@@ -31,6 +44,7 @@ export type PublicDrop = {
   sellerLogoUrl?: string;
   sellerAccent?: BrandAccent;
   sellerBio?: string;
+  products?: DropProduct[];
 };
 
 export type BrandAccent = "blush" | "dusk" | "teal";
@@ -73,11 +87,25 @@ export type CartLine = {
   sellerSlug: string;
   dropSlug: string;
   dropTitle: string;
+  productId: string;
+  productName: string;
+  productSlug: string;
   sizeId: string;
   sizeLabel: string;
   priceCents: number;
   currency: string;
   heroImageUrl: string;
+};
+
+export type DropProductFormValues = {
+  id?: string;
+  slug: string;
+  name: string;
+  description: string;
+  priceDollars: string;
+  inventory: string;
+  imageUrl: string;
+  sizes: DropSize[];
 };
 
 export type DropFormValues = {
@@ -93,5 +121,6 @@ export type DropFormValues = {
   heroImageUrl: string;
   galleryImageUrls: string[];
   sizes: DropSize[];
+  products: DropProductFormValues[];
   publishStatus: PublishStatus;
 };

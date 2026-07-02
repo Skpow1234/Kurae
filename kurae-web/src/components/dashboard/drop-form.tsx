@@ -7,6 +7,11 @@ import { useCallback, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { DropDeleteButton } from "@/components/dashboard/drop-delete-button";
+import {
+  DropProductsEditor,
+  productsPayload,
+  productsToFormValues,
+} from "@/components/dashboard/drop-products-editor";
 import { Input } from "@/components/ui/input";
 import type { DropFormValues, PublishStatus, SellerDrop, SellerSession } from "@/lib/types";
 import { shouldUnoptimizeImageSrc } from "@/lib/images";
@@ -48,6 +53,17 @@ function defaultValues(): DropFormValues {
     heroImageUrl: "",
     galleryImageUrls: [],
     sizes: DEFAULT_DROP_SIZES.map((s) => ({ ...s })),
+    products: [
+      {
+        slug: "default",
+        name: "",
+        description: "",
+        priceDollars: "",
+        inventory: "50",
+        imageUrl: "",
+        sizes: DEFAULT_DROP_SIZES.map((s) => ({ ...s })),
+      },
+    ],
     publishStatus: "draft",
   };
 }
@@ -66,24 +82,28 @@ function fromSellerDrop(drop: SellerDrop): DropFormValues {
     heroImageUrl: drop.heroImageUrl,
     galleryImageUrls: drop.galleryImageUrls,
     sizes: drop.sizes.map((s) => ({ ...s })),
+    products: productsToFormValues(drop),
     publishStatus: drop.publishStatus,
   };
 }
 
 function toPayload(values: DropFormValues) {
+  const products = productsPayload(values);
+  const primary = products[0];
   return {
     title: values.title.trim(),
     slug: values.slug.trim(),
     description: values.description.trim(),
     story: values.story.trim(),
-    priceCents: Math.round(parseFloat(values.priceDollars) * 100),
-    inventoryTotal: parseInt(values.inventory, 10),
+    priceCents: primary?.priceCents ?? 0,
+    inventoryTotal: primary?.inventoryTotal ?? 0,
     startsAt: fromDatetimeLocalValue(values.startsAt),
     endsAt: fromDatetimeLocalValue(values.endsAt),
     promoMessage: values.promoMessage.trim() || null,
-    heroImageUrl: values.heroImageUrl,
+    heroImageUrl: values.heroImageUrl || primary?.imageUrl || "",
     galleryImageUrls: values.galleryImageUrls,
-    sizes: values.sizes,
+    sizes: primary?.sizes ?? values.sizes,
+    products,
     publishStatus: values.publishStatus,
   };
 }
@@ -284,29 +304,8 @@ export function DropForm({ session, drop }: DropFormProps) {
 
         <fieldset className="space-y-4 rounded-lg border border-sakura-petal bg-sakura-surface/50 p-5">
           <legend className="px-1 text-sm font-medium text-sakura-ink">
-            Commerce
+            Schedule
           </legend>
-
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Price (USD)" error={errors.priceDollars}>
-              <Input
-                type="number"
-                min="0"
-                step="0.01"
-                value={values.priceDollars}
-                onChange={(e) => setField("priceDollars", e.target.value)}
-                placeholder="89.00"
-              />
-            </Field>
-            <Field label="Inventory" error={errors.inventory}>
-              <Input
-                type="number"
-                min="1"
-                value={values.inventory}
-                onChange={(e) => setField("inventory", e.target.value)}
-              />
-            </Field>
-          </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label="Starts" error={errors.startsAt}>
@@ -333,6 +332,11 @@ export function DropForm({ session, drop }: DropFormProps) {
             />
           </Field>
         </fieldset>
+
+        <DropProductsEditor
+          products={values.products}
+          onChange={(products) => setField("products", products)}
+        />
 
         <fieldset className="space-y-4 rounded-lg border border-sakura-petal bg-sakura-surface/50 p-5">
           <legend className="px-1 text-sm font-medium text-sakura-ink">
@@ -407,31 +411,6 @@ export function DropForm({ session, drop }: DropFormProps) {
               </div>
             )}
           </Field>
-        </fieldset>
-
-        <fieldset className="space-y-4 rounded-lg border border-sakura-petal bg-sakura-surface/50 p-5">
-          <legend className="px-1 text-sm font-medium text-sakura-ink">
-            Sizes
-          </legend>
-          <p className="text-sm text-sakura-mist">
-            Toggle which sizes are available for this drop.
-          </p>
-          <div className="flex flex-wrap gap-4">
-            {values.sizes.map((size) => (
-              <label
-                key={size.id}
-                className="flex cursor-pointer items-center gap-2 text-sm"
-              >
-                <input
-                  type="checkbox"
-                  checked={size.available}
-                  onChange={() => toggleSize(size.id)}
-                  className="rounded border-sakura-petal text-sakura-blush focus:ring-sakura-bloom"
-                />
-                <span className="font-medium text-sakura-ink">{size.label}</span>
-              </label>
-            ))}
-          </div>
         </fieldset>
 
         <div className="flex flex-wrap gap-3">

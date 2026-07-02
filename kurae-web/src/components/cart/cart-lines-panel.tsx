@@ -59,10 +59,12 @@ export function CartLinesPanel({ lines, activeKey, onRemove }: CartLinesPanelPro
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-medium text-sakura-ink">
-                    {line.dropTitle}
+                    {line.productName || line.dropTitle}
                   </p>
                   <p className="text-xs text-sakura-mist">
-                    Size {line.sizeLabel} · {formatPrice(line.priceCents, line.currency)}
+                    {line.dropTitle}
+                    {line.sizeLabel ? ` · Size ${line.sizeLabel}` : ""} ·{" "}
+                    {formatPrice(line.priceCents, line.currency)}
                   </p>
                   {isActive && (
                     <p className="mt-0.5 text-[10px] font-medium uppercase tracking-wide text-sakura-dusk">

@@ -5,36 +5,40 @@ import { useRouter } from "next/navigation";
 import { SizePicker } from "@/components/drop/size-picker";
 import { Button } from "@/components/ui/button";
 import { useCart } from "@/contexts/cart-context";
-import type { PublicDrop } from "@/lib/types";
-import { formatPrice, cn } from "@/lib/utils";
+import { productRequiresSize } from "@/lib/drop-products";
+import type { DropProduct, PublicDrop } from "@/lib/types";
+import { cn, formatPrice } from "@/lib/utils";
 
 type PurchaseSectionProps = {
   id?: string;
   drop: PublicDrop;
+  product: DropProduct;
   selectedSizeId: string | null;
   onSelectSize: (id: string) => void;
-  inventoryRemaining: number;
   className?: string;
 };
 
 export function PurchaseSection({
   id = "purchase",
   drop,
+  product,
   selectedSizeId,
   onSelectSize,
-  inventoryRemaining,
   className,
 }: PurchaseSectionProps) {
   const router = useRouter();
   const { addItem } = useCart();
+  const requiresSize = productRequiresSize(product);
+  const canBuy =
+    product.inventoryRemaining > 0 &&
+    (!requiresSize || Boolean(selectedSizeId));
 
   async function handleBuy() {
-    if (!selectedSizeId) return;
-    const key = addItem(drop, selectedSizeId);
+    if (!canBuy) return;
+    const key = addItem(drop, product.id, selectedSizeId ?? "");
     if (!key) return;
 
-    const checkoutHref = `/checkout?item=${encodeURIComponent(key)}`;
-    router.push(checkoutHref);
+    router.push(`/checkout?item=${encodeURIComponent(key)}`);
   }
 
   return (
@@ -47,27 +51,40 @@ export function PurchaseSection({
     >
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h2 className="text-lg font-semibold text-sakura-ink">Select size</h2>
+          <h2 className="text-lg font-semibold text-sakura-ink">
+            {requiresSize ? "Select size" : "Ready to buy"}
+          </h2>
+          {drop.products && drop.products.length > 1 && (
+            <p className="mt-1 text-sm text-sakura-stone">{product.name}</p>
+          )}
           <p className="mt-1 font-mono text-xl font-semibold tabular-nums brand-accent-text">
-            {formatPrice(drop.priceCents, drop.currency)}
+            {formatPrice(product.priceCents, drop.currency)}
           </p>
         </div>
         <p className="font-mono text-sm font-medium tabular-nums brand-accent-text">
-          {inventoryRemaining} left
+          {product.inventoryRemaining} left
         </p>
       </div>
 
-      <SizePicker
-        sizes={drop.sizes}
-        selectedId={selectedSizeId}
-        onSelect={onSelectSize}
-      />
+      {requiresSize && (
+        <SizePicker
+          sizes={product.sizes}
+          selectedId={selectedSizeId}
+          onSelect={onSelectSize}
+        />
+      )}
 
-      {!selectedSizeId && (
+      {requiresSize && !selectedSizeId && (
         <p className="text-sm text-sakura-mist">Choose a size to continue</p>
       )}
 
-      <Button variant="brand" className="w-full sm:w-auto" size="lg" disabled={!selectedSizeId} onClick={handleBuy}>
+      <Button
+        variant="brand"
+        className="w-full sm:w-auto"
+        size="lg"
+        disabled={!canBuy}
+        onClick={handleBuy}
+      >
         Buy now
       </Button>
     </section>

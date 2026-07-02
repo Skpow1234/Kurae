@@ -13,12 +13,14 @@ import { ReferralProgress } from "@/components/referral/referral-progress";
 import { DropStatusBanner } from "@/components/drop/drop-status-banner";
 import { PromoStrip } from "@/components/drop/promo-strip";
 import { PublicNav } from "@/components/drop/public-nav";
+import { ProductPicker } from "@/components/drop/product-picker";
 import { PurchaseSection } from "@/components/drop/purchase-section";
 import { ShareButton } from "@/components/drop/share-button";
 import { StickyCtaBar } from "@/components/drop/sticky-cta-bar";
 import { WaitlistForm } from "@/components/drop/waitlist-form";
 import { useCart } from "@/contexts/cart-context";
 import { useDropInventory } from "@/lib/hooks/use-drop-inventory";
+import { findDropProduct, resolveDropProducts } from "@/lib/drop-products";
 import { shouldUnoptimizeImageSrc } from "@/lib/images";
 import type { PublicDrop } from "@/lib/types";
 
@@ -51,7 +53,18 @@ export function DropPageView({
     status: inventory.status,
   };
 
+  const products = resolveDropProducts(initialDrop);
+  const [selectedProductId, setSelectedProductId] = useState<string>(
+    () => products.find((product) => product.inventoryRemaining > 0)?.id ?? products[0]?.id ?? "",
+  );
   const [selectedSize, setSelectedSize] = useState<string | null>(null);
+  const selectedProduct =
+    findDropProduct(drop, selectedProductId) ?? products[0] ?? null;
+
+  const handleSelectProduct = useCallback((productId: string) => {
+    setSelectedProductId(productId);
+    setSelectedSize(null);
+  }, []);
   const waitlistRef = useRef<HTMLDivElement>(null);
   const purchaseRef = useRef<HTMLDivElement>(null);
 
@@ -114,13 +127,19 @@ export function DropPageView({
           />
         )}
 
-        {isLive && (
-          <div ref={purchaseRef}>
+        {isLive && selectedProduct && (
+          <div ref={purchaseRef} className="space-y-6">
+            <ProductPicker
+              products={products}
+              currency={drop.currency}
+              selectedId={selectedProductId}
+              onSelect={handleSelectProduct}
+            />
             <PurchaseSection
               drop={drop}
+              product={selectedProduct}
               selectedSizeId={selectedSize}
               onSelectSize={setSelectedSize}
-              inventoryRemaining={drop.inventoryRemaining}
             />
           </div>
         )}

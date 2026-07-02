@@ -20,6 +20,7 @@ export type SellerOrder = {
   dropTitle: string;
   dropSlug: string;
   buyerEmail: string;
+  productName?: string;
   sizeLabel: string;
   status: OrderStatus;
   amountCents: number;
