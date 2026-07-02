@@ -14,7 +14,7 @@ import { uploadProductImage } from "@/lib/uploads/product-image";
 type BrandingFormProps = {
   initial: SellerBranding;
   sellerName: string;
-  storefrontPreview: StorefrontPreview | null;
+  storefrontPreview: StorefrontPreview;
 };
 
 export function BrandingForm({
@@ -218,35 +218,34 @@ export function BrandingForm({
           Accent preview
         </div>
         <div className="mt-6 border-t border-sakura-petal pt-4">
-          {storefrontPreview ? (
-            <>
-              <p className="text-sm text-sakura-stone">
-                See logo, accent, and bio on your public drop page
-                {storefrontPreview.dropTitle
-                  ? ` (${storefrontPreview.dropTitle})`
-                  : ""}
-                .
-              </p>
+          <p className="text-sm text-sakura-stone">
+            Logo, accent, and bio appear on your public storefront at{" "}
+            <span className="font-mono text-sakura-ink">{storefrontPreview.href}</span>
+            .
+          </p>
+          <div className="mt-3 flex flex-wrap gap-3">
+            <Link
+              href={storefrontPreview.href}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex h-10 items-center justify-center rounded-md border border-sakura-petal bg-sakura-paper px-4 text-sm font-medium text-sakura-ink hover:bg-sakura-surface"
+            >
+              Open storefront
+            </Link>
+            {storefrontPreview.dropPreviewHref && (
               <Link
-                href={storefrontPreview.href}
+                href={storefrontPreview.dropPreviewHref}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="mt-3 inline-flex h-10 items-center justify-center rounded-md border border-sakura-petal bg-sakura-paper px-4 text-sm font-medium text-sakura-ink hover:bg-sakura-surface"
+                className="inline-flex h-10 items-center justify-center rounded-md px-4 text-sm font-medium text-sakura-dusk hover:bg-sakura-surface hover:underline"
               >
-                Open live drop page
+                Preview drop
+                {storefrontPreview.dropTitle
+                  ? `: ${storefrontPreview.dropTitle}`
+                  : ""}
               </Link>
-            </>
-          ) : (
-            <p className="text-sm text-sakura-mist">
-              Publish a drop to preview branding on a live page.{" "}
-              <Link
-                href="/dashboard/drops/new"
-                className="font-medium text-sakura-dusk hover:underline"
-              >
-                Create a drop
-              </Link>
-            </p>
-          )}
+            )}
+          </div>
         </div>
       </section>
     </form>

@@ -9,18 +9,16 @@ const STATUS_PRIORITY: Record<DropStatus, number> = {
 };
 
 export type StorefrontPreview = {
+  /** Public seller storefront at /{sellerSlug}. */
   href: string;
   label: string;
-  dropTitle: string;
+  dropTitle: string | null;
+  /** Best drop page for previewing a single release, if any drops exist. */
+  dropPreviewHref: string | null;
 };
 
-/** Pick the best drop page for a seller storefront preview link. */
-export function getStorefrontPreview(
-  drops: SellerDrop[],
-): StorefrontPreview | null {
-  if (drops.length === 0) return null;
-
-  const ranked = drops
+function rankDrops(drops: SellerDrop[]) {
+  return drops
     .map((drop) => {
       const publicDrop = toPublicDrop(drop);
       const priority =
@@ -30,21 +28,34 @@ export function getStorefrontPreview(
       return { drop, publicDrop, priority };
     })
     .sort((a, b) => a.priority - b.priority);
+}
 
-  const best = ranked[0];
-  const href =
+/** Public seller storefront link plus optional featured drop preview. */
+export function getStorefrontPreview(
+  sellerSlug: string,
+  drops: SellerDrop[],
+): StorefrontPreview {
+  const href = `/${sellerSlug}`;
+
+  if (drops.length === 0) {
+    return {
+      href,
+      label: "View storefront",
+      dropTitle: null,
+      dropPreviewHref: null,
+    };
+  }
+
+  const best = rankDrops(drops)[0];
+  const dropPreviewHref =
     best.drop.publishStatus === "published"
       ? `/${best.drop.sellerSlug}/${best.drop.slug}`
       : `/${best.drop.sellerSlug}/${best.drop.slug}?preview=1`;
 
-  const statusLabel = best.publicDrop.status.replace("_", " ");
-
   return {
     href,
+    label: "View storefront",
     dropTitle: best.drop.title,
-    label:
-      best.drop.publishStatus === "draft"
-        ? "Preview draft drop"
-        : `Preview ${statusLabel} drop`,
+    dropPreviewHref,
   };
 }

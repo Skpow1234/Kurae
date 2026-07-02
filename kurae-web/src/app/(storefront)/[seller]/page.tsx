@@ -2,10 +2,12 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
-import { DropBrowseCard } from "@/components/drop/drop-browse-card";
 import { SellerBrandTheme } from "@/components/branding/seller-brand-theme";
+import { SellerStorefrontHero } from "@/components/branding/seller-storefront-hero";
+import { DropBrowseCard } from "@/components/drop/drop-browse-card";
 import { SellerReferralCapture } from "@/components/referral/seller-referral-capture";
 import { fetchPublicSeller, listPublicDrops } from "@/lib/api/drops-server";
+import type { PublicDrop } from "@/lib/types";
 
 type PageProps = {
   params: Promise<{ seller: string }>;
@@ -20,13 +22,59 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     return { title: "Seller not found" };
   }
 
+  const description =
+    profile.bio?.trim() ||
+    `Shop limited drops from ${profile.name} on Kurae.`;
+
+  const images = profile.logoUrl?.trim()
+    ? [{ url: profile.logoUrl }]
+    : undefined;
+
   return {
     title: profile.name,
-    description: `Shop limited drops from ${profile.name} on Kurae.`,
+    description,
+    openGraph: {
+      title: profile.name,
+      description,
+      images,
+      type: "website",
+    },
+    twitter: {
+      card: "summary",
+      title: profile.name,
+      description,
+      images: profile.logoUrl ? [profile.logoUrl] : undefined,
+    },
   };
 }
 
-export default async function SellerReferralPage({
+function DropGridSection({
+  title,
+  description,
+  drops,
+}: {
+  title: string;
+  description: string;
+  drops: PublicDrop[];
+}) {
+  if (drops.length === 0) return null;
+
+  return (
+    <section className="mx-auto max-w-6xl px-4 py-10">
+      <div className="mb-6">
+        <h2 className="text-xl font-semibold text-sakura-ink">{title}</h2>
+        <p className="mt-1 text-sm text-sakura-mist">{description}</p>
+      </div>
+      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        {drops.map((drop, index) => (
+          <DropBrowseCard key={drop.id} drop={drop} priority={index < 3} branded />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+export default async function SellerStorefrontPage({
   params,
   searchParams,
 }: PageProps) {
@@ -43,63 +91,60 @@ export default async function SellerReferralPage({
   }
 
   const sellerDrops = publicDrops.filter((drop) => drop.sellerSlug === seller);
+  const liveDrops = sellerDrops.filter((drop) => drop.status === "live");
+  const upcomingDrops = sellerDrops.filter((drop) => drop.status === "upcoming");
+  const soldOutDrops = sellerDrops.filter((drop) => drop.status === "sold_out");
+  const hasVisibleDrops =
+    liveDrops.length + upcomingDrops.length + soldOutDrops.length > 0;
 
   return (
     <SellerBrandTheme accent={profile.accent}>
-    <main className="min-h-[calc(100vh-3.5rem)] bg-sakura-paper">
-      <SellerReferralCapture sellerSlug={seller} refCode={ref} />
+      <main className="min-h-[calc(100vh-3.5rem)] bg-sakura-paper">
+        <SellerReferralCapture sellerSlug={seller} refCode={ref} />
 
-      <section className="border-b border-sakura-petal bg-gradient-to-b from-sakura-petal/40 to-sakura-paper px-4 py-12">
-        <div className="mx-auto max-w-6xl">
-          <p className="text-xs uppercase tracking-widest text-sakura-mist">Shop</p>
-          <h1 className="mt-2 text-3xl font-bold tracking-tight text-sakura-ink">
-            {profile.name}
-          </h1>
-          {profile.bio && (
-            <p className="mt-3 max-w-xl text-sm leading-relaxed text-sakura-stone">
-              {profile.bio}
-            </p>
-          )}
-          <p className="mt-2 max-w-xl text-sm text-sakura-mist">
-            {ref?.trim()
-              ? "Referral link active — browse drops below when they go live."
-              : sellerDrops.length > 0
-                ? "Browse live drops from this seller."
-                : "No live drops yet — check back soon."}
-          </p>
-        </div>
-      </section>
+        <SellerStorefrontHero
+          profile={profile}
+          liveCount={liveDrops.length}
+          referralActive={Boolean(ref?.trim())}
+        />
 
-      <section className="mx-auto max-w-6xl px-4 py-10">
-        {sellerDrops.length > 0 ? (
+        {hasVisibleDrops ? (
           <>
-            <div className="mb-6">
-              <h2 className="text-xl font-semibold text-sakura-ink">Live drops</h2>
-              <p className="mt-1 text-sm text-sakura-mist">
-                Pick a drop to view sizes and checkout.
-              </p>
-            </div>
-            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-              {sellerDrops.map((drop, index) => (
-                <DropBrowseCard key={drop.id} drop={drop} priority={index < 3} branded />
-              ))}
-            </div>
+            <DropGridSection
+              title="Live now"
+              description="Available to buy — choose your size and check out."
+              drops={liveDrops}
+            />
+            <DropGridSection
+              title="Coming soon"
+              description="Join the waitlist before the countdown ends."
+              drops={upcomingDrops}
+            />
+            <DropGridSection
+              title="Sold out"
+              description="Past releases from this seller."
+              drops={soldOutDrops}
+            />
           </>
         ) : (
-          <div className="rounded-lg border border-dashed border-sakura-petal p-12 text-center">
-            <p className="text-sakura-stone">No published drops yet.</p>
-            <p className="mt-2 text-sm text-sakura-mist">
-              Share this link now — referral credit applies when drops go live.
-            </p>
-          </div>
+          <section className="mx-auto max-w-6xl px-4 py-10">
+            <div className="rounded-lg border border-dashed border-sakura-petal p-12 text-center">
+              <p className="text-sakura-stone">No published drops yet.</p>
+              <p className="mt-2 text-sm text-sakura-mist">
+                {ref?.trim()
+                  ? "Share this link — referral credit applies when drops go live."
+                  : "Follow this storefront for the next release."}
+              </p>
+            </div>
+          </section>
         )}
-        <p className="mt-8 text-center text-sm text-sakura-mist">
+
+        <p className="pb-10 text-center text-sm text-sakura-mist">
           <Link href="/" className="brand-accent-link hover:underline">
             Browse all sellers
           </Link>
         </p>
-      </section>
-    </main>
+      </main>
     </SellerBrandTheme>
   );
 }

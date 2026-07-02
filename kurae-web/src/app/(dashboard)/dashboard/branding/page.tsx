@@ -12,18 +12,9 @@ export default async function BrandingPage() {
   const session = await getSellerSession();
   if (!session) redirect(authUrl({ role: "seller", next: "/dashboard/branding" }));
 
-  let branding;
-  let storefrontPreview = null;
+  let brandingData;
   try {
-    const [brandingResult, drops] = await Promise.all([
-      getSellerBranding(),
-      listSellerDrops(),
-    ]);
-    branding = brandingResult;
-    const published = drops.filter((drop) => drop.publishStatus === "published");
-    storefrontPreview = getStorefrontPreview(
-      published.length > 0 ? published : drops,
-    );
+    brandingData = await Promise.all([getSellerBranding(), listSellerDrops()]);
   } catch {
     return (
       <div className="max-w-xl space-y-6">
@@ -35,13 +26,20 @@ export default async function BrandingPage() {
     );
   }
 
+  const [branding, drops] = brandingData;
+  const published = drops.filter((drop) => drop.publishStatus === "published");
+  const storefrontPreview = getStorefrontPreview(
+    session.sellerSlug,
+    published.length > 0 ? published : drops,
+  );
+
   return (
     <div className="max-w-xl space-y-6">
       <div>
         <h1 className="text-2xl font-semibold text-sakura-ink">Branding</h1>
         <p className="mt-1 text-sm text-sakura-mist">
-          Logo, accent color, and bio appear on your public drop pages — not the Kurae home
-          or dashboard.
+          Logo, accent color, and bio appear on your public storefront and drop pages —
+          not the Kurae home or dashboard.
         </p>
       </div>
 

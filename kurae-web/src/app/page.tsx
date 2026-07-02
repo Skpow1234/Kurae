@@ -115,7 +115,7 @@ export default async function HomePage() {
       );
     }
 
-    const preview = getStorefrontPreview(drops);
+    const preview = getStorefrontPreview(sellerSession.sellerSlug, drops);
     const publishedCount = drops.filter(
       (d) => d.publishStatus === "published",
     ).length;
@@ -136,17 +136,16 @@ export default async function HomePage() {
               <Link href="/dashboard" className={primaryButtonClass}>
                 Open dashboard
               </Link>
-              {preview ? (
-                <Link
-                  href={preview.href}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className={secondaryButtonClass}
-                >
-                  {preview.label} — {preview.dropTitle}
-                </Link>
-              ) : (
-                <Link href="/dashboard/drops/new" className={secondaryButtonClass}>
+              <Link
+                href={preview.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={secondaryButtonClass}
+              >
+                {preview.label}
+              </Link>
+              {!preview.dropPreviewHref && (
+                <Link href="/dashboard/drops/new" className={textLinkClass}>
                   Create your first drop
                 </Link>
               )}

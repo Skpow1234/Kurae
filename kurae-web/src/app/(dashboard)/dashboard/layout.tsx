@@ -20,7 +20,9 @@ export default async function DashboardLayout({
       dropsLoadFailed = true;
     }
   }
-  const storefrontPreview = getStorefrontPreview(drops);
+  const storefrontPreview = session
+    ? getStorefrontPreview(session.sellerSlug, drops)
+    : null;
 
   return (
     <div className="min-h-screen bg-sakura-paper">
