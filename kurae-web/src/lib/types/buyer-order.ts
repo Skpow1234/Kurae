@@ -23,6 +23,7 @@ export type BuyerOrderStatus = {
   subtotalCents: number;
   discountCents: number;
   discountCode?: string | null;
+  referralCode?: string | null;
   amountCents: number;
   currency: string;
   buyerEmail: string;

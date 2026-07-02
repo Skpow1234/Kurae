@@ -2,13 +2,14 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
 import { SellerBrandTheme } from "@/components/branding/seller-brand-theme";
+import { CheckoutSavingsSummary } from "@/components/checkout/checkout-savings-summary";
 import { OrderTimeline } from "@/components/dashboard/order-timeline";
 import { fetchPublicSeller } from "@/lib/api/drops-server";
 import { buildCheckoutFailedUrl, normalizeFailureReason } from "@/lib/checkout-failure";
 import { brandCtaLinkClass } from "@/lib/branding/cta";
+import { buildCheckoutPricing } from "@/lib/checkout/pricing";
 import { requireApiBase } from "@/lib/api/config";
 import type { BuyerOrderStatus } from "@/lib/types/buyer-order";
-import { formatPrice } from "@/lib/utils";
 
 type PageProps = {
   params: Promise<{ orderId: string }>;
@@ -74,6 +75,16 @@ export default async function OrderConfirmationPage({
 
   const sellerProfile = await fetchPublicSeller(order.sellerSlug);
 
+  const orderPricing = buildCheckoutPricing({
+    currency: order.currency,
+    subtotalCents: order.subtotalCents,
+    discountCents: order.discountCents,
+    finalCents: order.amountCents,
+    discountCode: order.discountCode,
+    referralCode: order.referralCode,
+    referralPending: false,
+  });
+
   const timeline =
     order.events.length > 0
       ? order.events
@@ -101,9 +112,9 @@ export default async function OrderConfirmationPage({
         <div className="mt-6 rounded-md bg-sakura-petal/50 p-4 text-sm">
           <p className="font-medium text-sakura-ink">{order.dropTitle}</p>
           <p className="mt-1 text-sakura-mist">Size {order.sizeLabel}</p>
-          <p className="brand-accent-text mt-2 font-mono text-lg font-semibold">
-            {formatPrice(order.amountCents, order.currency)}
-          </p>
+          <div className="mt-4">
+            <CheckoutSavingsSummary pricing={orderPricing} />
+          </div>
         </div>
 
         <div className="mt-8 border-t border-sakura-petal pt-6">

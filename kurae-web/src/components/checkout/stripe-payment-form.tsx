@@ -9,7 +9,10 @@ import { Lock } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import { CheckoutSavingsSummary } from "@/components/checkout/checkout-savings-summary";
 import { Button } from "@/components/ui/button";
+import type { CheckoutPricing } from "@/lib/checkout/pricing";
+import { formatPrice } from "@/lib/utils";
 
 type StripePaymentFormProps = {
   email: string;
@@ -17,6 +20,7 @@ type StripePaymentFormProps = {
   sellerSlug: string;
   dropSlug: string;
   sizeLabel: string;
+  pricing: CheckoutPricing;
   onBack: () => void;
 };
 
@@ -26,6 +30,7 @@ export function StripePaymentForm({
   sellerSlug,
   dropSlug,
   sizeLabel,
+  pricing,
   onBack,
 }: StripePaymentFormProps) {
   const router = useRouter();
@@ -78,6 +83,8 @@ export function StripePaymentForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
+      <CheckoutSavingsSummary pricing={pricing} showSavingsBanner={false} />
+
       <div className="flex items-center gap-2 text-xs text-sakura-mist">
         <Lock className="h-3.5 w-3.5" />
         <span>Secured by Stripe</span>
@@ -109,7 +116,9 @@ export function StripePaymentForm({
         size="lg"
         disabled={!stripe || !elements || paying}
       >
-        {paying ? "Processing…" : "Pay now"}
+        {paying
+          ? "Processing…"
+          : `Pay ${formatPrice(pricing.finalCents, pricing.currency)}`}
       </Button>
 
       <button

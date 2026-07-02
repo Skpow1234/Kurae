@@ -3,8 +3,9 @@
 import { Elements } from "@stripe/react-stripe-js";
 import NextLink from "next/link";
 import { useRouter } from "next/navigation";
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 
+import { CheckoutSavingsSummary } from "@/components/checkout/checkout-savings-summary";
 import { StripePaymentForm } from "@/components/checkout/stripe-payment-form";
 import { SellerBrandTheme } from "@/components/branding/seller-brand-theme";
 import { Button } from "@/components/ui/button";
@@ -13,9 +14,10 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useCart } from "@/contexts/cart-context";
 import { ApiError } from "@/lib/api/client";
 import { loginUrl } from "@/lib/auth/safe-redirect";
-import { createCheckout } from "@/lib/api/checkout";
+import { createCheckout, type CheckoutResult } from "@/lib/api/checkout";
 import { validateDiscountCode } from "@/lib/api/discount";
 import { getAccentPreset } from "@/lib/branding/accents";
+import { buildCheckoutPricing } from "@/lib/checkout/pricing";
 import {
   buildCheckoutFailedUrl,
   checkoutFailureFromHttpStatus,
@@ -28,7 +30,7 @@ import {
 } from "@/lib/stripe/client";
 import type { PublicDrop } from "@/lib/types";
 import type { DiscountPreview } from "@/lib/types/discount";
-import { formatPrice } from "@/lib/utils";
+import { readReferralCookie } from "@/lib/referral-client";
 
 type CheckoutSession = {
   orderId: string;
@@ -132,6 +134,13 @@ function CheckoutLiveForm({
     null,
   );
   const [validatingCode, setValidatingCode] = useState(false);
+  const [reservedPricing, setReservedPricing] = useState<CheckoutResult | null>(null);
+  const idempotencyKeyRef = useRef<string | null>(null);
+
+  const referralCode = useMemo(() => {
+    const referral = readReferralCookie();
+    return referral?.sellerSlug === line.sellerSlug ? referral.code : null;
+  }, [line.sellerSlug]);
 
   const sizeAvailable =
     drop.sizes.find((size) => size.label === line.sizeLabel)?.available ?? true;
@@ -230,15 +239,17 @@ function CheckoutLiveForm({
     setError(null);
 
     try {
-      const idempotencyKey =
-        typeof crypto !== "undefined" && crypto.randomUUID
-          ? crypto.randomUUID()
-          : `checkout-${Date.now()}`;
+      if (!idempotencyKeyRef.current) {
+        idempotencyKeyRef.current =
+          typeof crypto !== "undefined" && crypto.randomUUID
+            ? crypto.randomUUID()
+            : `checkout-${line.sellerSlug}-${line.dropSlug}-${line.sizeLabel}`;
+      }
 
       const result = await createCheckout({
         dropId: drop.id,
         sizeLabel: line!.sizeLabel,
-        idempotencyKey,
+        idempotencyKey: idempotencyKeyRef.current,
         discountCode: appliedCode ?? undefined,
       });
 
@@ -258,6 +269,7 @@ function CheckoutLiveForm({
         orderId: result.orderId,
         clientSecret: result.clientSecret,
       });
+      setReservedPricing(result);
     } catch (err) {
       if (err instanceof ApiError) {
         if (err.status === 400 && appliedCode) {
@@ -284,24 +296,46 @@ function CheckoutLiveForm({
 
   const accentPreset = getAccentPreset(drop.sellerAccent);
 
+  const displayPricing = buildCheckoutPricing(
+    reservedPricing
+      ? {
+          currency: reservedPricing.currency,
+          subtotalCents: reservedPricing.subtotalCents,
+          discountCents: reservedPricing.discountCents,
+          finalCents: reservedPricing.amountCents,
+          discountCode: appliedCode,
+          referralCode: referralCode ?? undefined,
+          referralPending: false,
+        }
+      : {
+          currency: line.currency,
+          subtotalCents:
+            discountPreview?.valid && discountPreview.subtotalCents > 0
+              ? discountPreview.subtotalCents
+              : line.priceCents,
+          discountCents:
+            discountPreview?.valid && discountPreview.discountCents > 0
+              ? discountPreview.discountCents
+              : 0,
+          finalCents:
+            discountPreview?.valid && discountPreview.finalCents >= 0
+              ? discountPreview.finalCents
+              : line.priceCents,
+          discountCode: appliedCode,
+          referralCode: referralCode ?? undefined,
+          referralPending: Boolean(referralCode),
+        },
+  );
+
   return (
     <SellerBrandTheme accent={drop.sellerAccent}>
       <div className="space-y-6">
       <section className="rounded-lg border border-sakura-petal bg-sakura-surface p-4">
         <h1 className="font-semibold text-sakura-ink">{line.dropTitle}</h1>
         <p className="mt-1 text-sm text-sakura-mist">Size {line.sizeLabel}</p>
-        <p className="brand-accent-text mt-3 font-mono text-lg font-semibold">
-          {discountPreview?.valid
-            ? formatPrice(discountPreview.finalCents, line.currency)
-            : formatPrice(line.priceCents, line.currency)}
-        </p>
-        {discountPreview?.valid && discountPreview.discountCents > 0 && (
-          <p className="mt-1 text-xs text-sakura-mist">
-            {formatPrice(discountPreview.subtotalCents, line.currency)} −{" "}
-            {formatPrice(discountPreview.discountCents, line.currency)} (
-            {appliedCode})
-          </p>
-        )}
+        <div className="mt-4">
+          <CheckoutSavingsSummary pricing={displayPricing} />
+        </div>
       </section>
 
       <p className="text-sm font-medium text-sakura-warning">
@@ -342,7 +376,12 @@ function CheckoutLiveForm({
             sellerSlug={line.sellerSlug}
             dropSlug={line.dropSlug}
             sizeLabel={line.sizeLabel}
-            onBack={() => setSession(null)}
+            pricing={displayPricing}
+            onBack={() => {
+              setSession(null);
+              setReservedPricing(null);
+              idempotencyKeyRef.current = null;
+            }}
           />
         </Elements>
       ) : (

@@ -1,12 +1,14 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
+import { CheckoutSavingsSummary } from "@/components/checkout/checkout-savings-summary";
 import { AccountNav } from "@/components/account/account-nav";
 import { OrderStatusBadge } from "@/components/dashboard/order-status-badge";
 import { OrderTimeline } from "@/components/dashboard/order-timeline";
 import { ApiLoadError } from "@/components/ui/api-load-error";
 import { fetchBuyerOrder } from "@/lib/api/buyer-orders-server";
 import { getBuyerSession } from "@/lib/auth/session";
+import { buildCheckoutPricing } from "@/lib/checkout/pricing";
 import { formatPrice } from "@/lib/utils";
 
 type PageProps = {
@@ -47,6 +49,15 @@ export default async function BuyerOrderDetailPage({ params }: PageProps) {
   }
 
   const hasDiscount = order.discountCents > 0;
+  const orderPricing = buildCheckoutPricing({
+    currency: order.currency,
+    subtotalCents: order.subtotalCents,
+    discountCents: order.discountCents,
+    finalCents: order.amountCents,
+    discountCode: order.discountCode,
+    referralCode: order.referralCode,
+    referralPending: false,
+  });
 
   return (
     <>
@@ -89,30 +100,22 @@ export default async function BuyerOrderDetailPage({ params }: PageProps) {
               <dt className="text-sakura-mist">Size</dt>
               <dd className="font-mono text-sakura-ink">{order.sizeLabel}</dd>
             </div>
-            {hasDiscount && (
-              <>
-                <div className="flex justify-between gap-4">
-                  <dt className="text-sakura-mist">Subtotal</dt>
-                  <dd className="font-mono text-sakura-ink">
-                    {formatPrice(order.subtotalCents, order.currency)}
-                  </dd>
-                </div>
-                <div className="flex justify-between gap-4">
-                  <dt className="text-sakura-mist">
-                    Discount{order.discountCode ? ` (${order.discountCode})` : ""}
-                  </dt>
-                  <dd className="font-mono text-sakura-ink">
-                    −{formatPrice(order.discountCents, order.currency)}
-                  </dd>
-                </div>
-              </>
+            {(hasDiscount || order.referralCode) && (
+              <div className="border-t border-sakura-petal pt-3">
+                <CheckoutSavingsSummary
+                  pricing={orderPricing}
+                  showSavingsBanner={hasDiscount}
+                />
+              </div>
             )}
+            {!hasDiscount && !order.referralCode && (
             <div className="flex justify-between gap-4 border-t border-sakura-petal pt-3">
               <dt className="font-medium text-sakura-ink">Total paid</dt>
               <dd className="font-mono font-semibold text-sakura-dusk">
                 {formatPrice(order.amountCents, order.currency)}
               </dd>
             </div>
+            )}
           </dl>
         </section>
 
