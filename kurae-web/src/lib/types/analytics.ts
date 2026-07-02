@@ -11,7 +11,23 @@ export type AnalyticsFunnel = {
   paid: number;
 };
 
+export type DropAnalyticsRow = {
+  dropId: string;
+  dropTitle: string;
+  dropSlug: string;
+  views: number;
+  waitlistSignups: number;
+  checkouts: number;
+  paidOrders: number;
+  revenueCents: number;
+  conversionRate: number;
+};
+
 export type SellerAnalytics = {
+  rangeDays: number;
+  periodStart: string;
+  periodEnd: string;
+  dropId?: string;
   pageViews7d: number;
   pageViewsPrev7d: number;
   waitlistSignups7d: number;
@@ -22,4 +38,10 @@ export type SellerAnalytics = {
   revenuePrev7dCents: number;
   dailyTraffic: DailyAnalyticsPoint[];
   funnel: AnalyticsFunnel;
+  dropBreakdown?: DropAnalyticsRow[];
+};
+
+export type AnalyticsQuery = {
+  days?: number;
+  dropId?: string;
 };

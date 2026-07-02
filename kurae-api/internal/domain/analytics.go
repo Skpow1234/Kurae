@@ -13,7 +13,23 @@ type AnalyticsFunnel struct {
 	Paid      int `json:"paid"`
 }
 
+type DropAnalyticsRow struct {
+	DropID           string  `json:"dropId"`
+	DropTitle        string  `json:"dropTitle"`
+	DropSlug         string  `json:"dropSlug"`
+	Views            int     `json:"views"`
+	WaitlistSignups  int     `json:"waitlistSignups"`
+	Checkouts        int     `json:"checkouts"`
+	PaidOrders       int     `json:"paidOrders"`
+	RevenueCents     int     `json:"revenueCents"`
+	ConversionRate   float64 `json:"conversionRate"`
+}
+
 type SellerAnalytics struct {
+	RangeDays            int                   `json:"rangeDays"`
+	PeriodStart          string                `json:"periodStart"`
+	PeriodEnd            string                `json:"periodEnd"`
+	DropID               *string               `json:"dropId,omitempty"`
 	PageViews7d          int                   `json:"pageViews7d"`
 	PageViewsPrev7d      int                   `json:"pageViewsPrev7d"`
 	WaitlistSignups7d    int                   `json:"waitlistSignups7d"`
@@ -24,4 +40,5 @@ type SellerAnalytics struct {
 	RevenuePrev7dCents   int                   `json:"revenuePrev7dCents"`
 	DailyTraffic         []DailyAnalyticsPoint `json:"dailyTraffic"`
 	Funnel               AnalyticsFunnel       `json:"funnel"`
+	DropBreakdown        []DropAnalyticsRow    `json:"dropBreakdown,omitempty"`
 }

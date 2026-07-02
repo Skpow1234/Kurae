@@ -124,6 +124,7 @@ func NewServer(cfg config.Config, s *store.Store, q *queue.RedisQueue) *Server {
 		protected.Get("/branding", brandingH.Get)
 		protected.Patch("/branding", brandingH.Update)
 		protected.Get("/dashboard/analytics", analyticsH.Get)
+		protected.Get("/dashboard/analytics/export", analyticsH.Export)
 		protected.Post("/uploads/presign", uploadH.Presign)
 		protected.Get("/auth/me", authH.Me)
 		protected.Patch("/auth/profile", authH.UpdateProfile)

@@ -790,9 +790,21 @@ paths:
   /dashboard/analytics:
     get:
       tags: [analytics]
-      summary: Seller analytics (7-day traffic, funnel, revenue)
+      summary: Seller analytics (traffic, funnel, revenue)
       security:
         - bearerAuth: []
+      parameters:
+        - name: days
+          in: query
+          schema:
+            type: integer
+            enum: [7, 30, 90]
+            default: 7
+        - name: dropId
+          in: query
+          schema:
+            type: string
+            format: uuid
       responses:
         "200":
           description: OK
@@ -800,6 +812,41 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/SellerAnalytics"
+        "400":
+          $ref: "#/components/responses/Error"
+  /dashboard/analytics/export:
+    get:
+      tags: [analytics]
+      summary: Export seller analytics as CSV
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: days
+          in: query
+          schema:
+            type: integer
+            enum: [7, 30, 90]
+            default: 7
+        - name: dropId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: format
+          in: query
+          schema:
+            type: string
+            enum: [daily, drops]
+            default: daily
+      responses:
+        "200":
+          description: CSV file
+          content:
+            text/csv:
+              schema:
+                type: string
+        "400":
+          $ref: "#/components/responses/Error"
   /checkout:
     post:
       tags: [checkout]
@@ -1542,6 +1589,18 @@ components:
     SellerAnalytics:
       type: object
       properties:
+        rangeDays:
+          type: integer
+        periodStart:
+          type: string
+          format: date
+        periodEnd:
+          type: string
+          format: date
+        dropId:
+          type: string
+          format: uuid
+          nullable: true
         pageViews7d:
           type: integer
         pageViewsPrev7d:
@@ -1566,6 +1625,33 @@ components:
             $ref: "#/components/schemas/DailyAnalyticsPoint"
         funnel:
           $ref: "#/components/schemas/AnalyticsFunnel"
+        dropBreakdown:
+          type: array
+          items:
+            $ref: "#/components/schemas/DropAnalyticsRow"
+    DropAnalyticsRow:
+      type: object
+      properties:
+        dropId:
+          type: string
+          format: uuid
+        dropTitle:
+          type: string
+        dropSlug:
+          type: string
+        views:
+          type: integer
+        waitlistSignups:
+          type: integer
+        checkouts:
+          type: integer
+        paidOrders:
+          type: integer
+        revenueCents:
+          type: integer
+        conversionRate:
+          type: number
+          format: double
     PresignResponse:
       type: object
       properties:

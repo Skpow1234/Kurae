@@ -26,83 +26,11 @@ func (r *AnalyticsRepository) RecordView(ctx context.Context, dropID, sellerID s
 }
 
 func (r *AnalyticsRepository) GetSellerAnalytics(ctx context.Context, sellerID string, now time.Time) (domain.SellerAnalytics, error) {
-	currentStart := now.Add(-7 * 24 * time.Hour)
-	prevStart := now.Add(-14 * 24 * time.Hour)
-
-	var out domain.SellerAnalytics
-
-	err := r.store.pool.QueryRow(ctx, `
-		SELECT
-			COUNT(*) FILTER (WHERE viewed_at >= $2)::int,
-			COUNT(*) FILTER (WHERE viewed_at >= $3 AND viewed_at < $2)::int
-		FROM drop_page_views
-		WHERE seller_id = $1
-	`, sellerID, currentStart, prevStart).Scan(&out.PageViews7d, &out.PageViewsPrev7d)
-	if err != nil {
-		return domain.SellerAnalytics{}, err
-	}
-
-	err = r.store.pool.QueryRow(ctx, `
-		SELECT
-			COUNT(*) FILTER (WHERE we.created_at >= $2)::int,
-			COUNT(*) FILTER (WHERE we.created_at >= $3 AND we.created_at < $2)::int
-		FROM waitlist_entries we
-		JOIN drops d ON d.id = we.drop_id
-		WHERE d.seller_id = $1
-	`, sellerID, currentStart, prevStart).Scan(&out.WaitlistSignups7d, &out.WaitlistSignupsPrev7d)
-	if err != nil {
-		return domain.SellerAnalytics{}, err
-	}
-
-	var paid7d, paidPrev int
-	err = r.store.pool.QueryRow(ctx, `
-		SELECT
-			COUNT(*) FILTER (
-				WHERE status IN ('paid', 'fulfilled') AND created_at >= $2
-			)::int,
-			COUNT(*) FILTER (
-				WHERE status IN ('paid', 'fulfilled') AND created_at >= $3 AND created_at < $2
-			)::int,
-			COALESCE(SUM(amount_cents) FILTER (
-				WHERE status IN ('paid', 'fulfilled') AND created_at >= $2
-			), 0)::int,
-			COALESCE(SUM(amount_cents) FILTER (
-				WHERE status IN ('paid', 'fulfilled') AND created_at >= $3 AND created_at < $2
-			), 0)::int
-		FROM orders
-		WHERE seller_id = $1
-	`, sellerID, currentStart, prevStart).Scan(&paid7d, &paidPrev, &out.Revenue7dCents, &out.RevenuePrev7dCents)
-	if err != nil {
-		return domain.SellerAnalytics{}, err
-	}
-
-	out.ConversionRate = conversionRate(paid7d, out.PageViews7d)
-	out.ConversionRatePrev = conversionRate(paidPrev, out.PageViewsPrev7d)
-
-	var checkouts7d int
-	err = r.store.pool.QueryRow(ctx, `
-		SELECT COUNT(*)::int FROM orders
-		WHERE seller_id = $1
-		  AND created_at >= $2
-		  AND status NOT IN ('cancelled')
-	`, sellerID, currentStart).Scan(&checkouts7d)
-	if err != nil {
-		return domain.SellerAnalytics{}, err
-	}
-
-	out.Funnel = domain.AnalyticsFunnel{
-		Views:     out.PageViews7d,
-		Checkouts: checkouts7d,
-		Paid:      paid7d,
-	}
-
-	daily, err := r.dailyTraffic(ctx, sellerID, currentStart, now)
-	if err != nil {
-		return domain.SellerAnalytics{}, err
-	}
-	out.DailyTraffic = daily
-
-	return out, nil
+	return r.QuerySellerAnalytics(ctx, AnalyticsQuery{
+		SellerID: sellerID,
+		Days:     7,
+		Now:      now,
+	})
 }
 
 func conversionRate(paid, views int) float64 {
@@ -115,7 +43,12 @@ func conversionRate(paid, views int) float64 {
 	return float64(int(float64(paid)/float64(views)*1000+0.5)) / 10
 }
 
-func (r *AnalyticsRepository) dailyTraffic(ctx context.Context, sellerID string, start, end time.Time) ([]domain.DailyAnalyticsPoint, error) {
+func (r *AnalyticsRepository) dailyTraffic(
+	ctx context.Context,
+	sellerID string,
+	start, end time.Time,
+	dropID *string,
+) ([]domain.DailyAnalyticsPoint, error) {
 	rows, err := r.store.pool.Query(ctx, `
 		WITH days AS (
 			SELECT generate_series(
@@ -127,7 +60,9 @@ func (r *AnalyticsRepository) dailyTraffic(ctx context.Context, sellerID string,
 		views AS (
 			SELECT date_trunc('day', viewed_at) AS day, COUNT(*)::int AS cnt
 			FROM drop_page_views
-			WHERE seller_id = $1 AND viewed_at >= $2 AND viewed_at <= $3
+			WHERE seller_id = $1
+			  AND viewed_at >= $2 AND viewed_at <= $3
+			  AND ($4::uuid IS NULL OR drop_id = $4)
 			GROUP BY 1
 		),
 		orders AS (
@@ -137,7 +72,9 @@ func (r *AnalyticsRepository) dailyTraffic(ctx context.Context, sellerID string,
 					WHERE status IN ('paid', 'fulfilled')
 				), 0)::int AS revenue
 			FROM orders
-			WHERE seller_id = $1 AND created_at >= $2 AND created_at <= $3
+			WHERE seller_id = $1
+			  AND created_at >= $2 AND created_at <= $3
+			  AND ($4::uuid IS NULL OR drop_id = $4)
 			GROUP BY 1
 		)
 		SELECT d.day,
@@ -148,7 +85,7 @@ func (r *AnalyticsRepository) dailyTraffic(ctx context.Context, sellerID string,
 		LEFT JOIN views v ON v.day = d.day
 		LEFT JOIN orders o ON o.day = d.day
 		ORDER BY d.day
-	`, sellerID, start, end)
+	`, sellerID, start, end, dropID)
 	if err != nil {
 		return nil, err
 	}
