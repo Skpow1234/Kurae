@@ -76,7 +76,9 @@ export default async function BuyerOrdersPage({ searchParams }: PageProps) {
                   <div className="min-w-0">
                     <p className="font-medium text-sakura-ink">{order.dropTitle}</p>
                     <p className="mt-0.5 text-sm text-sakura-mist">
-                      Size {order.sizeLabel}
+                      {order.productName && order.productName !== order.dropTitle
+                        ? `${order.productName} · Size ${order.sizeLabel}`
+                        : `Size ${order.sizeLabel}`}
                     </p>
                   </div>
                   <OrderStatusBadge status={order.status} />

@@ -1,4 +1,5 @@
 import type { DropProduct, PublicDrop } from "@/lib/types";
+import { formatPrice } from "@/lib/utils";
 
 export function resolveDropProducts(drop: PublicDrop): DropProduct[] {
   if (drop.products?.length) {
@@ -30,4 +31,13 @@ export function findDropProduct(
 
 export function productRequiresSize(product: DropProduct): boolean {
   return product.sizes.some((size) => size.available);
+}
+
+export function dropCardPriceLabel(drop: PublicDrop): string {
+  const products = resolveDropProducts(drop);
+  if (products.length <= 1) {
+    return formatPrice(drop.priceCents, drop.currency);
+  }
+  const minPrice = Math.min(...products.map((product) => product.priceCents));
+  return `From ${formatPrice(minPrice, drop.currency)}`;
 }

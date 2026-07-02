@@ -6,6 +6,7 @@ export type BuyerOrderListItem = {
   sellerSlug: string;
   dropSlug: string;
   dropTitle: string;
+  productName?: string;
   sizeLabel: string;
   amountCents: number;
   currency: string;
@@ -19,6 +20,7 @@ export type BuyerOrderStatus = {
   sellerSlug: string;
   dropSlug: string;
   dropTitle: string;
+  productName?: string;
   sizeLabel: string;
   subtotalCents: number;
   discountCents: number;

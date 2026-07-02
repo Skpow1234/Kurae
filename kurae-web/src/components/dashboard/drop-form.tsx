@@ -171,15 +171,6 @@ export function DropForm({ session, drop }: DropFormProps) {
     }
   }
 
-  function toggleSize(id: string) {
-    setValues((prev) => ({
-      ...prev,
-      sizes: prev.sizes.map((s) =>
-        s.id === id ? { ...s, available: !s.available } : s,
-      ),
-    }));
-  }
-
   async function save(publishStatus: PublishStatus) {
     const next = { ...values, publishStatus };
     const validation = validateDropForm(next);

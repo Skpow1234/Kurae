@@ -79,6 +79,14 @@ export default async function OrderDetailPage({ params }: PageProps) {
               <dt className="text-sakura-mist">Buyer</dt>
               <dd className="text-right text-sakura-ink">{order.buyerEmail}</dd>
             </div>
+            {order.productName && order.productName !== order.dropTitle && (
+              <div className="flex justify-between gap-4">
+                <dt className="text-sakura-mist">Product</dt>
+                <dd className="text-right font-medium text-sakura-ink">
+                  {order.productName}
+                </dd>
+              </div>
+            )}
             <div className="flex justify-between gap-4">
               <dt className="text-sakura-mist">Size</dt>
               <dd className="text-right font-mono">{order.sizeLabel}</dd>

@@ -148,6 +148,7 @@ function CheckoutLiveForm({
     startsAt: initialDrop.startsAt,
     endsAt: initialDrop.endsAt,
     initialSizes: initialDrop.sizes,
+    initialProducts: initialDrop.products,
     pollMs: 8_000,
   });
 
@@ -156,6 +157,8 @@ function CheckoutLiveForm({
     inventoryRemaining: inventory.remaining,
     status: inventory.status,
     sizes: inventory.sizes.length > 0 ? inventory.sizes : initialDrop.sizes,
+    products:
+      inventory.products.length > 0 ? inventory.products : initialDrop.products,
   };
 
   const [email, setEmail] = useState("");
@@ -376,7 +379,11 @@ function CheckoutLiveForm({
       <div className="space-y-6">
       <section className="rounded-lg border border-sakura-petal bg-sakura-surface p-4">
         <h1 className="font-semibold text-sakura-ink">{line.dropTitle}</h1>
-        <p className="mt-1 text-sm text-sakura-mist">Size {line.sizeLabel}</p>
+        <p className="mt-1 text-sm text-sakura-mist">
+          {line.productName && line.productName !== line.dropTitle
+            ? `${line.productName} · Size ${line.sizeLabel}`
+            : `Size ${line.sizeLabel}`}
+        </p>
         <div className="mt-4">
           <CheckoutSavingsSummary pricing={displayPricing} />
         </div>
@@ -385,9 +392,9 @@ function CheckoutLiveForm({
       <p className="text-sm font-medium text-sakura-warning">
         Limited units — complete checkout to secure yours.{" "}
         <span className="brand-accent-text font-mono">
-          {drop.inventoryRemaining} left
+          {productRemaining} left
         </span>
-        {inventory.critical && drop.inventoryRemaining > 0 && (
+        {inventory.critical && productRemaining > 0 && (
           <span className="ml-1 text-sakura-warning">— almost gone</span>
         )}
       </p>

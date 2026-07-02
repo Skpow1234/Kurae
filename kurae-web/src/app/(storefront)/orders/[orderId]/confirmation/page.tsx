@@ -111,7 +111,11 @@ export default async function OrderConfirmationPage({
 
         <div className="mt-6 rounded-md bg-sakura-petal/50 p-4 text-sm">
           <p className="font-medium text-sakura-ink">{order.dropTitle}</p>
-          <p className="mt-1 text-sakura-mist">Size {order.sizeLabel}</p>
+          <p className="mt-1 text-sakura-mist">
+            {order.productName && order.productName !== order.dropTitle
+              ? `${order.productName} · Size ${order.sizeLabel}`
+              : `Size ${order.sizeLabel}`}
+          </p>
           <div className="mt-4">
             <CheckoutSavingsSummary pricing={orderPricing} />
           </div>

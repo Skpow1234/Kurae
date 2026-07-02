@@ -1175,6 +1175,10 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/DropSize"
+        products:
+          type: array
+          items:
+            $ref: "#/components/schemas/DropProduct"
         sellerLogoUrl:
           type: string
         sellerAccent:
@@ -1182,6 +1186,32 @@ components:
           enum: [blush, dusk, teal]
         sellerBio:
           type: string
+    DropProduct:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        slug:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        priceCents:
+          type: integer
+        imageUrl:
+          type: string
+        sortOrder:
+          type: integer
+        inventoryTotal:
+          type: integer
+        inventoryRemaining:
+          type: integer
+        sizes:
+          type: array
+          items:
+            $ref: "#/components/schemas/DropSize"
     SellerDropRow:
       allOf:
         - $ref: "#/components/schemas/PublicDrop"
@@ -1236,6 +1266,10 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/DropSize"
+        products:
+          type: array
+          items:
+            $ref: "#/components/schemas/DropProduct"
         publishStatus:
           type: string
           enum: [draft, scheduled, published]
@@ -1260,6 +1294,10 @@ components:
         dropId:
           type: string
           format: uuid
+        productId:
+          type: string
+          format: uuid
+          description: Required when the drop has multiple products; omitted for single-product drops
         buyerEmail:
           type: string
           format: email
@@ -1306,6 +1344,8 @@ components:
           type: string
         dropTitle:
           type: string
+        productName:
+          type: string
         sizeLabel:
           type: string
         subtotalCents:
@@ -1343,6 +1383,8 @@ components:
         dropSlug:
           type: string
         dropTitle:
+          type: string
+        productName:
           type: string
         sizeLabel:
           type: string

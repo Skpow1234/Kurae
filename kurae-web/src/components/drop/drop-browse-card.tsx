@@ -1,9 +1,9 @@
 import Image from "next/image";
 import Link from "next/link";
 
+import { dropCardPriceLabel } from "@/lib/drop-products";
 import { getStatusLabel } from "@/lib/drop-status";
 import type { PublicDrop } from "@/lib/types";
-import { formatPrice } from "@/lib/utils";
 import { shouldUnoptimizeImageSrc } from "@/lib/images";
 
 type DropBrowseCardProps = {
@@ -69,7 +69,7 @@ export function DropBrowseCard({ drop, priority = false, branded = false }: Drop
                 : "font-mono font-semibold text-sakura-dusk"
             }
           >
-            {formatPrice(drop.priceCents, drop.currency)}
+            {dropCardPriceLabel(drop)}
           </span>
           {drop.status === "live" && (
             <span

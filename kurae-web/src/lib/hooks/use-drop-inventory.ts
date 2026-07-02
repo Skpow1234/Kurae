@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { resolveDropStatus } from "@/lib/drop-status";
-import type { DropSize, DropStatus, PublicDrop } from "@/lib/types";
+import type { DropProduct, DropSize, DropStatus, PublicDrop } from "@/lib/types";
 
 type UseDropInventoryOptions = {
   sellerSlug: string;
@@ -15,6 +15,7 @@ type UseDropInventoryOptions = {
   startsAt?: string;
   endsAt?: string;
   initialSizes?: DropSize[];
+  initialProducts?: DropProduct[];
   pollMs?: number;
 };
 
@@ -32,12 +33,14 @@ export function useDropInventory({
   startsAt,
   endsAt,
   initialSizes = [],
+  initialProducts = [],
   pollMs = 12_000,
 }: UseDropInventoryOptions) {
   const [remaining, setRemaining] = useState(initialRemaining);
   const [total, setTotal] = useState(initialTotal);
   const [status, setStatus] = useState(initialStatus);
   const [sizes, setSizes] = useState(initialSizes);
+  const [products, setProducts] = useState(initialProducts);
 
   const cancelledRef = useRef(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -66,6 +69,9 @@ export function useDropInventory({
       setStatus(data.drop.status);
       if (data.drop.sizes?.length) {
         setSizes(data.drop.sizes);
+      }
+      if (data.drop.products?.length) {
+        setProducts(data.drop.products);
       }
 
       if (isTerminalStatus(data.drop.status) && intervalRef.current) {
@@ -152,6 +158,7 @@ export function useDropInventory({
     total,
     status,
     sizes,
+    products,
     refresh,
     lowStock: total > 0 && remaining / total <= 0.2,
     critical: remaining > 0 && remaining <= 5,

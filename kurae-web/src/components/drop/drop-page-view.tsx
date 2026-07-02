@@ -64,7 +64,7 @@ export function DropPageView({
   const handleSelectProduct = useCallback((productId: string) => {
     setSelectedProductId(productId);
     setSelectedSize(null);
-  }, []);
+  }, [setSelectedProductId, setSelectedSize]);
   const waitlistRef = useRef<HTMLDivElement>(null);
   const purchaseRef = useRef<HTMLDivElement>(null);
 
