@@ -25,6 +25,7 @@ import {
   buildCheckoutFailedUrl,
   checkoutFailureFromHttpStatus,
 } from "@/lib/checkout-failure";
+import { buildCheckoutPricing } from "@/lib/checkout/pricing";
 import { useDropInventory } from "@/lib/hooks/use-drop-inventory";
 import {
   getStripe,
