@@ -31,15 +31,18 @@ export function PurchaseSection({
 
   async function handleBuy() {
     if (!selectedSizeId) return;
-    addItem(drop, selectedSizeId);
+    const key = addItem(drop, selectedSizeId);
+    if (!key) return;
+
+    const checkoutHref = `/checkout?item=${encodeURIComponent(key)}`;
 
     const me = await fetch("/api/auth/buyer/me");
     if (me.ok) {
-      router.push("/checkout");
+      router.push(checkoutHref);
       return;
     }
 
-    router.push(loginUrl("/checkout"));
+    router.push(loginUrl(checkoutHref));
   }
 
   return (

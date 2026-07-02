@@ -34,7 +34,7 @@ function PendingFallback() {
 function PendingContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { clear } = useCart();
+  const { removeMatching } = useCart();
 
   const orderId = searchParams.get("order") ?? "";
   const seller = searchParams.get("seller") ?? "";
@@ -127,7 +127,11 @@ function PendingContent() {
             setLastStatus(status);
 
             if (PAID_STATUSES.includes(status.status)) {
-              clear();
+              removeMatching({
+                sellerSlug: status.sellerSlug,
+                dropSlug: status.dropSlug,
+                sizeLabel: status.sizeLabel,
+              });
               const params = new URLSearchParams({
                 seller: status.sellerSlug,
                 drop: status.dropSlug,
@@ -177,7 +181,7 @@ function PendingContent() {
     return () => {
       cancelled = true;
     };
-  }, [buyerEmail, clear, drop, orderId, pollAttempt, router, seller, size]);
+  }, [buyerEmail, drop, orderId, pollAttempt, removeMatching, router, seller, size]);
 
   const retryPoll = useCallback(() => {
     setPollError(null);

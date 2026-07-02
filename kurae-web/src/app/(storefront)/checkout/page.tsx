@@ -2,9 +2,10 @@
 
 import { Elements } from "@stripe/react-stripe-js";
 import NextLink from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 
+import { CartLinesPanel } from "@/components/cart/cart-lines-panel";
 import { CheckoutSavingsSummary } from "@/components/checkout/checkout-savings-summary";
 import { StripePaymentForm } from "@/components/checkout/stripe-payment-form";
 import { SellerBrandTheme } from "@/components/branding/seller-brand-theme";
@@ -18,6 +19,7 @@ import { createCheckout, type CheckoutResult } from "@/lib/api/checkout";
 import { validateDiscountCode } from "@/lib/api/discount";
 import { getAccentPreset } from "@/lib/branding/accents";
 import { buildCheckoutPricing } from "@/lib/checkout/pricing";
+import { cartLineKey } from "@/lib/cart/keys";
 import {
   buildCheckoutFailedUrl,
   checkoutFailureFromHttpStatus,
@@ -38,9 +40,19 @@ type CheckoutSession = {
 };
 
 function CheckoutContent() {
-  const { line } = useCart();
+  const { lines, removeItem } = useCart();
+  const searchParams = useSearchParams();
+  const itemKey = searchParams.get("item");
 
-  if (!line) {
+  const activeLine = useMemo(() => {
+    if (itemKey) {
+      const match = lines.find((line) => cartLineKey(line) === itemKey);
+      if (match) return match;
+    }
+    return lines[0] ?? null;
+  }, [itemKey, lines]);
+
+  if (lines.length === 0) {
     return (
       <div className="text-center">
         <p className="text-sakura-stone">Your cart is empty.</p>
@@ -54,7 +66,24 @@ function CheckoutContent() {
     );
   }
 
-  return <CheckoutWithLine line={line} />;
+  return (
+    <div className="space-y-6">
+      {lines.length > 1 && (
+        <CartLinesPanel
+          lines={lines}
+          activeKey={activeLine ? cartLineKey(activeLine) : null}
+          onRemove={removeItem}
+        />
+      )}
+      {activeLine ? (
+        <CheckoutWithLine line={activeLine} />
+      ) : (
+        <div className="text-center">
+          <p className="text-sm text-sakura-stone">Select an item from your cart.</p>
+        </div>
+      )}
+    </div>
+  );
 }
 
 function CheckoutWithLine({

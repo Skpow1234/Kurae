@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 
 import { SellerBrandTheme } from "@/components/branding/seller-brand-theme";
 import { CheckoutSavingsSummary } from "@/components/checkout/checkout-savings-summary";
+import { RemainingCartBanner } from "@/components/cart/remaining-cart-banner";
 import { OrderTimeline } from "@/components/dashboard/order-timeline";
 import { fetchPublicSeller } from "@/lib/api/drops-server";
 import { buildCheckoutFailedUrl, normalizeFailureReason } from "@/lib/checkout-failure";
@@ -115,6 +116,7 @@ export default async function OrderConfirmationPage({
           <div className="mt-4">
             <CheckoutSavingsSummary pricing={orderPricing} />
           </div>
+          <RemainingCartBanner />
         </div>
 
         <div className="mt-8 border-t border-sakura-petal pt-6">
