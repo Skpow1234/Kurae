@@ -14,14 +14,21 @@ const (
 	emailQueueKey = "kurae:jobs:email"
 	emailRetryKey = "kurae:jobs:email:retry"
 	emailDLQKey   = "kurae:jobs:email:dlq"
+
+	EmailTypeOrderConfirmation = "order_confirmation"
+	EmailTypeWaitlistLive      = "waitlist_live"
+	EmailTypeWaitlistRestock   = "waitlist_restock"
 )
 
 var ErrQueueDisabled = errors.New("redis not configured")
 
 type EmailJob struct {
-	OrderID    string `json:"orderId"`
-	BuyerEmail string `json:"buyerEmail"`
-	DropTitle  string `json:"dropTitle"`
+	Type       string `json:"type,omitempty"`
+	OrderID    string `json:"orderId,omitempty"`
+	BuyerEmail string `json:"buyerEmail,omitempty"`
+	DropTitle  string `json:"dropTitle,omitempty"`
+	DropID     string `json:"dropId,omitempty"`
+	DropURL    string `json:"dropUrl,omitempty"`
 	Attempt    int    `json:"attempt,omitempty"`
 }
 

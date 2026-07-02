@@ -31,10 +31,6 @@ func main() {
 	}
 	defer db.Close()
 
-	orderSvc := service.NewOrderService(db, payments.NewNoopProvider(), nil, cfg.ReservationTTL, false)
-	dropSvc := service.NewDropService(db)
-	emailSender := jobs.NewEmailSender(cfg)
-
 	redisQueue, err := connectRedisQueue(cfg)
 	if err != nil {
 		log.Fatalf("redis: %v", err)
@@ -43,7 +39,12 @@ func main() {
 		defer redisQueue.Close()
 	}
 
-	log.Println("kurae-worker started (reservation expiry + scheduled publish + email queue)")
+	waitlistNotify := service.NewWaitlistNotifyService(db, redisQueue, cfg.PublicWebURL)
+	orderSvc := service.NewOrderService(db, payments.NewNoopProvider(), redisQueue, cfg.ReservationTTL, false, waitlistNotify)
+	dropSvc := service.NewDropService(db, waitlistNotify)
+	emailSender := jobs.NewEmailSender(cfg)
+
+	log.Println("kurae-worker started (reservation expiry + scheduled publish + waitlist notify + email queue)")
 
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
@@ -66,6 +67,12 @@ func main() {
 				} else if published > 0 {
 					log.Printf("published %d scheduled drops", published)
 				}
+				notified, err := waitlistNotify.ProcessDueLiveNotifications(ctx)
+				if err != nil {
+					log.Printf("waitlist live notifications: %v", err)
+				} else if notified > 0 {
+					log.Printf("enqueued waitlist live notifications for %d drops", notified)
+				}
 			case <-stop:
 				return
 			}
@@ -85,7 +92,7 @@ func main() {
 
 		job, err := redisQueue.DequeueEmail(ctx, 5*time.Second)
 		if err == nil {
-			processEmailJob(ctx, redisQueue, emailSender, job)
+			processEmailJob(ctx, redisQueue, emailSender, waitlistNotify, job)
 			continue
 		}
 		if errors.Is(err, redis.Nil) {
@@ -124,15 +131,41 @@ func connectRedisQueue(cfg config.Config) (*queue.RedisQueue, error) {
 	return redisQueue, nil
 }
 
-func processEmailJob(ctx context.Context, redisQueue *queue.RedisQueue, emailSender *jobs.EmailSender, job queue.EmailJob) {
-	if err := emailSender.SendOrderConfirmation(ctx, job.OrderID, job.BuyerEmail, job.DropTitle); err != nil {
-		log.Printf("send email order=%s attempt=%d: %v", job.OrderID, job.Attempt+1, err)
+func processEmailJob(
+	ctx context.Context,
+	redisQueue *queue.RedisQueue,
+	emailSender *jobs.EmailSender,
+	waitlistNotify *service.WaitlistNotifyService,
+	job queue.EmailJob,
+) {
+	jobType := job.Type
+	if jobType == "" {
+		jobType = queue.EmailTypeOrderConfirmation
+	}
+
+	var err error
+	switch jobType {
+	case queue.EmailTypeWaitlistLive, queue.EmailTypeWaitlistRestock:
+		err = waitlistNotify.ProcessEmailJob(ctx, job, emailSender)
+	default:
+		err = emailSender.SendOrderConfirmation(ctx, job.OrderID, job.BuyerEmail, job.DropTitle)
+	}
+	if err != nil {
+		ref := job.OrderID
+		if ref == "" {
+			ref = job.DropID
+		}
+		log.Printf("send email type=%s ref=%s attempt=%d: %v", jobType, ref, job.Attempt+1, err)
 		if requeueErr := redisQueue.RequeueEmail(ctx, job, err.Error()); requeueErr != nil {
-			log.Printf("requeue email order=%s: %v", job.OrderID, requeueErr)
+			log.Printf("requeue email type=%s ref=%s: %v", jobType, ref, requeueErr)
 		}
 		return
 	}
 	if job.Attempt > 0 {
-		log.Printf("send email order=%s succeeded on attempt %d", job.OrderID, job.Attempt+1)
+		ref := job.OrderID
+		if ref == "" {
+			ref = job.DropID
+		}
+		log.Printf("send email type=%s ref=%s succeeded on attempt %d", jobType, ref, job.Attempt+1)
 	}
 }

@@ -425,10 +425,10 @@ func (r *OrderRepository) ConvertReservation(ctx context.Context, orderID string
 	return tx.Commit(ctx)
 }
 
-func (r *OrderRepository) ExpireStaleReservations(ctx context.Context, now time.Time) (int, error) {
+func (r *OrderRepository) ExpireStaleReservations(ctx context.Context, now time.Time) (int, []string, error) {
 	tx, err := r.store.pool.Begin(ctx)
 	if err != nil {
-		return 0, err
+		return 0, nil, err
 	}
 	defer tx.Rollback(ctx)
 
@@ -438,7 +438,7 @@ func (r *OrderRepository) ExpireStaleReservations(ctx context.Context, now time.
 		FOR UPDATE
 	`, domain.ReservationActive, now)
 	if err != nil {
-		return 0, err
+		return 0, nil, err
 	}
 	defer rows.Close()
 
@@ -449,31 +449,42 @@ func (r *OrderRepository) ExpireStaleReservations(ctx context.Context, now time.
 	for rows.Next() {
 		var e expired
 		if err := rows.Scan(&e.id, &e.dropID, &e.orderID); err != nil {
-			return 0, err
+			return 0, nil, err
 		}
 		batch = append(batch, e)
 	}
 	if err := rows.Err(); err != nil {
-		return 0, err
+		return 0, nil, err
 	}
 
+	restockedSet := make(map[string]struct{})
 	for _, e := range batch {
+		var remainingBefore int
+		if err := tx.QueryRow(ctx, `
+			SELECT inventory_remaining FROM drops WHERE id = $1 FOR UPDATE
+		`, e.dropID).Scan(&remainingBefore); err != nil {
+			return 0, nil, err
+		}
+
 		if _, err := tx.Exec(ctx, `
 			UPDATE inventory_reservations SET status = $2 WHERE id = $1
 		`, e.id, domain.ReservationExpired); err != nil {
-			return 0, err
+			return 0, nil, err
 		}
 		if _, err := tx.Exec(ctx, `
 			UPDATE drops SET inventory_remaining = inventory_remaining + 1, updated_at = now()
 			WHERE id = $1
 		`, e.dropID); err != nil {
-			return 0, err
+			return 0, nil, err
+		}
+		if remainingBefore == 0 {
+			restockedSet[e.dropID] = struct{}{}
 		}
 		if _, err := tx.Exec(ctx, `
 			UPDATE orders SET status = $2, updated_at = now()
 			WHERE id = $1 AND status IN ('reserved', 'payment_pending')
 		`, e.orderID, domain.OrderCancelled); err != nil {
-			return 0, err
+			return 0, nil, err
 		}
 		var discountCodeID *string
 		if err := tx.QueryRow(ctx, `
@@ -484,9 +495,14 @@ func (r *OrderRepository) ExpireStaleReservations(ctx context.Context, now time.
 	}
 
 	if err := tx.Commit(ctx); err != nil {
-		return 0, err
+		return 0, nil, err
 	}
-	return len(batch), nil
+
+	restocked := make([]string, 0, len(restockedSet))
+	for dropID := range restockedSet {
+		restocked = append(restocked, dropID)
+	}
+	return len(batch), restocked, nil
 }
 
 func (r *OrderRepository) ListAuditEvents(ctx context.Context, entityType, entityID string) ([]domain.OrderEvent, error) {

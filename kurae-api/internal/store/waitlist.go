@@ -38,6 +38,26 @@ func (r *WaitlistRepository) CountByDrop(ctx context.Context, dropID string) (in
 	return count, nil
 }
 
+func (r *WaitlistRepository) ListEmailsByDrop(ctx context.Context, dropID string) ([]string, error) {
+	rows, err := r.store.pool.Query(ctx, `
+		SELECT email FROM waitlist_entries WHERE drop_id = $1 ORDER BY created_at ASC
+	`, dropID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var emails []string
+	for rows.Next() {
+		var email string
+		if err := rows.Scan(&email); err != nil {
+			return nil, err
+		}
+		emails = append(emails, email)
+	}
+	return emails, rows.Err()
+}
+
 func (r *WaitlistRepository) Exists(ctx context.Context, dropID string) (bool, error) {
 	row := r.store.pool.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM drops WHERE id = $1)`, dropID)
 	var exists bool

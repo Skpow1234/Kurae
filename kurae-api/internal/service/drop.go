@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"log"
 	"time"
 
 	"github.com/kurae/kurae-api/internal/domain"
@@ -11,11 +12,12 @@ import (
 )
 
 type DropService struct {
-	drops *store.DropRepository
+	drops  *store.DropRepository
+	notify *WaitlistNotifyService
 }
 
-func NewDropService(s *store.Store) *DropService {
-	return &DropService{drops: s.Drops()}
+func NewDropService(s *store.Store, notify *WaitlistNotifyService) *DropService {
+	return &DropService{drops: s.Drops(), notify: notify}
 }
 
 type CreateDropRequest struct {
@@ -99,6 +101,18 @@ func (d *DropService) Update(ctx context.Context, req CreateDropRequest, dropID 
 	if len(req.Sizes) == 0 {
 		req.Sizes = defaultSizes()
 	}
+
+	existing, err := d.drops.GetByIDForSeller(ctx, dropID, req.SellerID)
+	if err != nil {
+		return domain.SellerDrop{}, err
+	}
+	newRemaining, err := store.ReconcileInventoryRemaining(
+		existing.InventoryTotal, existing.InventoryRemaining, req.InventoryTotal,
+	)
+	if err != nil {
+		return domain.SellerDrop{}, err
+	}
+	restocked := existing.InventoryRemaining == 0 && newRemaining > 0
 	req.PublishStatus = normalizePublishStatus(req.PublishStatus, req.StartsAt, time.Now())
 
 	record, err := d.drops.Update(ctx, store.UpdateDropInput{
@@ -120,6 +134,11 @@ func (d *DropService) Update(ctx context.Context, req CreateDropRequest, dropID 
 	})
 	if err != nil {
 		return domain.SellerDrop{}, err
+	}
+	if restocked && d.notify != nil {
+		if err := d.notify.NotifyRestock(ctx, dropID); err != nil {
+			log.Printf("enqueue waitlist restock drop=%s: %v", dropID, err)
+		}
 	}
 	return record.ToSellerDrop(time.Now()), nil
 }

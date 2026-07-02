@@ -30,10 +30,27 @@ func NewEmailSender(cfg config.Config) *EmailSender {
 	}
 }
 
-func (s *EmailSender) SendOrderConfirmation(ctx context.Context, orderID, to, dropTitle string) error {
-	subject := fmt.Sprintf("Order confirmed — %s", dropTitle)
-	html := fmt.Sprintf("<p>Thanks for your order on <strong>%s</strong>.</p><p>Order ID: %s</p>", dropTitle, orderID)
+func (s *EmailSender) SendWaitlistLive(ctx context.Context, to, dropTitle, dropURL string) error {
+	subject := fmt.Sprintf("%s is live now", dropTitle)
+	html := fmt.Sprintf(
+		"<p><strong>%s</strong> just went live on Kurae.</p><p><a href=\"%s\">Shop the drop</a></p>",
+		dropTitle,
+		dropURL,
+	)
+	return s.sendTransactional(ctx, to, subject, html, "waitlist live", dropTitle)
+}
 
+func (s *EmailSender) SendWaitlistRestock(ctx context.Context, to, dropTitle, dropURL string) error {
+	subject := fmt.Sprintf("%s is back in stock", dropTitle)
+	html := fmt.Sprintf(
+		"<p><strong>%s</strong> has units available again.</p><p><a href=\"%s\">Grab yours before it sells out</a></p>",
+		dropTitle,
+		dropURL,
+	)
+	return s.sendTransactional(ctx, to, subject, html, "waitlist restock", dropTitle)
+}
+
+func (s *EmailSender) sendTransactional(ctx context.Context, to, subject, html, kind, ref string) error {
 	if s.resendKey != "" {
 		return s.sendResend(ctx, to, subject, html)
 	}
@@ -44,8 +61,15 @@ func (s *EmailSender) SendOrderConfirmation(ctx context.Context, orderID, to, dr
 		return fmt.Errorf("email provider not configured")
 	}
 
-	log.Printf("email: order confirmation order=%s to=%s drop=%q from=%s", orderID, to, dropTitle, s.from)
+	log.Printf("email: %s to=%s ref=%q from=%s", kind, to, ref, s.from)
 	return nil
+}
+
+func (s *EmailSender) SendOrderConfirmation(ctx context.Context, orderID, to, dropTitle string) error {
+	subject := fmt.Sprintf("Order confirmed — %s", dropTitle)
+	html := fmt.Sprintf("<p>Thanks for your order on <strong>%s</strong>.</p><p>Order ID: %s</p>", dropTitle, orderID)
+
+	return s.sendTransactional(ctx, to, subject, html, "order confirmation", orderID)
 }
 
 func (s *EmailSender) sendResend(ctx context.Context, to, subject, html string) error {

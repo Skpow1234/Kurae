@@ -22,7 +22,8 @@ type Server struct {
 
 func NewServer(cfg config.Config, s *store.Store, q *queue.RedisQueue) *Server {
 	authSvc := service.NewAuthService(s, cfg.JWTSecret)
-	dropSvc := service.NewDropService(s)
+	waitlistNotify := service.NewWaitlistNotifyService(s, q, cfg.PublicWebURL)
+	dropSvc := service.NewDropService(s, waitlistNotify)
 
 	authLimiter := ratelimit.NewIP(10, time.Minute)
 	checkoutLimiter := ratelimit.NewIP(20, time.Minute)
@@ -35,7 +36,7 @@ func NewServer(cfg config.Config, s *store.Store, q *queue.RedisQueue) *Server {
 	brandingSvc := service.NewBrandingService(s)
 	analyticsSvc := service.NewAnalyticsService(s)
 	provider := payments.NewFromConfig(cfg.StripeSecretKey, cfg.StripeWebhook, cfg.IsProduction())
-	orderSvc := service.NewOrderService(s, provider, q, cfg.ReservationTTL, !cfg.IsProduction())
+	orderSvc := service.NewOrderService(s, provider, q, cfg.ReservationTTL, !cfg.IsProduction(), waitlistNotify)
 
 	s3Storage, _ := storage.NewS3Storage(cfg)
 

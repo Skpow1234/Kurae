@@ -31,6 +31,7 @@ type Config struct {
 	ResendAPIKey    string
 	PostmarkToken   string
 	EmailFrom       string
+	PublicWebURL    string
 
 	corsOriginsExplicit bool
 }
@@ -68,6 +69,14 @@ func Load() (Config, error) {
 	} else {
 		cfg.corsOriginsExplicit = true
 		cfg.CORSOrigins = parseCORSOrigins(origins)
+	}
+
+	cfg.PublicWebURL = strings.TrimSpace(os.Getenv("PUBLIC_WEB_URL"))
+	if cfg.PublicWebURL == "" && len(cfg.CORSOrigins) > 0 {
+		cfg.PublicWebURL = cfg.CORSOrigins[0]
+	}
+	if cfg.PublicWebURL == "" {
+		cfg.PublicWebURL = "http://localhost:3000"
 	}
 
 	if cfg.DatabaseURL == "" {

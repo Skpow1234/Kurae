@@ -275,6 +275,52 @@ func (r *DropRepository) PublishDueScheduled(ctx context.Context, now time.Time)
 	return int(tag.RowsAffected()), nil
 }
 
+type WaitlistNotifyDrop struct {
+	ID         string
+	Title      string
+	SellerSlug string
+	Slug       string
+}
+
+func (r *DropRepository) ListDueLiveWaitlistNotifications(ctx context.Context, now time.Time) ([]WaitlistNotifyDrop, error) {
+	rows, err := r.store.pool.Query(ctx, `
+		SELECT d.id, d.title, s.slug, d.slug
+		FROM drops d
+		JOIN sellers s ON s.id = d.seller_id
+		WHERE d.publish_status = 'published'
+		  AND d.starts_at <= $1
+		  AND d.waitlist_live_notified_at IS NULL
+		  AND d.waitlist_count > 0
+		ORDER BY d.starts_at ASC
+	`, now)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var out []WaitlistNotifyDrop
+	for rows.Next() {
+		var drop WaitlistNotifyDrop
+		if err := rows.Scan(&drop.ID, &drop.Title, &drop.SellerSlug, &drop.Slug); err != nil {
+			return nil, err
+		}
+		out = append(out, drop)
+	}
+	return out, rows.Err()
+}
+
+func (r *DropRepository) MarkLiveWaitlistNotified(ctx context.Context, dropID string) (bool, error) {
+	tag, err := r.store.pool.Exec(ctx, `
+		UPDATE drops
+		SET waitlist_live_notified_at = now(), updated_at = now()
+		WHERE id = $1 AND waitlist_live_notified_at IS NULL
+	`, dropID)
+	if err != nil {
+		return false, err
+	}
+	return tag.RowsAffected() > 0, nil
+}
+
 func (r *DropRepository) IncrementWaitlistCount(ctx context.Context, dropID string) error {
 	_, err := r.store.pool.Exec(ctx, `
 		UPDATE drops SET waitlist_count = waitlist_count + 1, updated_at = now()

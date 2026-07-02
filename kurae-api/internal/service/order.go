@@ -22,16 +22,25 @@ type OrderService struct {
 	drops              *store.DropRepository
 	provider           payments.Provider
 	queue              *queue.RedisQueue
+	notify             *WaitlistNotifyService
 	ttl                time.Duration
 	devPaymentPollSync bool
 }
 
-func NewOrderService(s *store.Store, provider payments.Provider, q *queue.RedisQueue, ttl time.Duration, devPaymentPollSync bool) *OrderService {
+func NewOrderService(
+	s *store.Store,
+	provider payments.Provider,
+	q *queue.RedisQueue,
+	ttl time.Duration,
+	devPaymentPollSync bool,
+	notify *WaitlistNotifyService,
+) *OrderService {
 	return &OrderService{
 		orders:             s.Orders(),
 		drops:              s.Drops(),
 		provider:           provider,
 		queue:              q,
+		notify:             notify,
 		ttl:                ttl,
 		devPaymentPollSync: devPaymentPollSync,
 	}
@@ -186,6 +195,7 @@ func (o *OrderService) MarkPaid(ctx context.Context, orderID, paymentIntentID st
 		order, err := o.orders.GetByID(ctx, orderID)
 		if err == nil {
 			if err := o.queue.EnqueueEmail(ctx, queue.EmailJob{
+				Type:       queue.EmailTypeOrderConfirmation,
 				OrderID:    order.ID,
 				BuyerEmail: order.BuyerEmail,
 				DropTitle:  order.DropTitle,
@@ -317,7 +327,18 @@ func (o *OrderService) refundForSeller(ctx context.Context, sellerID, orderID st
 }
 
 func (o *OrderService) ExpireReservations(ctx context.Context) (int, error) {
-	return o.orders.ExpireStaleReservations(ctx, time.Now())
+	n, restocked, err := o.orders.ExpireStaleReservations(ctx, time.Now())
+	if err != nil {
+		return 0, err
+	}
+	if o.notify != nil {
+		for _, dropID := range restocked {
+			if err := o.notify.NotifyRestock(ctx, dropID); err != nil {
+				log.Printf("enqueue waitlist restock drop=%s: %v", dropID, err)
+			}
+		}
+	}
+	return n, nil
 }
 
 func (o *OrderService) GetBuyerOrderStatus(ctx context.Context, orderID, email string) (domain.BuyerOrderStatus, error) {
