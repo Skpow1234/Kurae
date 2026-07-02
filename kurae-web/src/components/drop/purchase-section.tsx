@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { SizePicker } from "@/components/drop/size-picker";
 import { Button } from "@/components/ui/button";
 import { useCart } from "@/contexts/cart-context";
-import { loginUrl } from "@/lib/auth/safe-redirect";
 import type { PublicDrop } from "@/lib/types";
 import { formatPrice, cn } from "@/lib/utils";
 
@@ -35,14 +34,7 @@ export function PurchaseSection({
     if (!key) return;
 
     const checkoutHref = `/checkout?item=${encodeURIComponent(key)}`;
-
-    const me = await fetch("/api/auth/buyer/me");
-    if (me.ok) {
-      router.push(checkoutHref);
-      return;
-    }
-
-    router.push(loginUrl(checkoutHref));
+    router.push(checkoutHref);
   }
 
   return (

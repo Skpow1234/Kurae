@@ -1,13 +1,12 @@
-import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
+import { ConfirmationActions } from "@/components/checkout/confirmation-actions";
 import { SellerBrandTheme } from "@/components/branding/seller-brand-theme";
 import { CheckoutSavingsSummary } from "@/components/checkout/checkout-savings-summary";
 import { RemainingCartBanner } from "@/components/cart/remaining-cart-banner";
 import { OrderTimeline } from "@/components/dashboard/order-timeline";
 import { fetchPublicSeller } from "@/lib/api/drops-server";
 import { buildCheckoutFailedUrl, normalizeFailureReason } from "@/lib/checkout-failure";
-import { brandCtaLinkClass } from "@/lib/branding/cta";
 import { buildCheckoutPricing } from "@/lib/checkout/pricing";
 import { requireApiBase } from "@/lib/api/config";
 import type { BuyerOrderStatus } from "@/lib/types/buyer-order";
@@ -128,20 +127,11 @@ export default async function OrderConfirmationPage({
           </div>
         </div>
 
-        <div className="mt-8 flex flex-col gap-3">
-          <Link
-            href={`/account/orders/${order.orderId}`}
-            className={`${brandCtaLinkClass} h-10 w-full`}
-          >
-            View in my orders
-          </Link>
-          <Link
-            href={`/${order.sellerSlug}/${order.dropSlug}`}
-            className="flex h-10 w-full items-center justify-center rounded-md border border-sakura-petal bg-sakura-paper text-sm font-medium text-sakura-ink hover:bg-sakura-surface"
-          >
-            Back to drop
-          </Link>
-        </div>
+        <ConfirmationActions
+          orderId={order.orderId}
+          sellerSlug={order.sellerSlug}
+          dropSlug={order.dropSlug}
+        />
       </div>
     </main>
     </SellerBrandTheme>

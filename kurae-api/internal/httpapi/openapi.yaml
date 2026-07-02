@@ -851,7 +851,10 @@ paths:
     post:
       tags: [checkout]
       summary: Reserve inventory and create payment intent
-      description: Buyer Bearer token is optional; when present, buyerEmail is taken from the token.
+      description: >
+        Buyer Bearer token is optional. Guest checkout sends buyerEmail in the body
+        without authentication. When a buyer token is present, buyerEmail is taken
+        from the token.
       parameters:
         - name: Idempotency-Key
           in: header

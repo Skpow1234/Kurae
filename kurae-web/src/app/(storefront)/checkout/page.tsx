@@ -14,8 +14,9 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useCart } from "@/contexts/cart-context";
 import { ApiError } from "@/lib/api/client";
-import { loginUrl } from "@/lib/auth/safe-redirect";
+import { authUrl } from "@/lib/auth/safe-redirect";
 import { createCheckout, type CheckoutResult } from "@/lib/api/checkout";
+import { writeGuestCheckoutEmail, readGuestCheckoutEmail } from "@/lib/checkout/guest-email";
 import { validateDiscountCode } from "@/lib/api/discount";
 import { getAccentPreset } from "@/lib/branding/accents";
 import { buildCheckoutPricing } from "@/lib/checkout/pricing";
@@ -133,6 +134,11 @@ function CheckoutLiveForm({
   initialDrop: PublicDrop;
 }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const checkoutReturnPath = `/checkout${
+    searchParams.toString() ? `?${searchParams.toString()}` : ""
+  }`;
+
   const inventory = useDropInventory({
     sellerSlug: line.sellerSlug,
     dropSlug: line.dropSlug,
@@ -153,6 +159,7 @@ function CheckoutLiveForm({
   };
 
   const [email, setEmail] = useState("");
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [loadingBuyer, setLoadingBuyer] = useState(true);
   const [session, setSession] = useState<CheckoutSession | null>(null);
   const [reserving, setReserving] = useState(false);
@@ -180,7 +187,7 @@ function CheckoutLiveForm({
     fetch("/api/auth/buyer/me")
       .then((res) => {
         if (!res.ok) {
-          router.replace(loginUrl("/checkout"));
+          setEmail(readGuestCheckoutEmail());
           return null;
         }
         return res.json() as Promise<{ session?: { email?: string } }>;
@@ -188,11 +195,11 @@ function CheckoutLiveForm({
       .then((data) => {
         if (data?.session?.email) {
           setEmail(data.session.email);
+          setIsLoggedIn(true);
         }
       })
-      .catch(() => router.replace(loginUrl("/checkout")))
       .finally(() => setLoadingBuyer(false));
-  }, [router]);
+  }, []);
 
   if (loadingBuyer) {
     return <Skeleton className="h-64 w-full" />;
@@ -278,9 +285,12 @@ function CheckoutLiveForm({
       const result = await createCheckout({
         dropId: drop.id,
         sizeLabel: line!.sizeLabel,
+        buyerEmail: email.trim(),
         idempotencyKey: idempotencyKeyRef.current,
         discountCode: appliedCode ?? undefined,
       });
+
+      writeGuestCheckoutEmail(email.trim());
 
       if (isDevPaymentIntent(result.clientSecret)) {
         router.push(
@@ -423,14 +433,29 @@ function CheckoutLiveForm({
               id="checkout-email"
               type="email"
               required
-              readOnly
+              readOnly={isLoggedIn}
               value={email}
+              onChange={(e) => setEmail(e.target.value)}
               disabled={reserving}
-              className="bg-sakura-surface text-sakura-stone"
+              className={isLoggedIn ? "bg-sakura-surface text-sakura-stone" : undefined}
+              autoComplete="email"
             />
             <p className="mt-1 text-xs text-sakura-mist">
-              Receipt and order updates go to your account email.
+              {isLoggedIn
+                ? "Receipt and order updates go to your account email."
+                : "Guest checkout — enter your email for receipt and order updates."}
             </p>
+            {!isLoggedIn && (
+              <p className="mt-2 text-xs text-sakura-mist">
+                Have an account?{" "}
+                <NextLink
+                  href={authUrl({ role: "buyer", next: checkoutReturnPath })}
+                  className="brand-accent-link font-medium hover:underline"
+                >
+                  Sign in
+                </NextLink>
+              </p>
+            )}
           </div>
 
           <div>

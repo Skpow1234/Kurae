@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useCart } from "@/contexts/cart-context";
 import { buildCheckoutFailedUrl, normalizeFailureReason } from "@/lib/checkout-failure";
+import { readGuestCheckoutEmail } from "@/lib/checkout/guest-email";
 import { useSellerAccent } from "@/lib/branding/use-seller-accent";
 import type { BuyerOrderStatus } from "@/lib/types/buyer-order";
 import type { OrderStatus } from "@/lib/types/orders";
@@ -78,6 +79,11 @@ function PendingContent() {
         if (cancelled) return;
         if (data?.session?.email) {
           setSessionEmail(data.session.email);
+        } else {
+          const guestEmail = readGuestCheckoutEmail();
+          if (guestEmail) {
+            setSessionEmail(guestEmail);
+          }
         }
       })
       .finally(() => {

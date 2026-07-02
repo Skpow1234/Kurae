@@ -7,21 +7,12 @@ import { getBuyerSession } from "@/lib/auth/session";
 import { parseReferralCookie, REFERRAL_COOKIE } from "@/lib/referral";
 
 export async function POST(request: Request) {
-  const session = await getBuyerSession();
-  if (!session) {
-    return NextResponse.json({ error: "Buyer sign in required" }, { status: 401 });
-  }
-
-  const token = await readToken();
-  if (!token) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
   const body = (await request.json()) as {
     dropId?: string;
     sizeLabel?: string;
     idempotencyKey?: string;
     discountCode?: string;
+    buyerEmail?: string;
   };
 
   if (!body.dropId?.trim() || !body.sizeLabel?.trim()) {
@@ -31,13 +22,30 @@ export async function POST(request: Request) {
     );
   }
 
+  const session = await getBuyerSession();
+  const token = await readToken();
+
+  let buyerEmail = body.buyerEmail?.trim() ?? "";
+  if (session?.email) {
+    buyerEmail = session.email;
+  }
+
+  if (!buyerEmail) {
+    return NextResponse.json(
+      { error: "Email is required for checkout" },
+      { status: 400 },
+    );
+  }
+
   const idempotencyKey =
     request.headers.get("Idempotency-Key") ?? body.idempotencyKey;
 
   const headers: HeadersInit = {
     "Content-Type": "application/json",
-    Authorization: `Bearer ${token}`,
   };
+  if (token && session) {
+    headers.Authorization = `Bearer ${token}`;
+  }
   if (idempotencyKey) {
     headers["Idempotency-Key"] = idempotencyKey;
   }
@@ -50,7 +58,7 @@ export async function POST(request: Request) {
     headers,
     body: JSON.stringify({
       dropId: body.dropId.trim(),
-      buyerEmail: session.email,
+      buyerEmail,
       sizeLabel: body.sizeLabel.trim(),
       idempotencyKey,
       discountCode: body.discountCode?.trim(),
