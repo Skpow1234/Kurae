@@ -16,6 +16,7 @@ func TestEmbeddedOpenAPISpec(t *testing.T) {
 
 	for _, path := range []string{
 		"/public/drops:",
+		"/public/sellers/{seller}:",
 		"/auth/buyer/register:",
 		"/buyer/orders:",
 		"/checkout/discount/validate:",

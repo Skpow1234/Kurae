@@ -86,6 +86,29 @@ func (r *SellerRepository) GetBySlug(ctx context.Context, slug string) (domain.S
 	return seller, nil
 }
 
+func (r *SellerRepository) GetPublicProfileBySlug(ctx context.Context, slug string) (domain.PublicSeller, error) {
+	row := r.store.pool.QueryRow(ctx, `
+		SELECT slug, name, brand_logo_url, brand_accent, brand_bio
+		FROM sellers WHERE slug = $1
+	`, slug)
+
+	var profile domain.PublicSeller
+	var logoURL, bio string
+	if err := row.Scan(&profile.Slug, &profile.Name, &logoURL, &profile.Accent, &bio); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return domain.PublicSeller{}, ErrNotFound
+		}
+		return domain.PublicSeller{}, err
+	}
+	if logoURL != "" {
+		profile.LogoURL = logoURL
+	}
+	if bio != "" {
+		profile.Bio = bio
+	}
+	return profile, nil
+}
+
 func (r *SellerRepository) UpdateName(ctx context.Context, sellerID, name string) (domain.Seller, error) {
 	row := r.store.pool.QueryRow(ctx, `
 		UPDATE sellers SET name = $2

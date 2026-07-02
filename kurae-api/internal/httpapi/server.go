@@ -41,7 +41,7 @@ func NewServer(cfg config.Config, s *store.Store, q *queue.RedisQueue) *Server {
 
 	authH := NewAuthHandler(authSvc, referralSvc)
 	dropH := NewDropHandler(dropSvc, authSvc)
-	publicH := NewPublicHandler(dropSvc, waitlistSvc, authSvc)
+	publicH := NewPublicHandler(dropSvc, waitlistSvc, authSvc, s.Sellers())
 	orderH := NewOrderHandler(orderSvc, authSvc)
 	discountH := NewDiscountHandler(discountSvc, orderSvc)
 	referralH := NewReferralHandler(referralSvc)
@@ -92,6 +92,7 @@ func NewServer(cfg config.Config, s *store.Store, q *queue.RedisQueue) *Server {
 	viewLimiter := ratelimit.NewIP(120, time.Minute)
 
 	r.Get("/public/drops", publicH.ListDrops)
+	r.Get("/public/sellers/{seller}", publicH.GetSeller)
 	r.Get("/public/{seller}/{drop}", publicH.GetDrop)
 	r.With(RateLimit(waitlistLimiter)).Post("/drops/{id}/waitlist", publicH.JoinWaitlist)
 	r.With(RateLimit(referralClickLimiter)).Post("/public/referrals/click", referralH.RecordClick)

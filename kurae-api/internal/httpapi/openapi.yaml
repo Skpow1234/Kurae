@@ -327,6 +327,25 @@ paths:
                     type: integer
         "429":
           $ref: "#/components/responses/Error"
+  /public/sellers/{seller}:
+    get:
+      tags: [public]
+      summary: Public seller profile for referral landing pages
+      parameters:
+        - name: seller
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PublicSeller"
+        "404":
+          $ref: "#/components/responses/Error"
   /public/referrals/click:
     post:
       tags: [public, referrals]
@@ -1454,12 +1473,30 @@ components:
           description: Omit for seller-wide referral code
     ReferralClickRequest:
       type: object
-      required: [dropId, code]
+      required: [code]
       properties:
         dropId:
           type: string
           format: uuid
+          description: Required for drop-scoped referral clicks
+        sellerSlug:
+          type: string
+          description: Required for all-drops referral clicks on seller landing pages
         code:
+          type: string
+    PublicSeller:
+      type: object
+      properties:
+        slug:
+          type: string
+        name:
+          type: string
+        logoUrl:
+          type: string
+        accent:
+          type: string
+          enum: [blush, dusk, teal]
+        bio:
           type: string
     SellerBranding:
       type: object

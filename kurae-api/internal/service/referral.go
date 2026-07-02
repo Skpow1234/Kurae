@@ -99,6 +99,34 @@ func (r *ReferralService) RecordClick(ctx context.Context, dropID, code string) 
 	return r.referrals.RecordClick(ctx, rec.ID)
 }
 
+func (r *ReferralService) RecordSellerClick(ctx context.Context, sellerSlug, code string) error {
+	seller, err := r.sellers.GetBySlug(ctx, sellerSlug)
+	if errors.Is(err, store.ErrNotFound) {
+		return err
+	}
+	if err != nil {
+		return err
+	}
+
+	normalized, err := normalizeReferralCode(code)
+	if err != nil {
+		return nil
+	}
+
+	rec, err := r.referrals.LookupForAttribution(ctx, seller.ID, "", normalized)
+	if errors.Is(err, store.ErrNotFound) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	if rec.DropID != nil {
+		return nil
+	}
+
+	return r.referrals.RecordClick(ctx, rec.ID)
+}
+
 func (r *ReferralService) RecordSignup(ctx context.Context, sellerSlug, code string) error {
 	if strings.TrimSpace(code) == "" || strings.TrimSpace(sellerSlug) == "" {
 		return nil

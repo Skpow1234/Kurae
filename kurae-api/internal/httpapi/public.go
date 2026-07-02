@@ -14,10 +14,21 @@ type PublicHandler struct {
 	drops    *service.DropService
 	waitlist *service.WaitlistService
 	auth     *service.AuthService
+	sellers  *store.SellerRepository
 }
 
-func NewPublicHandler(drops *service.DropService, waitlist *service.WaitlistService, auth *service.AuthService) *PublicHandler {
-	return &PublicHandler{drops: drops, waitlist: waitlist, auth: auth}
+func NewPublicHandler(
+	drops *service.DropService,
+	waitlist *service.WaitlistService,
+	auth *service.AuthService,
+	sellers *store.SellerRepository,
+) *PublicHandler {
+	return &PublicHandler{
+		drops:    drops,
+		waitlist: waitlist,
+		auth:     auth,
+		sellers:  sellers,
+	}
 }
 
 func (h *PublicHandler) ListDrops(w http.ResponseWriter, r *http.Request) {
@@ -56,6 +67,20 @@ func (h *PublicHandler) GetDrop(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, drop)
+}
+
+func (h *PublicHandler) GetSeller(w http.ResponseWriter, r *http.Request) {
+	sellerSlug := chi.URLParam(r, "seller")
+	profile, err := h.sellers.GetPublicProfileBySlug(r.Context(), sellerSlug)
+	if errors.Is(err, store.ErrNotFound) {
+		writeError(w, http.StatusNotFound, "Not found")
+		return
+	}
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "Could not load seller")
+		return
+	}
+	writeJSON(w, http.StatusOK, profile)
 }
 
 func (h *PublicHandler) JoinWaitlist(w http.ResponseWriter, r *http.Request) {

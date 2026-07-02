@@ -84,26 +84,46 @@ func (h *ReferralHandler) Delete(w http.ResponseWriter, r *http.Request) {
 
 func (h *ReferralHandler) RecordClick(w http.ResponseWriter, r *http.Request) {
 	var body struct {
-		DropID string `json:"dropId"`
-		Code   string `json:"code"`
+		DropID     string `json:"dropId"`
+		SellerSlug string `json:"sellerSlug"`
+		Code       string `json:"code"`
 	}
 	if err := decodeJSON(r, &body); err != nil {
 		writeError(w, http.StatusBadRequest, "Invalid JSON")
 		return
 	}
-	if strings.TrimSpace(body.DropID) == "" || strings.TrimSpace(body.Code) == "" {
-		writeError(w, http.StatusBadRequest, "dropId and code are required")
+	if strings.TrimSpace(body.Code) == "" {
+		writeError(w, http.StatusBadRequest, "code is required")
 		return
 	}
 
-	if err := h.referrals.RecordClick(r.Context(), body.DropID, body.Code); err != nil {
-		if errors.Is(err, store.ErrNotFound) {
-			writeError(w, http.StatusNotFound, "Drop not found")
+	dropID := strings.TrimSpace(body.DropID)
+	sellerSlug := strings.TrimSpace(body.SellerSlug)
+
+	switch {
+	case dropID != "":
+		if err := h.referrals.RecordClick(r.Context(), dropID, body.Code); err != nil {
+			if errors.Is(err, store.ErrNotFound) {
+				writeError(w, http.StatusNotFound, "Drop not found")
+				return
+			}
+			writeError(w, http.StatusInternalServerError, "Could not record click")
 			return
 		}
-		writeError(w, http.StatusInternalServerError, "Could not record click")
+	case sellerSlug != "":
+		if err := h.referrals.RecordSellerClick(r.Context(), sellerSlug, body.Code); err != nil {
+			if errors.Is(err, store.ErrNotFound) {
+				writeError(w, http.StatusNotFound, "Seller not found")
+				return
+			}
+			writeError(w, http.StatusInternalServerError, "Could not record click")
+			return
+		}
+	default:
+		writeError(w, http.StatusBadRequest, "dropId or sellerSlug is required")
 		return
 	}
+
 	writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
 }
 
