@@ -1,6 +1,6 @@
 export type DropStatus = "upcoming" | "live" | "sold_out" | "expired";
 
-export type PublishStatus = "draft" | "published";
+export type PublishStatus = "draft" | "scheduled" | "published";
 
 export type DropSize = {
   id: string;

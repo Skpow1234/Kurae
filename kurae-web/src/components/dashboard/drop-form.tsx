@@ -15,6 +15,10 @@ import {
 } from "@/lib/uploads/product-image";
 import { DEFAULT_DROP_SIZES } from "@/lib/constants/sizes";
 import {
+  isDropPreviewOnly,
+  isStartsAtInFuture,
+} from "@/lib/drop-publish";
+import {
   fromDatetimeLocalValue,
   slugify,
   toDatetimeLocalValue,
@@ -194,9 +198,13 @@ export function DropForm({ session, drop }: DropFormProps) {
 
   const previewHref = values.slug
     ? `/${session.sellerSlug}/${values.slug}${
-        values.publishStatus === "draft" || !drop ? "?preview=1" : ""
+        isDropPreviewOnly(values.publishStatus) || !drop ? "?preview=1" : ""
       }`
     : null;
+
+  const startsAtIso = fromDatetimeLocalValue(values.startsAt);
+  const canSchedulePublish =
+    isStartsAtInFuture(startsAtIso) && values.publishStatus !== "published";
 
   return (
     <div className="space-y-8">
@@ -435,13 +443,27 @@ export function DropForm({ session, drop }: DropFormProps) {
           >
             Save draft
           </Button>
+          {canSchedulePublish && (
+            <Button
+              type="button"
+              variant="outline"
+              disabled={saving}
+              onClick={() => save("scheduled")}
+            >
+              {saving ? "Saving…" : "Schedule publish"}
+            </Button>
+          )}
           <Button
             type="button"
             className="bg-sakura-blush text-sakura-ink hover:bg-sakura-bloom"
             disabled={saving}
             onClick={() => save("published")}
           >
-            {saving ? "Saving…" : drop?.publishStatus === "published" ? "Update drop" : "Publish drop"}
+            {saving
+              ? "Saving…"
+              : drop?.publishStatus === "published"
+                ? "Update drop"
+                : "Publish now"}
           </Button>
           {drop?.publishStatus === "published" && (
             <Button
@@ -453,7 +475,23 @@ export function DropForm({ session, drop }: DropFormProps) {
               Unpublish
             </Button>
           )}
+          {drop?.publishStatus === "scheduled" && (
+            <Button
+              type="button"
+              variant="outline"
+              disabled={saving}
+              onClick={() => save("draft")}
+            >
+              Cancel schedule
+            </Button>
+          )}
         </div>
+        {canSchedulePublish && (
+          <p className="text-sm text-sakura-mist">
+            Schedule publish keeps the drop private until the start time, then
+            goes live automatically (requires kurae-worker).
+          </p>
+        )}
 
         {drop && (
           <div className="rounded-lg border border-sakura-warning/30 bg-sakura-surface/50 p-5">

@@ -22,7 +22,7 @@ function rankDrops(drops: SellerDrop[]) {
     .map((drop) => {
       const publicDrop = toPublicDrop(drop);
       const priority =
-        drop.publishStatus === "draft"
+        drop.publishStatus === "draft" || drop.publishStatus === "scheduled"
           ? 100
           : STATUS_PRIORITY[publicDrop.status];
       return { drop, publicDrop, priority };

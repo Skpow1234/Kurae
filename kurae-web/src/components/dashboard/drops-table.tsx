@@ -3,10 +3,17 @@ import Link from "next/link";
 import { DropDeleteButton } from "@/components/dashboard/drop-delete-button";
 import type { SellerDrop } from "@/lib/types";
 import { toPublicDrop } from "@/lib/drop-status";
+import { formatDropPublishStatus } from "@/lib/drop-publish";
 
 type DropsTableProps = {
   drops: SellerDrop[];
 };
+
+function previewHref(drop: SellerDrop) {
+  return drop.publishStatus === "published"
+    ? `/${drop.sellerSlug}/${drop.slug}`
+    : `/${drop.sellerSlug}/${drop.slug}?preview=1`;
+}
 
 export function DropsTable({ drops }: DropsTableProps) {
   return (
@@ -14,10 +21,6 @@ export function DropsTable({ drops }: DropsTableProps) {
       <div className="space-y-3 md:hidden">
         {drops.map((drop) => {
           const publicDrop = toPublicDrop(drop);
-          const previewHref =
-            drop.publishStatus === "published"
-              ? `/${drop.sellerSlug}/${drop.slug}`
-              : `/${drop.sellerSlug}/${drop.slug}?preview=1`;
 
           return (
             <article
@@ -33,7 +36,7 @@ export function DropsTable({ drops }: DropsTableProps) {
                 </Link>
                 <div className="flex shrink-0 items-center gap-3 text-sm">
                   <Link
-                    href={previewHref}
+                    href={previewHref(drop)}
                     className="text-sakura-dusk hover:underline"
                     target="_blank"
                   >
@@ -45,7 +48,9 @@ export function DropsTable({ drops }: DropsTableProps) {
               <dl className="mt-3 grid gap-2 text-sm">
                 <div className="flex justify-between gap-4">
                   <dt className="text-sakura-mist">Publish</dt>
-                  <dd className="capitalize text-sakura-stone">{drop.publishStatus}</dd>
+                  <dd className="text-sakura-stone">
+                    {formatDropPublishStatus(drop.publishStatus, drop.startsAt)}
+                  </dd>
                 </div>
                 <div className="flex justify-between gap-4">
                   <dt className="text-sakura-mist">State</dt>
@@ -93,8 +98,8 @@ export function DropsTable({ drops }: DropsTableProps) {
                         {drop.title}
                       </Link>
                     </td>
-                    <td className="px-4 py-3 capitalize text-sakura-stone">
-                      {drop.publishStatus}
+                    <td className="px-4 py-3 text-sakura-stone">
+                      {formatDropPublishStatus(drop.publishStatus, drop.startsAt)}
                     </td>
                     <td className="px-4 py-3 capitalize text-sakura-stone">
                       {publicDrop.status.replace("_", " ")}
@@ -105,11 +110,7 @@ export function DropsTable({ drops }: DropsTableProps) {
                     <td className="px-4 py-3 text-right">
                       <div className="flex items-center justify-end gap-3">
                         <Link
-                          href={
-                            drop.publishStatus === "published"
-                              ? `/${drop.sellerSlug}/${drop.slug}`
-                              : `/${drop.sellerSlug}/${drop.slug}?preview=1`
-                          }
+                          href={previewHref(drop)}
                           className="text-sakura-dusk hover:underline"
                           target="_blank"
                         >
