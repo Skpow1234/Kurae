@@ -1,6 +1,11 @@
+import type { AnalyticsQuery, SellerAnalytics } from "@/lib/types/analytics";
+import { buildAnalyticsQuery } from "@/lib/analytics/query";
 import { apiServerFetch } from "@/lib/api/server";
-import type { SellerAnalytics } from "@/lib/types/analytics";
 
-export async function fetchSellerAnalytics(): Promise<SellerAnalytics> {
-  return apiServerFetch<SellerAnalytics>("/dashboard/analytics");
+export async function fetchSellerAnalytics(
+  params: AnalyticsQuery = {},
+): Promise<SellerAnalytics> {
+  const qs = buildAnalyticsQuery(params).toString();
+  const path = qs ? `/dashboard/analytics?${qs}` : "/dashboard/analytics";
+  return apiServerFetch<SellerAnalytics>(path);
 }
