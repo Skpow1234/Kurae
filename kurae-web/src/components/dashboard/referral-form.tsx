@@ -62,10 +62,9 @@ export function ReferralForm({
     >
       <h2 className="text-sm font-medium text-sakura-ink">Create referral code</h2>
       <p className="text-xs text-sakura-mist">
-        Share links like{" "}
-        <span className="font-mono">
-          /{sellerSlug}/your-drop?ref=CODE
-        </span>
+        All-drops links use{" "}
+        <span className="font-mono">/{sellerSlug}?ref=CODE</span>. Drop-scoped links use{" "}
+        <span className="font-mono">/{sellerSlug}/your-drop?ref=CODE</span>.
       </p>
       <Input
         placeholder="HANASTUDIO"
@@ -79,7 +78,7 @@ export function ReferralForm({
         onChange={(e) => setDropId(e.target.value)}
         className="h-10 w-full rounded-md border border-sakura-petal bg-sakura-paper px-3 text-sm"
       >
-        <option value="">All drops (pick drop when copying link)</option>
+        <option value="">All drops (seller-wide link)</option>
         {drops.map((d) => (
           <option key={d.id} value={d.id}>
             {d.title}

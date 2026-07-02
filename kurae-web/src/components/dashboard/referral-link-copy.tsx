@@ -5,23 +5,30 @@ import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { buildReferralLink } from "@/lib/referral";
+import { buildReferralLinkForCode } from "@/lib/referral";
 
 type ReferralLinkCopyProps = {
   sellerSlug: string;
-  dropSlug: string;
   code: string;
+  dropSlug?: string;
+  hint?: string;
 };
 
 export function ReferralLinkCopy({
   sellerSlug,
-  dropSlug,
   code,
+  dropSlug,
+  hint,
 }: ReferralLinkCopyProps) {
   const [copied, setCopied] = useState(false);
   const link =
     typeof window !== "undefined"
-      ? buildReferralLink(window.location.origin, sellerSlug, dropSlug, code)
+      ? buildReferralLinkForCode(
+          window.location.origin,
+          sellerSlug,
+          code,
+          dropSlug,
+        )
       : "";
 
   async function copy() {
@@ -32,11 +39,14 @@ export function ReferralLinkCopy({
   }
 
   return (
-    <div className="flex gap-2">
-      <Input value={link} readOnly className="font-mono text-xs" />
-      <Button type="button" variant="outline" size="icon" onClick={() => void copy()}>
-        {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-      </Button>
+    <div className="space-y-1">
+      <div className="flex gap-2">
+        <Input value={link} readOnly className="font-mono text-xs" />
+        <Button type="button" variant="outline" size="icon" onClick={() => void copy()}>
+          {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+        </Button>
+      </div>
+      {hint && <p className="text-xs text-sakura-mist">{hint}</p>}
     </div>
   );
 }

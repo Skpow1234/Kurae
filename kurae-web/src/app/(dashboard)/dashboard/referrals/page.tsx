@@ -8,17 +8,7 @@ import { listSellerDrops } from "@/lib/api/drops-server";
 import { listReferralCodes } from "@/lib/api/referrals-server";
 import { authUrl } from "@/lib/auth/safe-redirect";
 import { getSellerSession } from "@/lib/auth/session";
-import type { ReferralCode } from "@/lib/types/referral";
-import type { SellerDrop } from "@/lib/types";
-
-function resolveDropSlug(
-  code: ReferralCode,
-  drops: SellerDrop[],
-): string | null {
-  if (code.dropSlug) return code.dropSlug;
-  const published = drops.find((d) => d.publishStatus === "published");
-  return published?.slug ?? drops[0]?.slug ?? null;
-}
+import { resolveReferralLinkTarget } from "@/lib/referral-link";
 
 export default async function ReferralsPage() {
   const session = await getSellerSession();
@@ -61,7 +51,7 @@ export default async function ReferralsPage() {
       ) : (
         <div className="space-y-6">
           {codes.map((code) => {
-            const dropSlug = resolveDropSlug(code, drops);
+            const linkTarget = resolveReferralLinkTarget(code, drops);
             const hasActivity =
               code.clicksCount > 0 || code.signupsCount > 0 || code.ordersCount > 0;
 
@@ -86,15 +76,22 @@ export default async function ReferralsPage() {
                   />
                 </div>
 
-                {dropSlug ? (
+                {linkTarget ? (
                   <ReferralLinkCopy
                     sellerSlug={session.sellerSlug}
-                    dropSlug={dropSlug}
                     code={code.code}
+                    dropSlug={
+                      linkTarget.kind === "drop" ? linkTarget.dropSlug : undefined
+                    }
+                    hint={
+                      linkTarget.kind === "seller"
+                        ? "Works before any drop is published — buyers land on your seller page."
+                        : undefined
+                    }
                   />
                 ) : (
                   <p className="text-xs text-sakura-warning">
-                    Publish a drop to generate a referral link for this code.
+                    Drop-scoped code is missing its drop — recreate the code or restore the drop.
                   </p>
                 )}
 

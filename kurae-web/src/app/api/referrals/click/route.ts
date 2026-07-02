@@ -17,20 +17,26 @@ export async function POST(request: Request) {
     sellerSlug?: string;
   };
 
-  if (!body.dropId?.trim() || !body.code?.trim() || !body.sellerSlug?.trim()) {
+  const code = body.code?.trim();
+  const sellerSlug = body.sellerSlug?.trim();
+  const dropId = body.dropId?.trim();
+
+  if (!code || !sellerSlug) {
     return NextResponse.json(
-      { error: "dropId, code, and sellerSlug are required" },
+      { error: "code and sellerSlug are required" },
       { status: 400 },
     );
   }
 
-  const code = body.code.trim().toUpperCase();
-  const sellerSlug = body.sellerSlug.trim();
+  const normalizedCode = code.toUpperCase();
+  const payload = dropId
+    ? { dropId, code: normalizedCode }
+    : { sellerSlug, code: normalizedCode };
 
   const res = await fetch(`${requireApiBase()}/public/referrals/click`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ dropId: body.dropId.trim(), code }),
+    body: JSON.stringify(payload),
   });
 
   const response = NextResponse.json(
@@ -41,7 +47,7 @@ export async function POST(request: Request) {
   if (res.ok) {
     response.cookies.set(
       REFERRAL_COOKIE,
-      serializeReferralCookie({ code, sellerSlug }),
+      serializeReferralCookie({ code: normalizedCode, sellerSlug }),
       COOKIE_OPTS,
     );
   }

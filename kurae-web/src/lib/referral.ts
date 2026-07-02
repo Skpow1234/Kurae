@@ -35,3 +35,24 @@ export function buildReferralLink(
   const base = origin.replace(/\/$/, "");
   return `${base}/${sellerSlug}/${dropSlug}?ref=${encodeURIComponent(code)}`;
 }
+
+export function buildSellerReferralLink(
+  origin: string,
+  sellerSlug: string,
+  code: string,
+): string {
+  const base = origin.replace(/\/$/, "");
+  return `${base}/${sellerSlug}?ref=${encodeURIComponent(code)}`;
+}
+
+export function buildReferralLinkForCode(
+  origin: string,
+  sellerSlug: string,
+  code: string,
+  dropSlug?: string,
+): string {
+  if (dropSlug?.trim()) {
+    return buildReferralLink(origin, sellerSlug, dropSlug.trim(), code);
+  }
+  return buildSellerReferralLink(origin, sellerSlug, code);
+}

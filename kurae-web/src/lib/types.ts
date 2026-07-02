@@ -35,6 +35,14 @@ export type PublicDrop = {
 
 export type BrandAccent = "blush" | "dusk" | "teal";
 
+export type PublicSeller = {
+  slug: string;
+  name: string;
+  logoUrl?: string;
+  accent?: BrandAccent;
+  bio?: string;
+};
+
 export type SellerBranding = {
   logoUrl: string;
   accent: BrandAccent;
