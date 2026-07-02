@@ -1312,6 +1312,9 @@ components:
         discountCode:
           type: string
           nullable: true
+        referralCode:
+          type: string
+          nullable: true
         amountCents:
           type: integer
         currency:

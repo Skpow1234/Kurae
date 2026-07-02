@@ -10,6 +10,7 @@ type BuyerOrderStatus struct {
 	SubtotalCents int          `json:"subtotalCents"`
 	DiscountCents int          `json:"discountCents"`
 	DiscountCode  *string      `json:"discountCode,omitempty"`
+	ReferralCode  *string      `json:"referralCode,omitempty"`
 	AmountCents   int          `json:"amountCents"`
 	Currency      string       `json:"currency"`
 	BuyerEmail    string       `json:"buyerEmail"`

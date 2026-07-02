@@ -343,6 +343,7 @@ func (o *OrderService) GetBuyerOrderStatus(ctx context.Context, orderID, email s
 		SubtotalCents: r.SubtotalCents,
 		DiscountCents: r.DiscountCents,
 		DiscountCode:  r.DiscountCodeSnapshot,
+		ReferralCode:  r.ReferralCodeSnapshot,
 		AmountCents:   r.AmountCents,
 		Currency:      r.Currency,
 		BuyerEmail:    r.BuyerEmail,
