@@ -1189,7 +1189,7 @@ components:
           properties:
             publishStatus:
               type: string
-              enum: [draft, published]
+              enum: [draft, scheduled, published]
             publicStatus:
               type: string
     DropSize:
@@ -1238,7 +1238,7 @@ components:
             $ref: "#/components/schemas/DropSize"
         publishStatus:
           type: string
-          enum: [draft, published]
+          enum: [draft, scheduled, published]
     OrderStatus:
       type: string
       enum: [reserved, payment_pending, paid, fulfilled, cancelled, refunded]

@@ -35,6 +35,20 @@ type CreateDropRequest struct {
 	PublishStatus    domain.PublishStatus
 }
 
+func normalizePublishStatus(status domain.PublishStatus, startsAt, now time.Time) domain.PublishStatus {
+	switch status {
+	case domain.PublishPublished:
+		return domain.PublishPublished
+	case domain.PublishScheduled:
+		if !startsAt.After(now) {
+			return domain.PublishPublished
+		}
+		return domain.PublishScheduled
+	default:
+		return domain.PublishDraft
+	}
+}
+
 func (d *DropService) Create(ctx context.Context, req CreateDropRequest) (domain.SellerDrop, error) {
 	if req.InventoryTotal < 0 || req.PriceCents < 0 {
 		return domain.SellerDrop{}, errors.New("invalid inventory or price")
@@ -49,6 +63,7 @@ func (d *DropService) Create(ctx context.Context, req CreateDropRequest) (domain
 	if len(req.Sizes) == 0 {
 		req.Sizes = defaultSizes()
 	}
+	req.PublishStatus = normalizePublishStatus(req.PublishStatus, req.StartsAt, time.Now())
 
 	record, err := d.drops.Create(ctx, store.CreateDropInput{
 		SellerID:         req.SellerID,
@@ -84,6 +99,7 @@ func (d *DropService) Update(ctx context.Context, req CreateDropRequest, dropID 
 	if len(req.Sizes) == 0 {
 		req.Sizes = defaultSizes()
 	}
+	req.PublishStatus = normalizePublishStatus(req.PublishStatus, req.StartsAt, time.Now())
 
 	record, err := d.drops.Update(ctx, store.UpdateDropInput{
 		ID:               dropID,
@@ -158,6 +174,10 @@ func (d *DropService) ListPublicFeed(ctx context.Context, limit int) ([]domain.P
 		out[i] = r.ToPublicDrop(now)
 	}
 	return out, nil
+}
+
+func (d *DropService) PublishDueScheduled(ctx context.Context) (int, error) {
+	return d.drops.PublishDueScheduled(ctx, time.Now())
 }
 
 func defaultSizes() []domain.DropSize {

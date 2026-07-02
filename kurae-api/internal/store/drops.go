@@ -263,6 +263,18 @@ func (r *DropRepository) Update(ctx context.Context, in UpdateDropInput) (domain
 	return r.GetByIDForSeller(ctx, in.ID, in.SellerID)
 }
 
+func (r *DropRepository) PublishDueScheduled(ctx context.Context, now time.Time) (int, error) {
+	tag, err := r.store.pool.Exec(ctx, `
+		UPDATE drops
+		SET publish_status = 'published', updated_at = now()
+		WHERE publish_status = 'scheduled' AND starts_at <= $1
+	`, now)
+	if err != nil {
+		return 0, err
+	}
+	return int(tag.RowsAffected()), nil
+}
+
 func (r *DropRepository) IncrementWaitlistCount(ctx context.Context, dropID string) error {
 	_, err := r.store.pool.Exec(ctx, `
 		UPDATE drops SET waitlist_count = waitlist_count + 1, updated_at = now()

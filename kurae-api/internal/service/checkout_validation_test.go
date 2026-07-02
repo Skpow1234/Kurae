@@ -51,6 +51,12 @@ func TestValidateCheckoutDrop(t *testing.T) {
 			wantErr:   ErrDropNotCheckoutable,
 		},
 		{
+			name:      "scheduled rejected",
+			drop:      func() domain.DropRecord { d := liveDrop; d.PublishStatus = domain.PublishScheduled; return d }(),
+			sizeLabel: "M",
+			wantErr:   ErrDropNotCheckoutable,
+		},
+		{
 			name:      "upcoming rejected",
 			drop:      func() domain.DropRecord { d := liveDrop; d.StartsAt = now.Add(time.Hour); return d }(),
 			sizeLabel: "M",

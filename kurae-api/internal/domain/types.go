@@ -15,6 +15,7 @@ type PublishStatus string
 
 const (
 	PublishDraft     PublishStatus = "draft"
+	PublishScheduled PublishStatus = "scheduled"
 	PublishPublished PublishStatus = "published"
 )
 

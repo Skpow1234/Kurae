@@ -32,6 +32,7 @@ func main() {
 	defer db.Close()
 
 	orderSvc := service.NewOrderService(db, payments.NewNoopProvider(), nil, cfg.ReservationTTL, false)
+	dropSvc := service.NewDropService(db)
 	emailSender := jobs.NewEmailSender(cfg)
 
 	redisQueue, err := connectRedisQueue(cfg)
@@ -42,7 +43,7 @@ func main() {
 		defer redisQueue.Close()
 	}
 
-	log.Println("kurae-worker started (reservation expiry + email queue)")
+	log.Println("kurae-worker started (reservation expiry + scheduled publish + email queue)")
 
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
@@ -58,6 +59,12 @@ func main() {
 					log.Printf("expire reservations: %v", err)
 				} else if n > 0 {
 					log.Printf("expired %d reservations", n)
+				}
+				published, err := dropSvc.PublishDueScheduled(ctx)
+				if err != nil {
+					log.Printf("publish scheduled drops: %v", err)
+				} else if published > 0 {
+					log.Printf("published %d scheduled drops", published)
 				}
 			case <-stop:
 				return
