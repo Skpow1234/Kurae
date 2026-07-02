@@ -13,8 +13,8 @@ export function InventoryBar({ remaining, total, className }: InventoryBarProps)
   const lowStock = pct <= 20;
   const critical = remaining <= 5 && remaining > 0;
 
-  let fillClass = "bg-sakura-blush";
-  if (lowStock) fillClass = "bg-sakura-dusk";
+  let fillClass = "brand-accent-fill";
+  if (lowStock) fillClass = "brand-accent-fill-low";
   if (critical) fillClass = "bg-sakura-warning animate-pulse-warning";
 
   return (

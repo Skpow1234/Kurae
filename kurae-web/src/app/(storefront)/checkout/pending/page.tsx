@@ -5,10 +5,12 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useState } from "react";
 
 import { ApiLoadError } from "@/components/ui/api-load-error";
+import { SellerBrandTheme } from "@/components/branding/seller-brand-theme";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useCart } from "@/contexts/cart-context";
 import { buildCheckoutFailedUrl, normalizeFailureReason } from "@/lib/checkout-failure";
+import { useSellerAccent } from "@/lib/branding/use-seller-accent";
 import type { BuyerOrderStatus } from "@/lib/types/buyer-order";
 import type { OrderStatus } from "@/lib/types/orders";
 
@@ -47,6 +49,7 @@ function PendingContent() {
   const [pollAttempt, setPollAttempt] = useState(0);
 
   const buyerEmail = emailFromQuery || sessionEmail || "";
+  const accent = useSellerAccent(seller || undefined, drop || undefined);
 
   useEffect(() => {
     const redirectStatus = searchParams.get("redirect_status");
@@ -200,8 +203,9 @@ function PendingContent() {
   }
 
   return (
+    <SellerBrandTheme accent={accent}>
     <div className="text-center">
-      <div className="mx-auto mb-6 h-12 w-12 animate-spin rounded-full border-2 border-sakura-petal border-t-sakura-blush" />
+      <div className="brand-accent-spinner mx-auto mb-6 h-12 w-12 animate-spin rounded-full border-2 border-sakura-petal" />
       <p className="text-xs uppercase tracking-widest text-sakura-bloom">
         Payment pending
       </p>
@@ -230,6 +234,7 @@ function PendingContent() {
         </div>
       )}
     </div>
+    </SellerBrandTheme>
   );
 }
 

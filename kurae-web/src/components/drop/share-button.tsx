@@ -66,7 +66,7 @@ export function CopyLinkButton() {
     <button
       type="button"
       onClick={handleCopy}
-      className="inline-flex items-center gap-1.5 text-sm text-sakura-dusk hover:text-sakura-ink"
+      className="inline-flex items-center gap-1.5 text-sm brand-accent-link hover:underline"
     >
       {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
       {copied ? "Copied" : "Copy link"}

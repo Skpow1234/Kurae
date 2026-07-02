@@ -116,6 +116,38 @@ body {
   background-color: var(--brand-primary);
 }
 
+.brand-themed .brand-accent-selected {
+  border-color: var(--brand-hover);
+  background-color: var(--brand-primary);
+  color: var(--sakura-ink);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--brand-primary) 30%, transparent);
+}
+
+.brand-themed .brand-accent-fill {
+  background-color: var(--brand-primary);
+}
+
+.brand-themed .brand-accent-fill-low {
+  background-color: var(--brand-hover);
+}
+
+.brand-themed .brand-accent-spinner {
+  border-top-color: var(--brand-primary);
+}
+
+.brand-themed .brand-accent-link {
+  color: var(--brand-soft);
+}
+
+.brand-themed .brand-accent-soft {
+  background-color: color-mix(in srgb, var(--brand-primary) 20%, transparent);
+  color: var(--sakura-ink);
+}
+
+.brand-themed .brand-accent-link:hover {
+  color: var(--brand-primary);
+}
+
 .skeleton-shimmer {
   background: linear-gradient(
     90deg,

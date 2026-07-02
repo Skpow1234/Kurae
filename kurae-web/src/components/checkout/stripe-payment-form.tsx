@@ -104,7 +104,8 @@ export function StripePaymentForm({
 
       <Button
         type="submit"
-        className="w-full bg-sakura-blush text-sakura-ink hover:bg-sakura-bloom"
+        variant="brand"
+        className="w-full"
         size="lg"
         disabled={!stripe || !elements || paying}
       >

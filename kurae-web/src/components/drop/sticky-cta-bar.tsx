@@ -4,7 +4,9 @@ import Link from "next/link";
 
 import { getPrimaryCta } from "@/components/drop/size-picker";
 import { Button } from "@/components/ui/button";
+import { brandCtaLinkLgClass } from "@/lib/branding/cta";
 import type { DropStatus } from "@/lib/types";
+import { cn } from "@/lib/utils";
 
 type StickyCtaBarProps = {
   status: DropStatus;
@@ -32,28 +34,17 @@ export function StickyCtaBar({
           </p>
         )}
         {cta.action === "buy" && checkoutHref && (
-          <Link
-            href={checkoutHref}
-            className="brand-accent-bg ml-auto inline-flex h-12 flex-1 items-center justify-center rounded-md px-6 text-base font-medium text-sakura-ink"
-          >
+          <Link href={checkoutHref} className={cn(brandCtaLinkLgClass, "ml-auto flex-1")}>
             {cta.label}
           </Link>
         )}
         {cta.action === "buy" && !checkoutHref && (
-          <Button
-            className="brand-accent-bg ml-auto flex-1 text-sakura-ink"
-            size="lg"
-            onClick={onBuyWithoutSize}
-          >
+          <Button variant="brand" className="ml-auto flex-1" size="lg" onClick={onBuyWithoutSize}>
             {cta.label}
           </Button>
         )}
         {cta.action === "waitlist" && (
-          <Button
-            className="brand-accent-bg ml-auto flex-1 text-sakura-ink"
-            size="lg"
-            onClick={onWaitlistClick}
-          >
+          <Button variant="brand" className="ml-auto flex-1" size="lg" onClick={onWaitlistClick}>
             {cta.label}
           </Button>
         )}

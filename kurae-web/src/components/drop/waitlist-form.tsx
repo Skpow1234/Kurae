@@ -71,7 +71,7 @@ export function WaitlistForm({
       </h2>
       <p className="mt-1 text-sm text-sakura-mist">
         Join the waitlist — not a store newsletter.{" "}
-        <span className="font-mono text-sakura-dusk">{waitlistCount}</span>{" "}
+        <span className="font-mono brand-accent-text">{waitlistCount}</span>{" "}
         people waiting.
       </p>
       <form onSubmit={handleSubmit} className="mt-4 flex flex-col gap-3 sm:flex-row">
@@ -84,7 +84,7 @@ export function WaitlistForm({
           disabled={loading}
           aria-label="Email for drop waitlist"
         />
-        <Button type="submit" className="shrink-0 bg-sakura-blush text-sakura-ink hover:bg-sakura-bloom" disabled={loading}>
+        <Button type="submit" variant="brand" className="shrink-0" disabled={loading}>
           {loading ? "Joining…" : "Join waitlist"}
         </Button>
       </form>

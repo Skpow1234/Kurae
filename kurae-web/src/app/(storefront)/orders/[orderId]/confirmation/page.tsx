@@ -1,8 +1,11 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
+import { SellerBrandTheme } from "@/components/branding/seller-brand-theme";
 import { OrderTimeline } from "@/components/dashboard/order-timeline";
+import { fetchPublicSeller } from "@/lib/api/drops-server";
 import { buildCheckoutFailedUrl, normalizeFailureReason } from "@/lib/checkout-failure";
+import { brandCtaLinkClass } from "@/lib/branding/cta";
 import { requireApiBase } from "@/lib/api/config";
 import type { BuyerOrderStatus } from "@/lib/types/buyer-order";
 import { formatPrice } from "@/lib/utils";
@@ -69,6 +72,8 @@ export default async function OrderConfirmationPage({
     );
   }
 
+  const sellerProfile = await fetchPublicSeller(order.sellerSlug);
+
   const timeline =
     order.events.length > 0
       ? order.events
@@ -78,6 +83,7 @@ export default async function OrderConfirmationPage({
         ];
 
   return (
+    <SellerBrandTheme accent={sellerProfile?.accent}>
     <main className="flex min-h-screen items-center justify-center bg-sakura-paper px-4 py-12">
       <div className="w-full max-w-lg rounded-lg border border-sakura-petal bg-sakura-surface p-8">
         <div className="text-center">
@@ -95,7 +101,7 @@ export default async function OrderConfirmationPage({
         <div className="mt-6 rounded-md bg-sakura-petal/50 p-4 text-sm">
           <p className="font-medium text-sakura-ink">{order.dropTitle}</p>
           <p className="mt-1 text-sakura-mist">Size {order.sizeLabel}</p>
-          <p className="mt-2 font-mono text-lg font-semibold text-sakura-dusk">
+          <p className="brand-accent-text mt-2 font-mono text-lg font-semibold">
             {formatPrice(order.amountCents, order.currency)}
           </p>
         </div>
@@ -112,7 +118,7 @@ export default async function OrderConfirmationPage({
         <div className="mt-8 flex flex-col gap-3">
           <Link
             href={`/account/orders/${order.orderId}`}
-            className="flex h-10 w-full items-center justify-center rounded-md bg-sakura-blush text-sm font-medium text-sakura-ink hover:bg-sakura-bloom"
+            className={`${brandCtaLinkClass} h-10 w-full`}
           >
             View in my orders
           </Link>
@@ -125,5 +131,6 @@ export default async function OrderConfirmationPage({
         </div>
       </div>
     </main>
+    </SellerBrandTheme>
   );
 }

@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 
 import { StripePaymentForm } from "@/components/checkout/stripe-payment-form";
+import { SellerBrandTheme } from "@/components/branding/seller-brand-theme";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -14,6 +15,7 @@ import { ApiError } from "@/lib/api/client";
 import { loginUrl } from "@/lib/auth/safe-redirect";
 import { createCheckout } from "@/lib/api/checkout";
 import { validateDiscountCode } from "@/lib/api/discount";
+import { getAccentPreset } from "@/lib/branding/accents";
 import {
   buildCheckoutFailedUrl,
   checkoutFailureFromHttpStatus,
@@ -280,12 +282,15 @@ function CheckoutLiveForm({
     }
   }
 
+  const accentPreset = getAccentPreset(drop.sellerAccent);
+
   return (
-    <div className="space-y-6">
+    <SellerBrandTheme accent={drop.sellerAccent}>
+      <div className="space-y-6">
       <section className="rounded-lg border border-sakura-petal bg-sakura-surface p-4">
         <h1 className="font-semibold text-sakura-ink">{line.dropTitle}</h1>
         <p className="mt-1 text-sm text-sakura-mist">Size {line.sizeLabel}</p>
-        <p className="mt-3 font-mono text-lg font-semibold text-sakura-dusk">
+        <p className="brand-accent-text mt-3 font-mono text-lg font-semibold">
           {discountPreview?.valid
             ? formatPrice(discountPreview.finalCents, line.currency)
             : formatPrice(line.priceCents, line.currency)}
@@ -301,7 +306,7 @@ function CheckoutLiveForm({
 
       <p className="text-sm font-medium text-sakura-warning">
         Limited units — complete checkout to secure yours.{" "}
-        <span className="font-mono text-sakura-dusk">
+        <span className="brand-accent-text font-mono">
           {drop.inventoryRemaining} left
         </span>
         {inventory.critical && drop.inventoryRemaining > 0 && (
@@ -323,7 +328,7 @@ function CheckoutLiveForm({
             appearance: {
               theme: "stripe",
               variables: {
-                colorPrimary: "#c97b8a",
+                colorPrimary: accentPreset.primary,
                 colorBackground: "#ffffff",
                 colorText: "#2d2428",
                 borderRadius: "6px",
@@ -401,7 +406,8 @@ function CheckoutLiveForm({
           )}
 
           <Button
-            className="w-full bg-sakura-blush text-sakura-ink hover:bg-sakura-bloom"
+            variant="brand"
+            className="w-full"
             size="lg"
             disabled={reserving || !email.trim() || !canReserve}
             onClick={handleReserve}
@@ -410,7 +416,8 @@ function CheckoutLiveForm({
           </Button>
         </>
       )}
-    </div>
+      </div>
+    </SellerBrandTheme>
   );
 }
 

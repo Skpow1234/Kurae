@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { DropBrowseCard } from "@/components/drop/drop-browse-card";
+import { SellerBrandTheme } from "@/components/branding/seller-brand-theme";
 import { SellerReferralCapture } from "@/components/referral/seller-referral-capture";
 import { fetchPublicSeller, listPublicDrops } from "@/lib/api/drops-server";
 
@@ -44,6 +45,7 @@ export default async function SellerReferralPage({
   const sellerDrops = publicDrops.filter((drop) => drop.sellerSlug === seller);
 
   return (
+    <SellerBrandTheme accent={profile.accent}>
     <main className="min-h-[calc(100vh-3.5rem)] bg-sakura-paper">
       <SellerReferralCapture sellerSlug={seller} refCode={ref} />
 
@@ -79,7 +81,7 @@ export default async function SellerReferralPage({
             </div>
             <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
               {sellerDrops.map((drop, index) => (
-                <DropBrowseCard key={drop.id} drop={drop} priority={index < 3} />
+                <DropBrowseCard key={drop.id} drop={drop} priority={index < 3} branded />
               ))}
             </div>
           </>
@@ -92,11 +94,12 @@ export default async function SellerReferralPage({
           </div>
         )}
         <p className="mt-8 text-center text-sm text-sakura-mist">
-          <Link href="/" className="text-sakura-dusk hover:underline">
+          <Link href="/" className="brand-accent-link hover:underline">
             Browse all sellers
           </Link>
         </p>
       </section>
     </main>
+    </SellerBrandTheme>
   );
 }

@@ -72,12 +72,7 @@ export function PurchaseSection({
         <p className="text-sm text-sakura-mist">Choose a size to continue</p>
       )}
 
-      <Button
-        className="brand-accent-bg w-full text-sakura-ink sm:w-auto"
-        size="lg"
-        disabled={!selectedSizeId}
-        onClick={handleBuy}
-      >
+      <Button variant="brand" className="w-full sm:w-auto" size="lg" disabled={!selectedSizeId} onClick={handleBuy}>
         Buy now
       </Button>
     </section>

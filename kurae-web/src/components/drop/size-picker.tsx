@@ -29,7 +29,7 @@ export function SizePicker({
             className={cn(
               "h-10 min-w-12 rounded-md border px-3 text-sm font-medium transition-colors",
               selectedId === size.id
-                ? "border-sakura-bloom bg-sakura-blush text-sakura-ink ring-2 ring-sakura-petal"
+                ? "brand-accent-selected text-sakura-ink"
                 : "border-sakura-petal bg-sakura-paper text-sakura-ink hover:bg-sakura-surface",
               !size.available && "cursor-not-allowed opacity-40 line-through",
             )}

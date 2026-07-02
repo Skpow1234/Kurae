@@ -121,7 +121,7 @@ export function ReferralProgress({
       <div className="mt-4 space-y-2">
         <div className="h-2 w-full overflow-hidden rounded-full bg-sakura-petal/70">
           <div
-            className="h-full rounded-full bg-sakura-dusk transition-all duration-500"
+            className="brand-accent-fill h-full rounded-full transition-all duration-500"
             style={{ width: `${progressPct}%` }}
           />
         </div>
@@ -141,7 +141,7 @@ export function ReferralProgress({
               className={cn(
                 "relative rounded-md border px-3 py-3 text-center",
                 complete
-                  ? "border-sakura-dusk/40 bg-sakura-paper"
+                  ? "border-[color-mix(in_srgb,var(--brand-primary)_40%,transparent)] bg-sakura-paper"
                   : "border-sakura-petal bg-sakura-paper/60",
               )}
             >
@@ -155,7 +155,7 @@ export function ReferralProgress({
                 className={cn(
                   "mx-auto flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold",
                   complete
-                    ? "bg-sakura-dusk text-sakura-paper"
+                    ? "brand-accent-bg text-sakura-ink"
                     : "bg-sakura-petal text-sakura-mist",
                 )}
               >

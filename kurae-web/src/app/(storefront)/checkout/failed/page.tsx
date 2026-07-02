@@ -1,9 +1,12 @@
 import NextLink from "next/link";
 
+import { SellerBrandTheme } from "@/components/branding/seller-brand-theme";
 import {
   getCheckoutFailureContent,
   normalizeFailureReason,
 } from "@/lib/checkout-failure";
+import { fetchPublicSeller } from "@/lib/api/drops-server";
+import { brandCtaLinkLgClass } from "@/lib/branding/cta";
 
 type PageProps = {
   searchParams: Promise<{
@@ -29,7 +32,12 @@ export default async function CheckoutFailedPage({ searchParams }: PageProps) {
     message: params.message,
   });
 
+  const sellerProfile = params.seller
+    ? await fetchPublicSeller(params.seller)
+    : null;
+
   return (
+    <SellerBrandTheme accent={sellerProfile?.accent}>
     <main className="flex min-h-screen items-center justify-center bg-sakura-paper px-4">
       <div className="w-full max-w-md rounded-lg border border-sakura-petal bg-sakura-surface p-8 text-center">
         <p className="text-xs uppercase tracking-widest text-sakura-warning">
@@ -57,20 +65,18 @@ export default async function CheckoutFailedPage({ searchParams }: PageProps) {
         )}
 
         <div className="mt-8 flex flex-col gap-3">
-          <NextLink
-            href={content.primaryHref}
-            className="inline-flex h-12 w-full items-center justify-center rounded-md bg-sakura-blush text-base font-medium text-sakura-ink hover:bg-sakura-bloom"
-          >
+          <NextLink href={content.primaryHref} className={brandCtaLinkLgClass}>
             {content.primaryLabel}
           </NextLink>
           <NextLink
             href={content.secondaryHref}
-            className="text-sm text-sakura-dusk hover:underline"
+            className="brand-accent-link text-sm hover:underline"
           >
             {content.secondaryLabel}
           </NextLink>
         </div>
       </div>
     </main>
+    </SellerBrandTheme>
   );
 }

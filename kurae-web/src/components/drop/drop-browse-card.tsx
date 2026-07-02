@@ -9,16 +9,18 @@ import { shouldUnoptimizeImageSrc } from "@/lib/images";
 type DropBrowseCardProps = {
   drop: PublicDrop;
   priority?: boolean;
+  /** Use seller accent tokens — requires `SellerBrandTheme` ancestor. */
+  branded?: boolean;
 };
 
 const statusStyles: Record<PublicDrop["status"], string> = {
-  live: "bg-sakura-blush/20 text-sakura-ink",
-  upcoming: "bg-sakura-surface text-sakura-dusk",
-  sold_out: "bg-sakura-mist/20 text-sakura-stone",
-  expired: "bg-sakura-mist/20 text-sakura-stone",
+  live: "bg-sakura-blush/20 text-sakura-ink font-semibold uppercase tracking-wider",
+  upcoming: "bg-sakura-surface text-sakura-dusk font-semibold uppercase tracking-wider",
+  sold_out: "bg-sakura-mist/20 text-sakura-stone font-semibold uppercase tracking-wider",
+  expired: "bg-sakura-mist/20 text-sakura-stone font-semibold uppercase tracking-wider",
 };
 
-export function DropBrowseCard({ drop, priority = false }: DropBrowseCardProps) {
+export function DropBrowseCard({ drop, priority = false, branded = false }: DropBrowseCardProps) {
   const href = `/${drop.sellerSlug}/${drop.slug}`;
 
   return (
@@ -43,7 +45,11 @@ export function DropBrowseCard({ drop, priority = false }: DropBrowseCardProps) 
           </div>
         )}
         <span
-          className={`absolute left-3 top-3 rounded px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${statusStyles[drop.status]}`}
+          className={`absolute left-3 top-3 rounded px-2 py-0.5 text-[10px] ${
+            branded && drop.status === "live"
+              ? "brand-accent-soft font-semibold uppercase tracking-wider"
+              : statusStyles[drop.status]
+          }`}
         >
           {getStatusLabel(drop.status)}
         </span>
@@ -56,11 +62,23 @@ export function DropBrowseCard({ drop, priority = false }: DropBrowseCardProps) 
           {drop.title}
         </h3>
         <div className="mt-auto flex items-center justify-between pt-3 text-sm">
-          <span className="font-mono font-semibold text-sakura-dusk">
+          <span
+            className={
+              branded
+                ? "brand-accent-text font-mono font-semibold"
+                : "font-mono font-semibold text-sakura-dusk"
+            }
+          >
             {formatPrice(drop.priceCents, drop.currency)}
           </span>
           {drop.status === "live" && (
-            <span className="font-mono text-xs text-sakura-bloom">
+            <span
+              className={
+                branded
+                  ? "brand-accent-text font-mono text-xs"
+                  : "font-mono text-xs text-sakura-bloom"
+              }
+            >
               {drop.inventoryRemaining} left
             </span>
           )}
