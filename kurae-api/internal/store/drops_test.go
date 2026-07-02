@@ -91,10 +91,25 @@ func TestDeleteDropBlockedWhenOrdersExist(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	if err := s.Products().ReplaceForDrop(ctx, drop.ID, seller.ID, []store.ProductInput{{
+		Slug:           "default",
+		Name:           "Has Orders",
+		PriceCents:     1000,
+		InventoryTotal: 5,
+		Sizes:          []domain.DropSize{{ID: "m", Label: "M", Available: true}},
+	}}); err != nil {
+		t.Fatal(err)
+	}
+	products, err := s.Products().ListByDropID(ctx, drop.ID)
+	if err != nil || len(products) == 0 {
+		t.Fatal("expected product")
+	}
 
 	_, err = s.Orders().ReserveInventory(ctx, store.CheckoutInput{
 		SellerID:       seller.ID,
 		DropID:         drop.ID,
+		ProductID:      products[0].ID,
+		ProductName:    products[0].Name,
 		BuyerEmail:     "buyer@test.local",
 		SizeLabel:      "M",
 		SubtotalCents:  1000,

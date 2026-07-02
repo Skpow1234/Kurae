@@ -147,24 +147,51 @@ func (h *DropHandler) Delete(w http.ResponseWriter, r *http.Request) {
 }
 
 type dropBody struct {
-	Title            string             `json:"title"`
-	Slug             string             `json:"slug"`
-	Description      string             `json:"description"`
-	Story            string             `json:"story"`
-	PriceCents       int                `json:"priceCents"`
-	InventoryTotal   int                `json:"inventoryTotal"`
-	StartsAt         string             `json:"startsAt"`
-	EndsAt           string             `json:"endsAt"`
-	PromoMessage     *string            `json:"promoMessage"`
-	HeroImageURL     string             `json:"heroImageUrl"`
-	GalleryImageURLs []string           `json:"galleryImageUrls"`
-	Sizes            []domain.DropSize  `json:"sizes"`
+	Title            string               `json:"title"`
+	Slug             string               `json:"slug"`
+	Description      string               `json:"description"`
+	Story            string               `json:"story"`
+	PriceCents       int                  `json:"priceCents"`
+	InventoryTotal   int                  `json:"inventoryTotal"`
+	StartsAt         string               `json:"startsAt"`
+	EndsAt           string               `json:"endsAt"`
+	PromoMessage     *string              `json:"promoMessage"`
+	HeroImageURL     string               `json:"heroImageUrl"`
+	GalleryImageURLs []string             `json:"galleryImageUrls"`
+	Sizes            []domain.DropSize    `json:"sizes"`
+	Products         []dropProductBody    `json:"products"`
 	PublishStatus    domain.PublishStatus `json:"publishStatus"`
+}
+
+type dropProductBody struct {
+	ID             string            `json:"id"`
+	Slug           string            `json:"slug"`
+	Name           string            `json:"name"`
+	Description    string            `json:"description"`
+	PriceCents     int               `json:"priceCents"`
+	ImageURL       string            `json:"imageUrl"`
+	SortOrder      int               `json:"sortOrder"`
+	InventoryTotal int               `json:"inventoryTotal"`
+	Sizes          []domain.DropSize `json:"sizes"`
 }
 
 func (b dropBody) toRequest(sellerID string) service.CreateDropRequest {
 	startsAt, _ := time.Parse(time.RFC3339, b.StartsAt)
 	endsAt, _ := time.Parse(time.RFC3339, b.EndsAt)
+	products := make([]service.DropProductInput, len(b.Products))
+	for i, p := range b.Products {
+		products[i] = service.DropProductInput{
+			ID:             p.ID,
+			Slug:           p.Slug,
+			Name:           p.Name,
+			Description:    p.Description,
+			PriceCents:     p.PriceCents,
+			ImageURL:       p.ImageURL,
+			SortOrder:      p.SortOrder,
+			InventoryTotal: p.InventoryTotal,
+			Sizes:          p.Sizes,
+		}
+	}
 	return service.CreateDropRequest{
 		SellerID:         sellerID,
 		Slug:             b.Slug,
@@ -177,6 +204,7 @@ func (b dropBody) toRequest(sellerID string) service.CreateDropRequest {
 		GalleryImageURLs: b.GalleryImageURLs,
 		InventoryTotal:   b.InventoryTotal,
 		Sizes:            b.Sizes,
+		Products:         products,
 		StartsAt:         startsAt,
 		EndsAt:           endsAt,
 		PublishStatus:    b.PublishStatus,

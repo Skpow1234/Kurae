@@ -45,6 +45,20 @@ func TestReserveInventorySoldOutRace(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	if err := s.Products().ReplaceForDrop(ctx, drop.ID, seller.ID, []store.ProductInput{{
+		Slug:           "default",
+		Name:           "Race Drop",
+		PriceCents:     1000,
+		InventoryTotal: 1,
+		Sizes:          []domain.DropSize{{ID: "m", Label: "M", Available: true}},
+	}}); err != nil {
+		t.Fatal(err)
+	}
+	products, err := s.Products().ListByDropID(ctx, drop.ID)
+	if err != nil || len(products) == 0 {
+		t.Fatal("expected product for drop")
+	}
+	productID := products[0].ID
 
 	type result struct {
 		err error
@@ -55,6 +69,8 @@ func TestReserveInventorySoldOutRace(t *testing.T) {
 			_, err := s.Orders().ReserveInventory(ctx, store.CheckoutInput{
 				SellerID:       seller.ID,
 				DropID:         drop.ID,
+				ProductID:      productID,
+				ProductName:    "Race Drop",
 				BuyerEmail:     "buyer@test.local",
 				SizeLabel:      "M",
 				SubtotalCents:  1000,

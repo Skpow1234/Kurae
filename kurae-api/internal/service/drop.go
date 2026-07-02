@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log"
 	"time"
 
@@ -12,12 +13,29 @@ import (
 )
 
 type DropService struct {
-	drops  *store.DropRepository
-	notify *WaitlistNotifyService
+	drops    *store.DropRepository
+	products *store.ProductRepository
+	notify   *WaitlistNotifyService
 }
 
 func NewDropService(s *store.Store, notify *WaitlistNotifyService) *DropService {
-	return &DropService{drops: s.Drops(), notify: notify}
+	return &DropService{
+		drops:    s.Drops(),
+		products: s.Products(),
+		notify:   notify,
+	}
+}
+
+type DropProductInput struct {
+	ID             string
+	Slug           string
+	Name           string
+	Description    string
+	PriceCents     int
+	ImageURL       string
+	SortOrder      int
+	InventoryTotal int
+	Sizes          []domain.DropSize
 }
 
 type CreateDropRequest struct {
@@ -32,6 +50,7 @@ type CreateDropRequest struct {
 	GalleryImageURLs []string
 	InventoryTotal   int
 	Sizes            []domain.DropSize
+	Products         []DropProductInput
 	StartsAt         time.Time
 	EndsAt           time.Time
 	PublishStatus    domain.PublishStatus
@@ -51,10 +70,75 @@ func normalizePublishStatus(status domain.PublishStatus, startsAt, now time.Time
 	}
 }
 
-func (d *DropService) Create(ctx context.Context, req CreateDropRequest) (domain.SellerDrop, error) {
-	if req.InventoryTotal < 0 || req.PriceCents < 0 {
-		return domain.SellerDrop{}, errors.New("invalid inventory or price")
+func (d *DropService) productInputs(req CreateDropRequest) ([]store.ProductInput, error) {
+	inputs := req.Products
+	if len(inputs) == 0 {
+		sizes := req.Sizes
+		if len(sizes) == 0 {
+			sizes = defaultSizes()
+		}
+		slug := "default"
+		if len(req.Sizes) > 0 || req.PriceCents > 0 {
+			slug = "default"
+		}
+		inputs = []DropProductInput{{
+			Slug:           slug,
+			Name:           req.Title,
+			Description:    req.Description,
+			PriceCents:     req.PriceCents,
+			ImageURL:       req.HeroImageURL,
+			InventoryTotal: req.InventoryTotal,
+			Sizes:          sizes,
+		}}
 	}
+
+	out := make([]store.ProductInput, len(inputs))
+	for i, in := range inputs {
+		slug, err := validate.NormalizeSlug(in.Slug)
+		if err != nil {
+			return nil, fmt.Errorf("product %d: %w", i+1, err)
+		}
+		if in.PriceCents < 0 || in.InventoryTotal < 0 {
+			return nil, fmt.Errorf("product %d: invalid price or inventory", i+1)
+		}
+		sizes := in.Sizes
+		if len(sizes) == 0 {
+			sizes = defaultSizes()
+		}
+		out[i] = store.ProductInput{
+			ID:             in.ID,
+			Slug:           slug,
+			Name:           validate.Trim(in.Name),
+			Description:    in.Description,
+			PriceCents:     in.PriceCents,
+			ImageURL:       in.ImageURL,
+			SortOrder:      in.SortOrder,
+			InventoryTotal: in.InventoryTotal,
+			Sizes:          sizes,
+		}
+	}
+	return out, nil
+}
+
+func (d *DropService) attachProducts(ctx context.Context, drop *domain.SellerDrop) error {
+	products, err := d.products.ListByDropID(ctx, drop.ID)
+	if err != nil {
+		return err
+	}
+	drop.Products = products
+	return nil
+}
+
+func (d *DropService) attachPublicProducts(ctx context.Context, drop *domain.PublicDrop) error {
+	products, err := d.products.ListByDropID(ctx, drop.ID)
+	if err != nil {
+		return err
+	}
+	drop.Products = products
+	return nil
+}
+
+func (d *DropService) Create(ctx context.Context, req CreateDropRequest) (domain.SellerDrop, error) {
 	if !req.EndsAt.After(req.StartsAt) {
 		return domain.SellerDrop{}, errors.New("ends_at must be after starts_at")
 	}
@@ -62,8 +146,12 @@ func (d *DropService) Create(ctx context.Context, req CreateDropRequest) (domain
 	if err != nil {
 		return domain.SellerDrop{}, err
 	}
+	productInputs, err := d.productInputs(req)
+	if err != nil {
+		return domain.SellerDrop{}, err
+	}
 	if len(req.Sizes) == 0 {
-		req.Sizes = defaultSizes()
+		req.Sizes = productInputs[0].Sizes
 	}
 	req.PublishStatus = normalizePublishStatus(req.PublishStatus, req.StartsAt, time.Now())
 
@@ -74,12 +162,12 @@ func (d *DropService) Create(ctx context.Context, req CreateDropRequest) (domain
 		Description:      req.Description,
 		Story:            req.Story,
 		PromoMessage:     req.PromoMessage,
-		PriceCents:       req.PriceCents,
+		PriceCents:       productInputs[0].PriceCents,
 		Currency:         "USD",
 		HeroImageURL:     req.HeroImageURL,
 		GalleryImageURLs: req.GalleryImageURLs,
-		InventoryTotal:   req.InventoryTotal,
-		Sizes:            req.Sizes,
+		InventoryTotal:   productInputs[0].InventoryTotal,
+		Sizes:            productInputs[0].Sizes,
 		StartsAt:         req.StartsAt,
 		EndsAt:           req.EndsAt,
 		PublishStatus:    req.PublishStatus,
@@ -87,7 +175,16 @@ func (d *DropService) Create(ctx context.Context, req CreateDropRequest) (domain
 	if err != nil {
 		return domain.SellerDrop{}, err
 	}
-	return record.ToSellerDrop(time.Now()), nil
+	if err := d.products.ReplaceForDrop(ctx, record.ID, req.SellerID, productInputs); err != nil {
+		return domain.SellerDrop{}, err
+	}
+	record, err = d.drops.GetByIDForSeller(ctx, record.ID, req.SellerID)
+	if err != nil {
+		return domain.SellerDrop{}, err
+	}
+	out := record.ToSellerDrop(time.Now())
+	_ = d.attachProducts(ctx, &out)
+	return out, nil
 }
 
 func (d *DropService) Update(ctx context.Context, req CreateDropRequest, dropID string) (domain.SellerDrop, error) {
@@ -98,22 +195,17 @@ func (d *DropService) Update(ctx context.Context, req CreateDropRequest, dropID 
 	if err != nil {
 		return domain.SellerDrop{}, err
 	}
-	if len(req.Sizes) == 0 {
-		req.Sizes = defaultSizes()
-	}
 
 	existing, err := d.drops.GetByIDForSeller(ctx, dropID, req.SellerID)
 	if err != nil {
 		return domain.SellerDrop{}, err
 	}
-	newRemaining, err := store.ReconcileInventoryRemaining(
-		existing.InventoryTotal, existing.InventoryRemaining, req.InventoryTotal,
-	)
+	productInputs, err := d.productInputs(req)
 	if err != nil {
 		return domain.SellerDrop{}, err
 	}
-	restocked := existing.InventoryRemaining == 0 && newRemaining > 0
 	req.PublishStatus = normalizePublishStatus(req.PublishStatus, req.StartsAt, time.Now())
+	prevRemaining := existing.InventoryRemaining
 
 	record, err := d.drops.Update(ctx, store.UpdateDropInput{
 		ID:               dropID,
@@ -123,11 +215,11 @@ func (d *DropService) Update(ctx context.Context, req CreateDropRequest, dropID 
 		Description:      req.Description,
 		Story:            req.Story,
 		PromoMessage:     req.PromoMessage,
-		PriceCents:       req.PriceCents,
+		PriceCents:       existing.PriceCents,
 		HeroImageURL:     req.HeroImageURL,
 		GalleryImageURLs: req.GalleryImageURLs,
-		InventoryTotal:   req.InventoryTotal,
-		Sizes:            req.Sizes,
+		InventoryTotal:   existing.InventoryTotal,
+		Sizes:            existing.Sizes,
 		StartsAt:         req.StartsAt,
 		EndsAt:           req.EndsAt,
 		PublishStatus:    req.PublishStatus,
@@ -135,12 +227,21 @@ func (d *DropService) Update(ctx context.Context, req CreateDropRequest, dropID 
 	if err != nil {
 		return domain.SellerDrop{}, err
 	}
-	if restocked && d.notify != nil {
+	if err := d.products.ReplaceForDrop(ctx, dropID, req.SellerID, productInputs); err != nil {
+		return domain.SellerDrop{}, err
+	}
+	record, err = d.drops.GetByIDForSeller(ctx, dropID, req.SellerID)
+	if err != nil {
+		return domain.SellerDrop{}, err
+	}
+	if prevRemaining == 0 && record.InventoryRemaining > 0 && d.notify != nil {
 		if err := d.notify.NotifyRestock(ctx, dropID); err != nil {
 			log.Printf("enqueue waitlist restock drop=%s: %v", dropID, err)
 		}
 	}
-	return record.ToSellerDrop(time.Now()), nil
+	out := record.ToSellerDrop(time.Now())
+	_ = d.attachProducts(ctx, &out)
+	return out, nil
 }
 
 func (d *DropService) Get(ctx context.Context, sellerID, dropID string) (domain.SellerDrop, error) {
@@ -148,7 +249,9 @@ func (d *DropService) Get(ctx context.Context, sellerID, dropID string) (domain.
 	if err != nil {
 		return domain.SellerDrop{}, err
 	}
-	return record.ToSellerDrop(time.Now()), nil
+	out := record.ToSellerDrop(time.Now())
+	_ = d.attachProducts(ctx, &out)
+	return out, nil
 }
 
 func (d *DropService) Delete(ctx context.Context, sellerID, dropID string) error {
@@ -164,6 +267,7 @@ func (d *DropService) List(ctx context.Context, sellerID string) ([]domain.Selle
 	out := make([]domain.SellerDrop, len(records))
 	for i, r := range records {
 		out[i] = r.ToSellerDrop(now)
+		_ = d.attachProducts(ctx, &out[i])
 	}
 	return out, nil
 }
@@ -179,7 +283,9 @@ func (d *DropService) GetPublic(ctx context.Context, sellerSlug, dropSlug string
 	if record.PublishStatus != domain.PublishPublished && !allowDraft {
 		return domain.PublicDrop{}, store.ErrNotFound
 	}
-	return record.ToPublicDrop(time.Now()), nil
+	out := record.ToPublicDrop(time.Now())
+	_ = d.attachPublicProducts(ctx, &out)
+	return out, nil
 }
 
 func (d *DropService) ListPublicFeed(ctx context.Context, limit int) ([]domain.PublicDrop, error) {
@@ -191,6 +297,7 @@ func (d *DropService) ListPublicFeed(ctx context.Context, limit int) ([]domain.P
 	out := make([]domain.PublicDrop, len(records))
 	for i, r := range records {
 		out[i] = r.ToPublicDrop(now)
+		_ = d.attachPublicProducts(ctx, &out[i])
 	}
 	return out, nil
 }

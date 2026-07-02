@@ -6,6 +6,8 @@ type BuyerOrderStatus struct {
 	SellerSlug    string       `json:"sellerSlug"`
 	DropSlug      string       `json:"dropSlug"`
 	DropTitle     string       `json:"dropTitle"`
+	ProductID     string       `json:"productId,omitempty"`
+	ProductName   string       `json:"productName,omitempty"`
 	SizeLabel     string       `json:"sizeLabel"`
 	SubtotalCents int          `json:"subtotalCents"`
 	DiscountCents int          `json:"discountCents"`
@@ -24,6 +26,7 @@ type BuyerOrderListItem struct {
 	SellerSlug  string      `json:"sellerSlug"`
 	DropSlug    string      `json:"dropSlug"`
 	DropTitle   string      `json:"dropTitle"`
+	ProductName string      `json:"productName,omitempty"`
 	SizeLabel   string      `json:"sizeLabel"`
 	AmountCents int         `json:"amountCents"`
 	Currency    string      `json:"currency"`

@@ -30,6 +30,8 @@ type OrderRecord struct {
 	DropID               string
 	DropTitle            string
 	DropSlug             string
+	ProductID            string
+	ProductName          string
 	BuyerEmail           string
 	SizeLabel            string
 	Status               domain.OrderStatus
@@ -59,6 +61,8 @@ type ReservationRecord struct {
 type CheckoutInput struct {
 	SellerID       string
 	DropID         string
+	ProductID      string
+	ProductName    string
 	BuyerEmail     string
 	SizeLabel      string
 	SubtotalCents  int
@@ -85,6 +89,7 @@ func (r *OrderRepository) GetByIdempotencyKey(ctx context.Context, key string) (
 
 const orderSelect = `
 	SELECT o.id, o.seller_id, s.slug, o.drop_id, d.title, d.slug,
+		o.product_id, o.product_name_snapshot,
 		o.buyer_email, o.size_label, o.status, o.subtotal_cents, o.discount_cents,
 		o.discount_code_id, o.discount_code_snapshot, o.referral_code_id, o.referral_code_snapshot,
 		o.amount_cents, o.currency,
@@ -99,6 +104,7 @@ func (r *OrderRepository) scanOrder(row pgx.Row) (OrderRecord, error) {
 	var idem *string
 	if err := row.Scan(
 		&o.ID, &o.SellerID, &o.SellerSlug, &o.DropID, &o.DropTitle, &o.DropSlug,
+		&o.ProductID, &o.ProductName,
 		&o.BuyerEmail, &o.SizeLabel, &o.Status, &o.SubtotalCents, &o.DiscountCents,
 		&o.DiscountCodeID, &o.DiscountCodeSnapshot, &o.ReferralCodeID, &o.ReferralCodeSnapshot,
 		&o.AmountCents, &o.Currency,
@@ -119,10 +125,10 @@ func (r *OrderRepository) ReserveInventory(ctx context.Context, in CheckoutInput
 
 	var remaining int
 	err = tx.QueryRow(ctx, `
-		SELECT inventory_remaining FROM drops
-		WHERE id = $1 AND seller_id = $2
+		SELECT inventory_remaining FROM drop_products
+		WHERE id = $1 AND drop_id = $2 AND seller_id = $3
 		FOR UPDATE
-	`, in.DropID, in.SellerID).Scan(&remaining)
+	`, in.ProductID, in.DropID, in.SellerID).Scan(&remaining)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return CheckoutResult{}, ErrNotFound
 	}
@@ -167,6 +173,13 @@ func (r *OrderRepository) ReserveInventory(ctx context.Context, in CheckoutInput
 	}
 
 	_, err = tx.Exec(ctx, `
+		UPDATE drop_products SET inventory_remaining = inventory_remaining - 1, updated_at = now()
+		WHERE id = $1
+	`, in.ProductID)
+	if err != nil {
+		return CheckoutResult{}, err
+	}
+	_, err = tx.Exec(ctx, `
 		UPDATE drops SET inventory_remaining = inventory_remaining - 1, updated_at = now()
 		WHERE id = $1
 	`, in.DropID)
@@ -177,14 +190,14 @@ func (r *OrderRepository) ReserveInventory(ctx context.Context, in CheckoutInput
 	var orderID string
 	err = tx.QueryRow(ctx, `
 		INSERT INTO orders (
-			seller_id, drop_id, buyer_email, size_label, status,
+			seller_id, drop_id, product_id, product_name_snapshot, buyer_email, size_label, status,
 			subtotal_cents, discount_cents, discount_code_id, discount_code_snapshot,
 			referral_code_id, referral_code_snapshot,
 			amount_cents, currency, idempotency_key
 		)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
 		RETURNING id
-	`, in.SellerID, in.DropID, in.BuyerEmail, in.SizeLabel, domain.OrderReserved,
+	`, in.SellerID, in.DropID, in.ProductID, in.ProductName, in.BuyerEmail, in.SizeLabel, domain.OrderReserved,
 		subtotal, discountCents, discountCodeID, discountCodeSnapshot,
 		referralCodeID, referralCodeSnapshot,
 		finalAmount, in.Currency, in.IdempotencyKey).Scan(&orderID)
@@ -198,10 +211,10 @@ func (r *OrderRepository) ReserveInventory(ctx context.Context, in CheckoutInput
 	var reservationID string
 	var expiresAt time.Time
 	err = tx.QueryRow(ctx, `
-		INSERT INTO inventory_reservations (drop_id, order_id, quantity, status, expires_at)
-		VALUES ($1, $2, 1, $3, $4)
+		INSERT INTO inventory_reservations (drop_id, product_id, order_id, quantity, status, expires_at)
+		VALUES ($1, $2, $3, 1, $4, $5)
 		RETURNING id, expires_at
-	`, in.DropID, orderID, domain.ReservationActive, in.ExpiresAt).Scan(&reservationID, &expiresAt)
+	`, in.DropID, in.ProductID, orderID, domain.ReservationActive, in.ExpiresAt).Scan(&reservationID, &expiresAt)
 	if err != nil {
 		return CheckoutResult{}, err
 	}
@@ -433,8 +446,8 @@ func (r *OrderRepository) ExpireStaleReservations(ctx context.Context, now time.
 	defer tx.Rollback(ctx)
 
 	rows, err := tx.Query(ctx, `
-		SELECT id, drop_id, order_id FROM inventory_reservations
-		WHERE status = $1 AND expires_at <= $2
+		SELECT ir.id, ir.drop_id, ir.product_id, ir.order_id FROM inventory_reservations ir
+		WHERE ir.status = $1 AND ir.expires_at <= $2
 		FOR UPDATE
 	`, domain.ReservationActive, now)
 	if err != nil {
@@ -443,13 +456,17 @@ func (r *OrderRepository) ExpireStaleReservations(ctx context.Context, now time.
 	defer rows.Close()
 
 	type expired struct {
-		id, dropID, orderID string
+		id, dropID, productID, orderID string
 	}
 	var batch []expired
 	for rows.Next() {
 		var e expired
-		if err := rows.Scan(&e.id, &e.dropID, &e.orderID); err != nil {
+		var productID *string
+		if err := rows.Scan(&e.id, &e.dropID, &productID, &e.orderID); err != nil {
 			return 0, nil, err
+		}
+		if productID != nil {
+			e.productID = *productID
 		}
 		batch = append(batch, e)
 	}
@@ -460,7 +477,13 @@ func (r *OrderRepository) ExpireStaleReservations(ctx context.Context, now time.
 	restockedSet := make(map[string]struct{})
 	for _, e := range batch {
 		var remainingBefore int
-		if err := tx.QueryRow(ctx, `
+		if e.productID != "" {
+			if err := tx.QueryRow(ctx, `
+				SELECT inventory_remaining FROM drop_products WHERE id = $1 FOR UPDATE
+			`, e.productID).Scan(&remainingBefore); err != nil {
+				return 0, nil, err
+			}
+		} else if err := tx.QueryRow(ctx, `
 			SELECT inventory_remaining FROM drops WHERE id = $1 FOR UPDATE
 		`, e.dropID).Scan(&remainingBefore); err != nil {
 			return 0, nil, err
@@ -470,6 +493,14 @@ func (r *OrderRepository) ExpireStaleReservations(ctx context.Context, now time.
 			UPDATE inventory_reservations SET status = $2 WHERE id = $1
 		`, e.id, domain.ReservationExpired); err != nil {
 			return 0, nil, err
+		}
+		if e.productID != "" {
+			if _, err := tx.Exec(ctx, `
+				UPDATE drop_products SET inventory_remaining = inventory_remaining + 1, updated_at = now()
+				WHERE id = $1
+			`, e.productID); err != nil {
+				return 0, nil, err
+			}
 		}
 		if _, err := tx.Exec(ctx, `
 			UPDATE drops SET inventory_remaining = inventory_remaining + 1, updated_at = now()

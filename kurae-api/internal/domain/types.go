@@ -45,6 +45,19 @@ type DropSize struct {
 	Available bool   `json:"available"`
 }
 
+type DropProduct struct {
+	ID                 string     `json:"id"`
+	Slug               string     `json:"slug"`
+	Name               string     `json:"name"`
+	Description        string     `json:"description"`
+	PriceCents         int        `json:"priceCents"`
+	ImageURL           string     `json:"imageUrl"`
+	SortOrder          int        `json:"sortOrder"`
+	InventoryTotal     int        `json:"inventoryTotal"`
+	InventoryRemaining int        `json:"inventoryRemaining"`
+	Sizes              []DropSize `json:"sizes"`
+}
+
 type PublicDrop struct {
 	ID                 string     `json:"id"`
 	SellerSlug         string     `json:"sellerSlug"`
@@ -67,7 +80,8 @@ type PublicDrop struct {
 	Sizes              []DropSize `json:"sizes"`
 	SellerLogoURL      string     `json:"sellerLogoUrl,omitempty"`
 	SellerAccent       string     `json:"sellerAccent,omitempty"`
-	SellerBio          string     `json:"sellerBio,omitempty"`
+	SellerBio          string         `json:"sellerBio,omitempty"`
+	Products           []DropProduct  `json:"products,omitempty"`
 }
 
 type SellerDrop struct {
@@ -102,6 +116,8 @@ type SellerOrder struct {
 	DropTitle            string       `json:"dropTitle"`
 	DropSlug             string       `json:"dropSlug"`
 	BuyerEmail           string       `json:"buyerEmail"`
+	ProductID            string       `json:"productId,omitempty"`
+	ProductName          string       `json:"productName,omitempty"`
 	SizeLabel            string       `json:"sizeLabel"`
 	Status               OrderStatus  `json:"status"`
 	SubtotalCents        int          `json:"subtotalCents"`

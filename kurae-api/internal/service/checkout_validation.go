@@ -14,6 +14,7 @@ var (
 	ErrDropNotStarted      = errors.New("drop has not started")
 	ErrDropEnded           = errors.New("drop has ended")
 	ErrInvalidSize         = errors.New("invalid size")
+	ErrInvalidProduct      = errors.New("invalid product")
 )
 
 func validateCheckoutDrop(drop domain.DropRecord, sizeLabel string, now time.Time) error {
@@ -40,7 +41,34 @@ func validateCheckoutDrop(drop domain.DropRecord, sizeLabel string, now time.Tim
 	return nil
 }
 
+func validateCheckoutProduct(
+	drop domain.DropRecord,
+	product domain.DropProduct,
+	sizeLabel string,
+	now time.Time,
+) error {
+	if err := validateCheckoutDrop(drop, "", now); err != nil &&
+		!errors.Is(err, ErrInvalidSize) {
+		return err
+	}
+
+	if product.InventoryRemaining <= 0 {
+		return store.ErrSoldOut
+	}
+
+	if len(product.Sizes) == 0 {
+		return nil
+	}
+	if !sizeAvailable(product.Sizes, sizeLabel) {
+		return ErrInvalidSize
+	}
+	return nil
+}
+
 func sizeAvailable(sizes []domain.DropSize, label string) bool {
+	if len(sizes) == 0 {
+		return true
+	}
 	label = strings.TrimSpace(label)
 	if label == "" {
 		return false

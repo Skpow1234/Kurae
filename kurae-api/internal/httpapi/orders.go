@@ -116,6 +116,7 @@ func (h *OrderHandler) Update(w http.ResponseWriter, r *http.Request) {
 func (h *OrderHandler) Checkout(w http.ResponseWriter, r *http.Request) {
 	var body struct {
 		DropID         string `json:"dropId"`
+		ProductID      string `json:"productId"`
 		BuyerEmail     string `json:"buyerEmail"`
 		SizeLabel      string `json:"sizeLabel"`
 		IdempotencyKey string `json:"idempotencyKey"`
@@ -145,6 +146,7 @@ func (h *OrderHandler) Checkout(w http.ResponseWriter, r *http.Request) {
 
 	result, err := h.orders.Checkout(r.Context(), service.CheckoutRequest{
 		DropID:         body.DropID,
+		ProductID:      body.ProductID,
 		BuyerEmail:     buyerEmail,
 		SizeLabel:      body.SizeLabel,
 		IdempotencyKey: idem,

@@ -24,14 +24,22 @@ export function validateDropForm(values: DropFormValues): DropFormErrors {
 
   if (!values.description.trim()) errors.description = "Description is required";
 
-  const price = parseFloat(values.priceDollars);
-  if (!values.priceDollars || Number.isNaN(price) || price <= 0) {
-    errors.priceDollars = "Enter a valid price";
+  const primary = values.products[0];
+  const priceDollars = primary?.priceDollars ?? values.priceDollars;
+  const inventory = primary?.inventory ?? values.inventory;
+
+  const price = parseFloat(priceDollars);
+  if (!priceDollars || Number.isNaN(price) || price <= 0) {
+    errors.priceDollars = "Enter a valid price on the first product";
   }
 
-  const inventory = parseInt(values.inventory, 10);
-  if (!values.inventory || Number.isNaN(inventory) || inventory < 1) {
-    errors.inventory = "Inventory must be at least 1";
+  const inventoryTotal = parseInt(inventory, 10);
+  if (!inventory || Number.isNaN(inventoryTotal) || inventoryTotal < 1) {
+    errors.inventory = "First product inventory must be at least 1";
+  }
+
+  if (values.products.some((product) => !product.name.trim())) {
+    errors.title = "Every product needs a name";
   }
 
   if (!values.startsAt) errors.startsAt = "Start date is required";

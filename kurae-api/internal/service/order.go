@@ -20,6 +20,7 @@ var ErrCheckoutIncomplete = errors.New("checkout incomplete")
 type OrderService struct {
 	orders             *store.OrderRepository
 	drops              *store.DropRepository
+	products           *store.ProductRepository
 	provider           payments.Provider
 	queue              *queue.RedisQueue
 	notify             *WaitlistNotifyService
@@ -38,6 +39,7 @@ func NewOrderService(
 	return &OrderService{
 		orders:             s.Orders(),
 		drops:              s.Drops(),
+		products:           s.Products(),
 		provider:           provider,
 		queue:              q,
 		notify:             notify,
@@ -48,6 +50,7 @@ func NewOrderService(
 
 type CheckoutRequest struct {
 	DropID         string
+	ProductID      string
 	BuyerEmail     string
 	SizeLabel      string
 	IdempotencyKey string
@@ -91,7 +94,12 @@ func (o *OrderService) Checkout(ctx context.Context, req CheckoutRequest) (Check
 		return CheckoutResponse{}, err
 	}
 
-	if err := validateCheckoutDrop(drop, req.SizeLabel, time.Now()); err != nil {
+	product, err := o.resolveCheckoutProduct(ctx, req.DropID, req.ProductID)
+	if err != nil {
+		return CheckoutResponse{}, err
+	}
+
+	if err := validateCheckoutProduct(drop, product, req.SizeLabel, time.Now()); err != nil {
 		return CheckoutResponse{}, err
 	}
 
@@ -99,9 +107,11 @@ func (o *OrderService) Checkout(ctx context.Context, req CheckoutRequest) (Check
 	result, err := o.orders.ReserveInventory(ctx, store.CheckoutInput{
 		SellerID:       drop.SellerID,
 		DropID:         req.DropID,
+		ProductID:      product.ID,
+		ProductName:    product.Name,
 		BuyerEmail:     req.BuyerEmail,
 		SizeLabel:      req.SizeLabel,
-		SubtotalCents:  drop.PriceCents,
+		SubtotalCents:  product.PriceCents,
 		DiscountCode:   req.DiscountCode,
 		ReferralCode:   req.ReferralCode,
 		Currency:       drop.Currency,
@@ -150,6 +160,28 @@ func (o *OrderService) Checkout(ctx context.Context, req CheckoutRequest) (Check
 		ReservationUntil: expiresAt.UTC().Format(time.RFC3339),
 		Status:           domain.OrderPaymentPending,
 	}, nil
+}
+
+func (o *OrderService) resolveCheckoutProduct(ctx context.Context, dropID, productID string) (domain.DropProduct, error) {
+	if productID != "" {
+		product, err := o.products.GetByIDForDrop(ctx, productID, dropID)
+		if err != nil {
+			if errors.Is(err, store.ErrNotFound) {
+				return domain.DropProduct{}, ErrInvalidProduct
+			}
+			return domain.DropProduct{}, err
+		}
+		return product, nil
+	}
+
+	products, err := o.products.ListByDropID(ctx, dropID)
+	if err != nil {
+		return domain.DropProduct{}, err
+	}
+	if len(products) == 1 {
+		return products[0], nil
+	}
+	return domain.DropProduct{}, ErrInvalidProduct
 }
 
 func (o *OrderService) checkoutResponseFromExisting(ctx context.Context, order store.OrderRecord) (CheckoutResponse, error) {
@@ -245,6 +277,8 @@ func sellerOrderFromRecord(r store.OrderRecord, events []domain.OrderEvent) doma
 		DropTitle:     r.DropTitle,
 		DropSlug:      r.DropSlug,
 		BuyerEmail:    r.BuyerEmail,
+		ProductID:     r.ProductID,
+		ProductName:   r.ProductName,
 		SizeLabel:     r.SizeLabel,
 		Status:        r.Status,
 		SubtotalCents: r.SubtotalCents,
@@ -360,6 +394,8 @@ func (o *OrderService) GetBuyerOrderStatus(ctx context.Context, orderID, email s
 		SellerSlug:    r.SellerSlug,
 		DropSlug:      r.DropSlug,
 		DropTitle:     r.DropTitle,
+		ProductID:     r.ProductID,
+		ProductName:   r.ProductName,
 		SizeLabel:     r.SizeLabel,
 		SubtotalCents: r.SubtotalCents,
 		DiscountCents: r.DiscountCents,
@@ -417,6 +453,7 @@ func (o *OrderService) ListForBuyer(ctx context.Context, email string, page, pag
 			SellerSlug:  r.SellerSlug,
 			DropSlug:    r.DropSlug,
 			DropTitle:   r.DropTitle,
+			ProductName: r.ProductName,
 			SizeLabel:   r.SizeLabel,
 			AmountCents: r.AmountCents,
 			Currency:    r.Currency,
