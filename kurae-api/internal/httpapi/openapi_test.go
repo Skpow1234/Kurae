@@ -24,6 +24,7 @@ func TestEmbeddedOpenAPISpec(t *testing.T) {
 		"/branding:",
 		"/dashboard/analytics:",
 		"/public/referrals/click:",
+		"/public/referrals/stats:",
 		"/public/analytics/view:",
 		"SellerAnalytics:",
 		"DiscountPreview:",

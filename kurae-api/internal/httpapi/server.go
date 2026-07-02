@@ -95,6 +95,7 @@ func NewServer(cfg config.Config, s *store.Store, q *queue.RedisQueue) *Server {
 	r.Get("/public/{seller}/{drop}", publicH.GetDrop)
 	r.With(RateLimit(waitlistLimiter)).Post("/drops/{id}/waitlist", publicH.JoinWaitlist)
 	r.With(RateLimit(referralClickLimiter)).Post("/public/referrals/click", referralH.RecordClick)
+	r.With(RateLimit(referralClickLimiter)).Get("/public/referrals/stats", referralH.GetStats)
 	r.With(RateLimit(viewLimiter)).Post("/public/analytics/view", analyticsH.RecordView)
 	r.With(RateLimit(checkoutLimiter)).Post("/checkout", orderH.Checkout)
 	r.With(RateLimit(checkoutLimiter)).Post("/checkout/discount/validate", discountH.ValidateCheckout)

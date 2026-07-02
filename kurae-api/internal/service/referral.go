@@ -112,3 +112,34 @@ func (r *ReferralService) RecordSignup(ctx context.Context, sellerSlug, code str
 	}
 	return r.referrals.RecordSignup(ctx, seller.ID, code)
 }
+
+func (r *ReferralService) GetStats(ctx context.Context, dropID, code string) (domain.ReferralStats, error) {
+	drop, err := r.drops.GetByID(ctx, dropID)
+	if errors.Is(err, store.ErrNotFound) {
+		return domain.ReferralStats{Valid: false}, nil
+	}
+	if err != nil {
+		return domain.ReferralStats{}, err
+	}
+
+	normalized, err := normalizeReferralCode(code)
+	if err != nil {
+		return domain.ReferralStats{Valid: false}, nil
+	}
+
+	rec, err := r.referrals.LookupForAttribution(ctx, drop.SellerID, drop.ID, normalized)
+	if errors.Is(err, store.ErrNotFound) {
+		return domain.ReferralStats{Valid: false}, nil
+	}
+	if err != nil {
+		return domain.ReferralStats{}, err
+	}
+
+	return domain.ReferralStats{
+		Valid:        true,
+		Code:         rec.Code,
+		ClicksCount:  rec.ClicksCount,
+		SignupsCount: rec.SignupsCount,
+		OrdersCount:  rec.OrdersCount,
+	}, nil
+}

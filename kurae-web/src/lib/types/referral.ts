@@ -9,3 +9,11 @@ export type ReferralCode = {
   ordersCount: number;
   createdAt: string;
 };
+
+export type ReferralStats = {
+  valid: boolean;
+  code?: string;
+  clicksCount: number;
+  signupsCount: number;
+  ordersCount: number;
+};

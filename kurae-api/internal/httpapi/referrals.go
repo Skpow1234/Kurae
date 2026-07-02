@@ -107,6 +107,22 @@ func (h *ReferralHandler) RecordClick(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
 }
 
+func (h *ReferralHandler) GetStats(w http.ResponseWriter, r *http.Request) {
+	dropID := strings.TrimSpace(r.URL.Query().Get("dropId"))
+	code := strings.TrimSpace(r.URL.Query().Get("code"))
+	if dropID == "" || code == "" {
+		writeError(w, http.StatusBadRequest, "dropId and code are required")
+		return
+	}
+
+	stats, err := h.referrals.GetStats(r.Context(), dropID, code)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "Could not load referral stats")
+		return
+	}
+	writeJSON(w, http.StatusOK, stats)
+}
+
 type referralCodeBody struct {
 	Code   string  `json:"code"`
 	DropID *string `json:"dropId"`

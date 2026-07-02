@@ -351,6 +351,33 @@ paths:
           $ref: "#/components/responses/Error"
         "429":
           $ref: "#/components/responses/Error"
+  /public/referrals/stats:
+    get:
+      tags: [public, referrals]
+      summary: Referral funnel stats for a drop and code
+      parameters:
+        - name: dropId
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: code
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Stats (valid false if code not found or not scoped to drop)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReferralStats"
+        "400":
+          $ref: "#/components/responses/Error"
+        "429":
+          $ref: "#/components/responses/Error"
   /public/analytics/view:
     post:
       tags: [public, analytics]
@@ -1374,6 +1401,19 @@ components:
           type: string
         message:
           type: string
+    ReferralStats:
+      type: object
+      properties:
+        valid:
+          type: boolean
+        code:
+          type: string
+        clicksCount:
+          type: integer
+        signupsCount:
+          type: integer
+        ordersCount:
+          type: integer
     ReferralCode:
       type: object
       properties:

@@ -9,6 +9,7 @@ import { DropHero } from "@/components/drop/drop-hero";
 import { SellerBrandCard } from "@/components/branding/seller-brand-card";
 import { SellerBrandTheme } from "@/components/branding/seller-brand-theme";
 import { ReferralCapture } from "@/components/referral/referral-capture";
+import { ReferralProgress } from "@/components/referral/referral-progress";
 import { DropStatusBanner } from "@/components/drop/drop-status-banner";
 import { PromoStrip } from "@/components/drop/promo-strip";
 import { PublicNav } from "@/components/drop/public-nav";
@@ -103,6 +104,15 @@ export function DropPageView({
         <div className="flex flex-wrap items-center gap-3">
           <ShareButton title={drop.title} text={drop.description} />
         </div>
+
+        {refCode?.trim() && (
+          <ReferralProgress
+            dropId={drop.id}
+            sellerSlug={drop.sellerSlug}
+            dropSlug={drop.slug}
+            code={refCode.trim()}
+          />
+        )}
 
         {isLive && (
           <div ref={purchaseRef}>
