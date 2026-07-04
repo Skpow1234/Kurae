@@ -3,7 +3,7 @@ import Link from "next/link";
 import { cn } from "@/lib/utils";
 
 type AccountNavProps = {
-  active: "settings" | "orders";
+  active: "settings" | "orders" | "referrals";
 };
 
 export function AccountNav({ active }: AccountNavProps) {
@@ -22,6 +22,9 @@ export function AccountNav({ active }: AccountNavProps) {
       </Link>
       <Link href="/account/orders" className={linkClass("orders")}>
         Orders
+      </Link>
+      <Link href="/account/referrals" className={linkClass("referrals")}>
+        Referrals
       </Link>
     </nav>
   );

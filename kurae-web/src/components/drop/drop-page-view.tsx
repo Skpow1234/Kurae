@@ -9,6 +9,7 @@ import { DropHero } from "@/components/drop/drop-hero";
 import { SellerBrandCard } from "@/components/branding/seller-brand-card";
 import { SellerBrandTheme } from "@/components/branding/seller-brand-theme";
 import { ReferralCapture } from "@/components/referral/referral-capture";
+import { BuyerReferralRewards } from "@/components/referral/buyer-referral-rewards";
 import { ReferralProgress } from "@/components/referral/referral-progress";
 import { DropStatusBanner } from "@/components/drop/drop-status-banner";
 import { PromoStrip } from "@/components/drop/promo-strip";
@@ -124,6 +125,14 @@ export function DropPageView({
             sellerSlug={drop.sellerSlug}
             dropSlug={drop.slug}
             code={refCode.trim()}
+          />
+        )}
+
+        {!isPreview && (
+          <BuyerReferralRewards
+            sellerSlug={drop.sellerSlug}
+            dropSlug={drop.slug}
+            returnPath={`/${drop.sellerSlug}/${drop.slug}`}
           />
         )}
 

@@ -3,9 +3,11 @@ import { redirect } from "next/navigation";
 import { ReferralDeleteButton } from "@/components/dashboard/referral-delete-button";
 import { ReferralForm } from "@/components/dashboard/referral-form";
 import { ReferralLinkCopy } from "@/components/dashboard/referral-link-copy";
+import { ReferralRewardSettingsForm } from "@/components/dashboard/referral-reward-settings";
 import { ApiLoadError } from "@/components/ui/api-load-error";
 import { listSellerDrops } from "@/lib/api/drops-server";
 import { listReferralCodes } from "@/lib/api/referrals-server";
+import { fetchReferralRewardSettings } from "@/lib/api/referral-rewards-server";
 import { authUrl } from "@/lib/auth/safe-redirect";
 import { getSellerSession } from "@/lib/auth/session";
 import { resolveReferralLinkTarget } from "@/lib/referral-link";
@@ -16,10 +18,12 @@ export default async function ReferralsPage() {
 
   let codes;
   let drops;
+  let rewardSettings;
   try {
-    [codes, drops] = await Promise.all([
+    [codes, drops, rewardSettings] = await Promise.all([
       listReferralCodes(),
       listSellerDrops(),
+      fetchReferralRewardSettings(),
     ]);
   } catch {
     return (
@@ -40,9 +44,11 @@ export default async function ReferralsPage() {
         <h1 className="text-2xl font-semibold text-sakura-ink">Referrals</h1>
         <p className="mt-1 text-sm text-sakura-mist">
           Create referral links for your drops. Clicks, signups, and paid orders are tracked
-          automatically.
+          automatically. Configure buyer rewards below.
         </p>
       </div>
+
+      {rewardSettings && <ReferralRewardSettingsForm initial={rewardSettings} />}
 
       {codes.length === 0 ? (
         <div className="rounded-lg border border-dashed border-sakura-petal p-8 text-center text-sm text-sakura-stone">
