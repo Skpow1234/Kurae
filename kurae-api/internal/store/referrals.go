@@ -23,6 +23,7 @@ func (s *Store) Referrals() *ReferralRepository {
 type ReferralRecord struct {
 	ID           string
 	SellerID     string
+	BuyerID      *string
 	Code         string
 	DropID       *string
 	DropTitle    *string
@@ -40,7 +41,7 @@ type CreateReferralInput struct {
 }
 
 const referralSelect = `
-	SELECT rc.id, rc.seller_id, rc.code, rc.drop_id, d.title, d.slug,
+	SELECT rc.id, rc.seller_id, rc.buyer_id, rc.code, rc.drop_id, d.title, d.slug,
 		rc.clicks_count, rc.signups_count, rc.orders_count, rc.created_at
 	FROM referral_codes rc
 	LEFT JOIN drops d ON d.id = rc.drop_id
@@ -50,7 +51,7 @@ func (r *ReferralRepository) scanReferral(row pgx.Row) (ReferralRecord, error) {
 	var rec ReferralRecord
 	var dropTitle, dropSlug *string
 	if err := row.Scan(
-		&rec.ID, &rec.SellerID, &rec.Code, &rec.DropID, &dropTitle, &dropSlug,
+		&rec.ID, &rec.SellerID, &rec.BuyerID, &rec.Code, &rec.DropID, &dropTitle, &dropSlug,
 		&rec.ClicksCount, &rec.SignupsCount, &rec.OrdersCount, &rec.CreatedAt,
 	); err != nil {
 		return ReferralRecord{}, err
@@ -72,7 +73,7 @@ func validateReferralScope(rec ReferralRecord, dropID string) bool {
 
 func (r *ReferralRepository) ListBySeller(ctx context.Context, sellerID string) ([]ReferralRecord, error) {
 	rows, err := r.store.pool.Query(ctx, referralSelect+`
-		WHERE rc.seller_id = $1
+		WHERE rc.seller_id = $1 AND rc.buyer_id IS NULL
 		ORDER BY rc.created_at DESC
 	`, sellerID)
 	if err != nil {

@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/kurae/kurae-api/internal/domain"
 	"github.com/kurae/kurae-api/internal/service"
 	"github.com/kurae/kurae-api/internal/store"
 )
@@ -141,6 +142,83 @@ func (h *ReferralHandler) GetStats(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, stats)
+}
+
+func (h *ReferralHandler) GetRewardSettings(w http.ResponseWriter, r *http.Request) {
+	claims, ok := claimsFromContext(r.Context())
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+
+	settings, err := h.referrals.GetRewardSettings(r.Context(), claims.SellerID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "Could not load referral reward settings")
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"settings": settings})
+}
+
+func (h *ReferralHandler) UpdateRewardSettings(w http.ResponseWriter, r *http.Request) {
+	claims, ok := claimsFromContext(r.Context())
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+
+	var body struct {
+		Enabled   bool   `json:"enabled"`
+		Threshold int    `json:"threshold"`
+		Type      string `json:"type"`
+		Value     int    `json:"value"`
+	}
+	if err := decodeJSON(r, &body); err != nil {
+		writeError(w, http.StatusBadRequest, "Invalid JSON")
+		return
+	}
+
+	settings, err := h.referrals.UpdateRewardSettings(r.Context(), service.UpdateReferralRewardSettingsRequest{
+		SellerID:  claims.SellerID,
+		Enabled:   body.Enabled,
+		Threshold: body.Threshold,
+		Type:      domain.DiscountType(body.Type),
+		Value:     body.Value,
+	})
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"settings": settings})
+}
+
+func (h *ReferralHandler) BuyerListProgress(w http.ResponseWriter, r *http.Request) {
+	claims, ok := claimsFromContext(r.Context())
+	if !ok || !claims.IsBuyer() {
+		writeError(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+
+	sellerSlug := strings.TrimSpace(r.URL.Query().Get("sellerSlug"))
+	if sellerSlug != "" {
+		progress, err := h.referrals.GetBuyerProgressForSeller(r.Context(), claims.BuyerID, sellerSlug)
+		if errors.Is(err, store.ErrNotFound) {
+			writeError(w, http.StatusNotFound, "Seller not found")
+			return
+		}
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "Could not load referral progress")
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"progress": progress})
+		return
+	}
+
+	items, err := h.referrals.ListBuyerProgress(r.Context(), claims.BuyerID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "Could not load referral progress")
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"items": items})
 }
 
 type referralCodeBody struct {

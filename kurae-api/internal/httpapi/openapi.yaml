@@ -753,6 +753,44 @@ paths:
           $ref: "#/components/responses/Error"
         "409":
           description: Code has activity and cannot be deleted
+  /referral-rewards/settings:
+    get:
+      tags: [referrals]
+      summary: Get buyer referral reward settings
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: OK
+    patch:
+      tags: [referrals]
+      summary: Update buyer referral reward settings
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReferralRewardSettings"
+      responses:
+        "200":
+          description: Updated settings
+  /buyer/referrals:
+    get:
+      tags: [referrals]
+      summary: Buyer referral progress and earned rewards
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: sellerSlug
+          in: query
+          schema:
+            type: string
+          description: When set, returns progress for one seller (creates personal code if needed)
+      responses:
+        "200":
+          description: OK
   /branding:
     get:
       tags: [branding]
@@ -1597,6 +1635,60 @@ components:
           format: uuid
           nullable: true
           description: Omit for seller-wide referral code
+    ReferralRewardSettings:
+      type: object
+      properties:
+        enabled:
+          type: boolean
+        threshold:
+          type: integer
+        type:
+          type: string
+          enum: [percent, fixed]
+        value:
+          type: integer
+    BuyerReferralProgress:
+      type: object
+      properties:
+        sellerSlug:
+          type: string
+        sellerName:
+          type: string
+        code:
+          type: string
+        successfulReferrals:
+          type: integer
+        threshold:
+          type: integer
+        rewardsEnabled:
+          type: boolean
+        rewardType:
+          type: string
+          enum: [percent, fixed]
+        rewardValue:
+          type: integer
+        progressInTier:
+          type: integer
+        referralsUntilReward:
+          type: integer
+        earnedRewards:
+          type: array
+          items:
+            type: object
+            properties:
+              code:
+                type: string
+              rewardTier:
+                type: integer
+              type:
+                type: string
+              value:
+                type: integer
+              grantedAt:
+                type: string
+                format: date-time
+              redeemed:
+                type: boolean
     ReferralClickRequest:
       type: object
       required: [code]

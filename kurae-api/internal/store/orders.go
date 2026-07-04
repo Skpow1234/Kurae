@@ -181,8 +181,20 @@ func (r *OrderRepository) ReserveInventory(ctx context.Context, in CheckoutInput
 	if strings.TrimSpace(in.ReferralCode) != "" {
 		rc, err := r.store.Referrals().lookupForAttributionTx(ctx, tx, in.SellerID, in.DropID, in.ReferralCode)
 		if err == nil {
-			referralCodeID = &rc.ID
-			referralCodeSnapshot = &rc.Code
+			skipReferral := false
+			if rc.BuyerID != nil {
+				var referrerEmail string
+				if err := tx.QueryRow(ctx, `
+					SELECT email FROM buyers WHERE id = $1
+				`, *rc.BuyerID).Scan(&referrerEmail); err == nil &&
+					strings.EqualFold(strings.TrimSpace(referrerEmail), strings.TrimSpace(in.BuyerEmail)) {
+					skipReferral = true
+				}
+			}
+			if !skipReferral {
+				referralCodeID = &rc.ID
+				referralCodeSnapshot = &rc.Code
+			}
 		}
 	}
 
@@ -661,6 +673,7 @@ func (r *OrderRepository) MarkPaymentPaid(ctx context.Context, orderID, provider
 		SELECT referral_code_id FROM orders WHERE id = $1
 	`, orderID).Scan(&referralCodeID); err == nil && referralCodeID != nil {
 		_ = r.store.Referrals().RecordOrderPaidTx(ctx, tx, *referralCodeID)
+		_ = r.store.Referrals().ProcessBuyerReferralRewardTx(ctx, tx, orderID)
 	}
 
 	if err := r.insertAudit(ctx, tx, "order", orderID, "paid", map[string]any{

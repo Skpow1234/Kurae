@@ -5,6 +5,7 @@ import (
 	"errors"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/kurae/kurae-api/internal/domain"
 	"github.com/kurae/kurae-api/internal/store"
@@ -170,4 +171,135 @@ func (r *ReferralService) GetStats(ctx context.Context, dropID, code string) (do
 		SignupsCount: rec.SignupsCount,
 		OrdersCount:  rec.OrdersCount,
 	}, nil
+}
+
+func (r *ReferralService) GetRewardSettings(ctx context.Context, sellerID string) (domain.ReferralRewardSettings, error) {
+	cfg, err := r.referrals.GetRewardConfig(ctx, sellerID)
+	if err != nil {
+		return domain.ReferralRewardSettings{}, err
+	}
+	return domain.ReferralRewardSettings{
+		Enabled:   cfg.Enabled,
+		Threshold: cfg.Threshold,
+		Type:      cfg.Type,
+		Value:     cfg.Value,
+	}, nil
+}
+
+type UpdateReferralRewardSettingsRequest struct {
+	SellerID  string
+	Enabled   bool
+	Threshold int
+	Type      domain.DiscountType
+	Value     int
+}
+
+func (r *ReferralService) UpdateRewardSettings(ctx context.Context, req UpdateReferralRewardSettingsRequest) (domain.ReferralRewardSettings, error) {
+	if req.Threshold < 1 || req.Threshold > 100 {
+		return domain.ReferralRewardSettings{}, errors.New("threshold must be between 1 and 100")
+	}
+	if req.Type != domain.DiscountPercent && req.Type != domain.DiscountFixed {
+		return domain.ReferralRewardSettings{}, errors.New("type must be percent or fixed")
+	}
+	if req.Value < 1 {
+		return domain.ReferralRewardSettings{}, errors.New("value must be at least 1")
+	}
+	if req.Type == domain.DiscountPercent && req.Value > 100 {
+		return domain.ReferralRewardSettings{}, errors.New("percent value cannot exceed 100")
+	}
+
+	cfg := store.ReferralRewardConfig{
+		Enabled:   req.Enabled,
+		Threshold: req.Threshold,
+		Type:      req.Type,
+		Value:     req.Value,
+	}
+	if err := r.referrals.UpdateRewardConfig(ctx, req.SellerID, cfg); err != nil {
+		return domain.ReferralRewardSettings{}, err
+	}
+	return domain.ReferralRewardSettings{
+		Enabled:   cfg.Enabled,
+		Threshold: cfg.Threshold,
+		Type:      cfg.Type,
+		Value:     cfg.Value,
+	}, nil
+}
+
+func progressToDomain(rec store.BuyerReferralProgressRecord, rewards []store.BuyerReferralRewardRecord) domain.BuyerReferralProgress {
+	progressInTier := 0
+	referralsUntil := rec.Config.Threshold
+	if rec.Config.Threshold > 0 {
+		if rec.SuccessfulReferrals == 0 {
+			referralsUntil = rec.Config.Threshold
+		} else {
+			progressInTier = rec.SuccessfulReferrals % rec.Config.Threshold
+			if progressInTier == 0 {
+				referralsUntil = rec.Config.Threshold
+			} else {
+				referralsUntil = rec.Config.Threshold - progressInTier
+			}
+		}
+	}
+
+	earned := make([]domain.BuyerReferralRewardItem, len(rewards))
+	for i, reward := range rewards {
+		earned[i] = domain.BuyerReferralRewardItem{
+			Code:       reward.Code,
+			RewardTier: reward.RewardTier,
+			Type:       reward.Type,
+			Value:      reward.Value,
+			GrantedAt:  reward.GrantedAt.UTC().Format(time.RFC3339),
+			Redeemed:   reward.Redeemed,
+		}
+	}
+
+	return domain.BuyerReferralProgress{
+		SellerSlug:          rec.SellerSlug,
+		SellerName:          rec.SellerName,
+		Code:                rec.Code,
+		SuccessfulReferrals: rec.SuccessfulReferrals,
+		Threshold:           rec.Config.Threshold,
+		RewardsEnabled:      rec.Config.Enabled,
+		RewardType:          rec.Config.Type,
+		RewardValue:         rec.Config.Value,
+		ProgressInTier:      progressInTier,
+		ReferralsUntilReward: referralsUntil,
+		EarnedRewards:       earned,
+	}
+}
+
+func (r *ReferralService) GetBuyerProgressForSeller(ctx context.Context, buyerID, sellerSlug string) (domain.BuyerReferralProgress, error) {
+	seller, err := r.sellers.GetBySlug(ctx, sellerSlug)
+	if errors.Is(err, store.ErrNotFound) {
+		return domain.BuyerReferralProgress{}, err
+	}
+	if err != nil {
+		return domain.BuyerReferralProgress{}, err
+	}
+
+	progress, err := r.referrals.GetBuyerProgressForSeller(ctx, buyerID, seller.ID)
+	if err != nil {
+		return domain.BuyerReferralProgress{}, err
+	}
+	rewards, err := r.referrals.ListBuyerRewards(ctx, buyerID, seller.ID)
+	if err != nil {
+		return domain.BuyerReferralProgress{}, err
+	}
+	return progressToDomain(progress, rewards), nil
+}
+
+func (r *ReferralService) ListBuyerProgress(ctx context.Context, buyerID string) ([]domain.BuyerReferralProgress, error) {
+	records, err := r.referrals.ListBuyerProgress(ctx, buyerID)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]domain.BuyerReferralProgress, 0, len(records))
+	for _, rec := range records {
+		rewards, err := r.referrals.ListBuyerRewards(ctx, buyerID, rec.SellerID)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, progressToDomain(rec, rewards))
+	}
+	return out, nil
 }

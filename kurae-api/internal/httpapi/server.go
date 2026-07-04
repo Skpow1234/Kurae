@@ -86,6 +86,7 @@ func NewServer(cfg config.Config, s *store.Store, q *queue.RedisQueue) *Server {
 		buyerAuth.Patch("/auth/buyer/profile", authH.BuyerUpdateProfile)
 		buyerAuth.Patch("/auth/buyer/password", authH.BuyerChangePassword)
 		buyerAuth.Get("/buyer/orders", orderH.BuyerList)
+		buyerAuth.Get("/buyer/referrals", referralH.BuyerListProgress)
 	})
 
 	referralClickLimiter := ratelimit.NewIP(60, time.Minute)
@@ -122,6 +123,8 @@ func NewServer(cfg config.Config, s *store.Store, q *queue.RedisQueue) *Server {
 		protected.Get("/referral-codes", referralH.List)
 		protected.Post("/referral-codes", referralH.Create)
 		protected.Delete("/referral-codes/{id}", referralH.Delete)
+		protected.Get("/referral-rewards/settings", referralH.GetRewardSettings)
+		protected.Patch("/referral-rewards/settings", referralH.UpdateRewardSettings)
 		protected.Get("/branding", brandingH.Get)
 		protected.Patch("/branding", brandingH.Update)
 		protected.Get("/dashboard/analytics", analyticsH.Get)
