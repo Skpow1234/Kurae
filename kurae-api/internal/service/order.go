@@ -16,6 +16,8 @@ import (
 
 var ErrInvalidOrderAction = errors.New("invalid order action")
 var ErrCheckoutIncomplete = errors.New("checkout incomplete")
+var ErrInvalidShippingAddress = validate.ErrInvalidShippingAddress
+var ErrInvalidTrackingNumber = validate.ErrInvalidTrackingNumber
 
 type OrderService struct {
 	orders             *store.OrderRepository
@@ -49,13 +51,19 @@ func NewOrderService(
 }
 
 type CheckoutRequest struct {
-	DropID         string
-	ProductID      string
-	BuyerEmail     string
-	SizeLabel      string
-	IdempotencyKey string
-	DiscountCode   string
-	ReferralCode   string
+	DropID          string
+	ProductID       string
+	BuyerEmail      string
+	SizeLabel       string
+	IdempotencyKey  string
+	DiscountCode    string
+	ReferralCode    string
+	ShippingAddress domain.ShippingAddress
+}
+
+type OrderUpdateRequest struct {
+	Action         string
+	TrackingNumber string
 }
 
 type CheckoutResponse struct {
@@ -103,20 +111,26 @@ func (o *OrderService) Checkout(ctx context.Context, req CheckoutRequest) (Check
 		return CheckoutResponse{}, err
 	}
 
+	shipping, err := normalizeCheckoutShipping(req.ShippingAddress)
+	if err != nil {
+		return CheckoutResponse{}, err
+	}
+
 	expiresAt := time.Now().Add(o.ttl)
 	result, err := o.orders.ReserveInventory(ctx, store.CheckoutInput{
-		SellerID:       drop.SellerID,
-		DropID:         req.DropID,
-		ProductID:      product.ID,
-		ProductName:    product.Name,
-		BuyerEmail:     req.BuyerEmail,
-		SizeLabel:      req.SizeLabel,
-		SubtotalCents:  product.PriceCents,
-		DiscountCode:   req.DiscountCode,
-		ReferralCode:   req.ReferralCode,
-		Currency:       drop.Currency,
-		IdempotencyKey: req.IdempotencyKey,
-		ExpiresAt:      expiresAt,
+		SellerID:        drop.SellerID,
+		DropID:          req.DropID,
+		ProductID:       product.ID,
+		ProductName:     product.Name,
+		BuyerEmail:      req.BuyerEmail,
+		SizeLabel:       req.SizeLabel,
+		SubtotalCents:   product.PriceCents,
+		DiscountCode:    req.DiscountCode,
+		ReferralCode:    req.ReferralCode,
+		Currency:        drop.Currency,
+		IdempotencyKey:  req.IdempotencyKey,
+		ShippingAddress: shipping,
+		ExpiresAt:       expiresAt,
 	})
 	if errors.Is(err, store.ErrSoldOut) {
 		return CheckoutResponse{}, err
@@ -270,26 +284,61 @@ func (o *OrderService) ListForSeller(ctx context.Context, sellerID, status strin
 }
 
 func sellerOrderFromRecord(r store.OrderRecord, events []domain.OrderEvent) domain.SellerOrder {
+	shippedAt := formatShippedAt(r.ShippedAt)
 	return domain.SellerOrder{
-		ID:            r.ID,
-		SellerSlug:    r.SellerSlug,
-		DropID:        r.DropID,
-		DropTitle:     r.DropTitle,
-		DropSlug:      r.DropSlug,
-		BuyerEmail:    r.BuyerEmail,
-		ProductID:     r.ProductID,
-		ProductName:   r.ProductName,
-		SizeLabel:     r.SizeLabel,
-		Status:        r.Status,
-		SubtotalCents: r.SubtotalCents,
-		DiscountCents: r.DiscountCents,
-		DiscountCode:  r.DiscountCodeSnapshot,
-		AmountCents:   r.AmountCents,
-		Currency:      r.Currency,
-		CreatedAt:     r.CreatedAt.UTC().Format(time.RFC3339),
-		UpdatedAt:     r.UpdatedAt.UTC().Format(time.RFC3339),
-		Events:        events,
+		ID:              r.ID,
+		SellerSlug:      r.SellerSlug,
+		DropID:          r.DropID,
+		DropTitle:       r.DropTitle,
+		DropSlug:        r.DropSlug,
+		BuyerEmail:      r.BuyerEmail,
+		ProductID:       r.ProductID,
+		ProductName:     r.ProductName,
+		SizeLabel:       r.SizeLabel,
+		Status:          r.Status,
+		ShippingAddress: r.ShippingAddress,
+		TrackingNumber:  r.TrackingNumber,
+		ShippedAt:       shippedAt,
+		SubtotalCents:   r.SubtotalCents,
+		DiscountCents:   r.DiscountCents,
+		DiscountCode:    r.DiscountCodeSnapshot,
+		AmountCents:     r.AmountCents,
+		Currency:        r.Currency,
+		CreatedAt:       r.CreatedAt.UTC().Format(time.RFC3339),
+		UpdatedAt:       r.UpdatedAt.UTC().Format(time.RFC3339),
+		Events:          events,
 	}
+}
+
+func formatShippedAt(shippedAt *time.Time) string {
+	if shippedAt == nil {
+		return ""
+	}
+	return shippedAt.UTC().Format(time.RFC3339)
+}
+
+func normalizeCheckoutShipping(in domain.ShippingAddress) (domain.ShippingAddress, error) {
+	addr, err := validate.NormalizeShippingAddress(validate.ShippingAddressInput{
+		Name:       in.Name,
+		Line1:      in.Line1,
+		Line2:      in.Line2,
+		City:       in.City,
+		Region:     in.Region,
+		PostalCode: in.PostalCode,
+		Country:    in.Country,
+	})
+	if err != nil {
+		return domain.ShippingAddress{}, err
+	}
+	return domain.ShippingAddress{
+		Name:       addr.Name,
+		Line1:      addr.Line1,
+		Line2:      addr.Line2,
+		City:       addr.City,
+		Region:     addr.Region,
+		PostalCode: addr.PostalCode,
+		Country:    addr.Country,
+	}, nil
 }
 
 func (o *OrderService) GetForSeller(ctx context.Context, sellerID, orderID string) (domain.SellerOrder, error) {
@@ -301,10 +350,10 @@ func (o *OrderService) GetForSeller(ctx context.Context, sellerID, orderID strin
 	return sellerOrderFromRecord(r, events), nil
 }
 
-func (o *OrderService) UpdateForSeller(ctx context.Context, sellerID, orderID, action string) (domain.SellerOrder, error) {
-	switch action {
-	case "fulfill":
-		return o.fulfillForSeller(ctx, sellerID, orderID)
+func (o *OrderService) UpdateForSeller(ctx context.Context, sellerID, orderID string, req OrderUpdateRequest) (domain.SellerOrder, error) {
+	switch req.Action {
+	case "fulfill", "ship":
+		return o.shipForSeller(ctx, sellerID, orderID, req.TrackingNumber)
 	case "refund":
 		return o.refundForSeller(ctx, sellerID, orderID)
 	default:
@@ -312,7 +361,7 @@ func (o *OrderService) UpdateForSeller(ctx context.Context, sellerID, orderID, a
 	}
 }
 
-func (o *OrderService) fulfillForSeller(ctx context.Context, sellerID, orderID string) (domain.SellerOrder, error) {
+func (o *OrderService) shipForSeller(ctx context.Context, sellerID, orderID, trackingNumber string) (domain.SellerOrder, error) {
 	record, err := o.orders.GetByIDForSeller(ctx, orderID, sellerID)
 	if err != nil {
 		return domain.SellerOrder{}, err
@@ -321,9 +370,12 @@ func (o *OrderService) fulfillForSeller(ctx context.Context, sellerID, orderID s
 		return domain.SellerOrder{}, store.ErrInvalidTransition
 	}
 
-	if err := o.orders.TransitionStatus(ctx, orderID, domain.OrderPaid, domain.OrderFulfilled, map[string]any{
-		"by": "seller",
-	}); err != nil {
+	tracking, err := validate.NormalizeTrackingNumber(trackingNumber)
+	if err != nil {
+		return domain.SellerOrder{}, err
+	}
+
+	if err := o.orders.MarkOrderShipped(ctx, orderID, domain.OrderPaid, tracking); err != nil {
 		return domain.SellerOrder{}, err
 	}
 
@@ -335,7 +387,7 @@ func (o *OrderService) refundForSeller(ctx context.Context, sellerID, orderID st
 	if err != nil {
 		return domain.SellerOrder{}, err
 	}
-	if record.Status != domain.OrderPaid && record.Status != domain.OrderFulfilled {
+	if record.Status != domain.OrderPaid && record.Status != domain.OrderShipped && record.Status != domain.OrderFulfilled {
 		return domain.SellerOrder{}, store.ErrInvalidTransition
 	}
 
@@ -389,23 +441,26 @@ func (o *OrderService) GetBuyerOrderStatus(ctx context.Context, orderID, email s
 	}
 	events, _ := o.orders.ListAuditEvents(ctx, "order", r.ID)
 	return domain.BuyerOrderStatus{
-		OrderID:       r.ID,
-		Status:        r.Status,
-		SellerSlug:    r.SellerSlug,
-		DropSlug:      r.DropSlug,
-		DropTitle:     r.DropTitle,
-		ProductID:     r.ProductID,
-		ProductName:   r.ProductName,
-		SizeLabel:     r.SizeLabel,
-		SubtotalCents: r.SubtotalCents,
-		DiscountCents: r.DiscountCents,
-		DiscountCode:  r.DiscountCodeSnapshot,
-		ReferralCode:  r.ReferralCodeSnapshot,
-		AmountCents:   r.AmountCents,
-		Currency:      r.Currency,
-		BuyerEmail:    r.BuyerEmail,
-		UpdatedAt:     r.UpdatedAt.UTC().Format(time.RFC3339),
-		Events:        events,
+		OrderID:         r.ID,
+		Status:          r.Status,
+		SellerSlug:      r.SellerSlug,
+		DropSlug:        r.DropSlug,
+		DropTitle:       r.DropTitle,
+		ProductID:       r.ProductID,
+		ProductName:     r.ProductName,
+		SizeLabel:       r.SizeLabel,
+		SubtotalCents:   r.SubtotalCents,
+		DiscountCents:   r.DiscountCents,
+		DiscountCode:    r.DiscountCodeSnapshot,
+		ReferralCode:    r.ReferralCodeSnapshot,
+		AmountCents:     r.AmountCents,
+		Currency:        r.Currency,
+		BuyerEmail:      r.BuyerEmail,
+		ShippingAddress: r.ShippingAddress,
+		TrackingNumber:  r.TrackingNumber,
+		ShippedAt:       formatShippedAt(r.ShippedAt),
+		UpdatedAt:       r.UpdatedAt.UTC().Format(time.RFC3339),
+		Events:          events,
 	}, nil
 }
 

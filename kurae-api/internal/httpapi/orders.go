@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/kurae/kurae-api/internal/domain"
 	"github.com/kurae/kurae-api/internal/service"
 	"github.com/kurae/kurae-api/internal/store"
 )
@@ -85,20 +86,28 @@ func (h *OrderHandler) Update(w http.ResponseWriter, r *http.Request) {
 
 	id := chi.URLParam(r, "id")
 	var body struct {
-		Action string `json:"action"`
+		Action         string `json:"action"`
+		TrackingNumber string `json:"trackingNumber"`
 	}
 	if err := decodeJSON(r, &body); err != nil {
 		writeError(w, http.StatusBadRequest, "Invalid JSON")
 		return
 	}
 
-	order, err := h.orders.UpdateForSeller(r.Context(), claims.SellerID, id, strings.TrimSpace(body.Action))
+	order, err := h.orders.UpdateForSeller(r.Context(), claims.SellerID, id, service.OrderUpdateRequest{
+		Action:         strings.TrimSpace(body.Action),
+		TrackingNumber: strings.TrimSpace(body.TrackingNumber),
+	})
 	if errors.Is(err, store.ErrNotFound) {
 		writeError(w, http.StatusNotFound, "Not found")
 		return
 	}
 	if errors.Is(err, service.ErrInvalidOrderAction) {
-		writeError(w, http.StatusBadRequest, "Invalid action; use fulfill or refund")
+		writeError(w, http.StatusBadRequest, "Invalid action; use ship or refund")
+		return
+	}
+	if errors.Is(err, service.ErrInvalidTrackingNumber) {
+		writeError(w, http.StatusBadRequest, "Tracking number is required")
 		return
 	}
 	if errors.Is(err, store.ErrInvalidTransition) {
@@ -115,13 +124,22 @@ func (h *OrderHandler) Update(w http.ResponseWriter, r *http.Request) {
 
 func (h *OrderHandler) Checkout(w http.ResponseWriter, r *http.Request) {
 	var body struct {
-		DropID         string `json:"dropId"`
-		ProductID      string `json:"productId"`
-		BuyerEmail     string `json:"buyerEmail"`
-		SizeLabel      string `json:"sizeLabel"`
-		IdempotencyKey string `json:"idempotencyKey"`
-		DiscountCode   string `json:"discountCode"`
-		ReferralCode   string `json:"referralCode"`
+		DropID          string `json:"dropId"`
+		ProductID       string `json:"productId"`
+		BuyerEmail      string `json:"buyerEmail"`
+		SizeLabel       string `json:"sizeLabel"`
+		IdempotencyKey  string `json:"idempotencyKey"`
+		DiscountCode    string `json:"discountCode"`
+		ReferralCode    string `json:"referralCode"`
+		ShippingAddress struct {
+			Name       string `json:"name"`
+			Line1      string `json:"line1"`
+			Line2      string `json:"line2"`
+			City       string `json:"city"`
+			Region     string `json:"region"`
+			PostalCode string `json:"postalCode"`
+			Country    string `json:"country"`
+		} `json:"shippingAddress"`
 	}
 	if err := decodeJSON(r, &body); err != nil {
 		writeError(w, http.StatusBadRequest, "Invalid JSON")
@@ -152,6 +170,15 @@ func (h *OrderHandler) Checkout(w http.ResponseWriter, r *http.Request) {
 		IdempotencyKey: idem,
 		DiscountCode:   body.DiscountCode,
 		ReferralCode:   body.ReferralCode,
+		ShippingAddress: domain.ShippingAddress{
+			Name:       body.ShippingAddress.Name,
+			Line1:      body.ShippingAddress.Line1,
+			Line2:      body.ShippingAddress.Line2,
+			City:       body.ShippingAddress.City,
+			Region:     body.ShippingAddress.Region,
+			PostalCode: body.ShippingAddress.PostalCode,
+			Country:    body.ShippingAddress.Country,
+		},
 	})
 	if errors.Is(err, service.ErrCheckoutIncomplete) {
 		writeError(w, http.StatusConflict, "Checkout is still in progress; retry without the same idempotency key")
@@ -179,6 +206,10 @@ func (h *OrderHandler) Checkout(w http.ResponseWriter, r *http.Request) {
 	}
 	if errors.Is(err, store.ErrInvalidDiscount) {
 		writeError(w, http.StatusBadRequest, "Invalid or expired discount code")
+		return
+	}
+	if errors.Is(err, service.ErrInvalidShippingAddress) {
+		writeError(w, http.StatusBadRequest, "Complete shipping address is required")
 		return
 	}
 	if errors.Is(err, store.ErrNotFound) {

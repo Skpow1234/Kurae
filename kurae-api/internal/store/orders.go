@@ -44,6 +44,9 @@ type OrderRecord struct {
 	AmountCents          int
 	Currency             string
 	IdempotencyKey       *string
+	ShippingAddress      *domain.ShippingAddress
+	TrackingNumber       string
+	ShippedAt            *time.Time
 	CreatedAt            time.Time
 	UpdatedAt            time.Time
 }
@@ -70,6 +73,7 @@ type CheckoutInput struct {
 	ReferralCode   string
 	Currency       string
 	IdempotencyKey string
+	ShippingAddress domain.ShippingAddress
 	ExpiresAt      time.Time
 }
 
@@ -93,7 +97,8 @@ const orderSelect = `
 		o.buyer_email, o.size_label, o.status, o.subtotal_cents, o.discount_cents,
 		o.discount_code_id, o.discount_code_snapshot, o.referral_code_id, o.referral_code_snapshot,
 		o.amount_cents, o.currency,
-		o.idempotency_key, o.created_at, o.updated_at
+		o.idempotency_key, o.shipping_address, o.tracking_number, o.shipped_at,
+		o.created_at, o.updated_at
 	FROM orders o
 	JOIN sellers s ON s.id = o.seller_id
 	JOIN drops d ON d.id = o.drop_id
@@ -102,17 +107,31 @@ const orderSelect = `
 func (r *OrderRepository) scanOrder(row pgx.Row) (OrderRecord, error) {
 	var o OrderRecord
 	var idem *string
+	var shippingRaw []byte
+	var tracking *string
+	var shippedAt *time.Time
 	if err := row.Scan(
 		&o.ID, &o.SellerID, &o.SellerSlug, &o.DropID, &o.DropTitle, &o.DropSlug,
 		&o.ProductID, &o.ProductName,
 		&o.BuyerEmail, &o.SizeLabel, &o.Status, &o.SubtotalCents, &o.DiscountCents,
 		&o.DiscountCodeID, &o.DiscountCodeSnapshot, &o.ReferralCodeID, &o.ReferralCodeSnapshot,
 		&o.AmountCents, &o.Currency,
-		&idem, &o.CreatedAt, &o.UpdatedAt,
+		&idem, &shippingRaw, &tracking, &shippedAt,
+		&o.CreatedAt, &o.UpdatedAt,
 	); err != nil {
 		return OrderRecord{}, err
 	}
 	o.IdempotencyKey = idem
+	if len(shippingRaw) > 0 {
+		var addr domain.ShippingAddress
+		if err := json.Unmarshal(shippingRaw, &addr); err == nil {
+			o.ShippingAddress = &addr
+		}
+	}
+	if tracking != nil {
+		o.TrackingNumber = *tracking
+	}
+	o.ShippedAt = shippedAt
 	return o, nil
 }
 
@@ -188,19 +207,23 @@ func (r *OrderRepository) ReserveInventory(ctx context.Context, in CheckoutInput
 	}
 
 	var orderID string
+	shippingJSON, err := json.Marshal(in.ShippingAddress)
+	if err != nil {
+		return CheckoutResult{}, err
+	}
 	err = tx.QueryRow(ctx, `
 		INSERT INTO orders (
 			seller_id, drop_id, product_id, product_name_snapshot, buyer_email, size_label, status,
 			subtotal_cents, discount_cents, discount_code_id, discount_code_snapshot,
 			referral_code_id, referral_code_snapshot,
-			amount_cents, currency, idempotency_key
+			amount_cents, currency, idempotency_key, shipping_address
 		)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
 		RETURNING id
 	`, in.SellerID, in.DropID, in.ProductID, in.ProductName, in.BuyerEmail, in.SizeLabel, domain.OrderReserved,
 		subtotal, discountCents, discountCodeID, discountCodeSnapshot,
 		referralCodeID, referralCodeSnapshot,
-		finalAmount, in.Currency, in.IdempotencyKey).Scan(&orderID)
+		finalAmount, in.Currency, in.IdempotencyKey, shippingJSON).Scan(&orderID)
 	if err != nil {
 		if isUniqueViolation(err) {
 			return CheckoutResult{}, ErrConflict
@@ -681,6 +704,34 @@ func (r *OrderRepository) GetPaymentByOrderID(ctx context.Context, orderID strin
 		return PaymentRecord{}, ErrNotFound
 	}
 	return p, err
+}
+
+func (r *OrderRepository) MarkOrderShipped(ctx context.Context, orderID string, from domain.OrderStatus, trackingNumber string) error {
+	tx, err := r.store.pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+
+	tag, err := tx.Exec(ctx, `
+		UPDATE orders
+		SET status = $3, tracking_number = $4, shipped_at = now(), updated_at = now()
+		WHERE id = $1 AND status = $2
+	`, orderID, from, domain.OrderShipped, trackingNumber)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrInvalidTransition
+	}
+
+	if err := r.insertAudit(ctx, tx, "order", orderID, "shipped", map[string]any{
+		"by":             "seller",
+		"trackingNumber": trackingNumber,
+	}); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
 }
 
 func (r *OrderRepository) MarkOrderRefunded(ctx context.Context, orderID string, from domain.OrderStatus) error {

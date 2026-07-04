@@ -15,8 +15,11 @@ type BuyerOrderStatus struct {
 	ReferralCode  *string      `json:"referralCode,omitempty"`
 	AmountCents   int          `json:"amountCents"`
 	Currency      string       `json:"currency"`
-	BuyerEmail    string       `json:"buyerEmail"`
-	UpdatedAt     string       `json:"updatedAt"`
+	BuyerEmail      string           `json:"buyerEmail"`
+	ShippingAddress *ShippingAddress `json:"shippingAddress,omitempty"`
+	TrackingNumber  string           `json:"trackingNumber,omitempty"`
+	ShippedAt       string           `json:"shippedAt,omitempty"`
+	UpdatedAt       string           `json:"updatedAt"`
 	Events        []OrderEvent `json:"events"`
 }
 

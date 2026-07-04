@@ -72,7 +72,7 @@ func TestStripeBlockA(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if lastStatus == "paid" || lastStatus == "fulfilled" {
+		if lastStatus == "paid" || lastStatus == "shipped" || lastStatus == "fulfilled" {
 			return
 		}
 		time.Sleep(2 * time.Second)
@@ -87,11 +87,19 @@ type checkoutResponse struct {
 }
 
 func postCheckout(apiURL, dropID, email, idem string) (checkoutResponse, error) {
-	body, _ := json.Marshal(map[string]string{
+	body, _ := json.Marshal(map[string]any{
 		"dropId":         dropID,
 		"buyerEmail":     email,
 		"sizeLabel":      "M",
 		"idempotencyKey": idem,
+		"shippingAddress": map[string]string{
+			"name":       "Stripe Block A",
+			"line1":      "123 Test St",
+			"city":       "San Francisco",
+			"region":     "CA",
+			"postalCode": "94107",
+			"country":    "US",
+		},
 	})
 	res, err := http.Post(apiURL+"/checkout", "application/json", bytes.NewReader(body))
 	if err != nil {

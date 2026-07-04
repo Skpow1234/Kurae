@@ -62,16 +62,16 @@ func (r *AnalyticsRepository) querySellerAnalytics(ctx context.Context, q Analyt
 	err = r.store.pool.QueryRow(ctx, `
 		SELECT
 			COUNT(*) FILTER (
-				WHERE status IN ('paid', 'fulfilled') AND created_at >= $2
+				WHERE status IN ('paid', 'fulfilled', 'shipped') AND created_at >= $2
 			)::int,
 			COUNT(*) FILTER (
-				WHERE status IN ('paid', 'fulfilled') AND created_at >= $3 AND created_at < $2
+				WHERE status IN ('paid', 'fulfilled', 'shipped') AND created_at >= $3 AND created_at < $2
 			)::int,
 			COALESCE(SUM(amount_cents) FILTER (
-				WHERE status IN ('paid', 'fulfilled') AND created_at >= $2
+				WHERE status IN ('paid', 'fulfilled', 'shipped') AND created_at >= $2
 			), 0)::int,
 			COALESCE(SUM(amount_cents) FILTER (
-				WHERE status IN ('paid', 'fulfilled') AND created_at >= $3 AND created_at < $2
+				WHERE status IN ('paid', 'fulfilled', 'shipped') AND created_at >= $3 AND created_at < $2
 			), 0)::int
 		FROM orders
 		WHERE seller_id = $1
@@ -150,9 +150,9 @@ func (r *AnalyticsRepository) dropBreakdown(
 		LEFT JOIN LATERAL (
 			SELECT
 				COUNT(*) FILTER (WHERE status NOT IN ('cancelled'))::int AS checkouts,
-				COUNT(*) FILTER (WHERE status IN ('paid', 'fulfilled'))::int AS paid,
+				COUNT(*) FILTER (WHERE status IN ('paid', 'fulfilled', 'shipped'))::int AS paid,
 				COALESCE(SUM(amount_cents) FILTER (
-					WHERE status IN ('paid', 'fulfilled')
+					WHERE status IN ('paid', 'fulfilled', 'shipped')
 				), 0)::int AS revenue
 			FROM orders o
 			WHERE o.drop_id = d.id AND o.created_at >= $2 AND o.created_at <= $3

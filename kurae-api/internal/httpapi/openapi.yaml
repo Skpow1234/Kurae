@@ -557,7 +557,7 @@ paths:
           description: OK
     patch:
       tags: [orders]
-      summary: Update order status (fulfill or refund)
+      summary: Update order status (ship or refund)
       security:
         - bearerAuth: []
       parameters:
@@ -577,7 +577,10 @@ paths:
               properties:
                 action:
                   type: string
-                  enum: [fulfill, refund]
+                  enum: [ship, fulfill, refund]
+                trackingNumber:
+                  type: string
+                  description: Required when action is ship or fulfill
       responses:
         "200":
           description: Updated order
@@ -1275,7 +1278,26 @@ components:
           enum: [draft, scheduled, published]
     OrderStatus:
       type: string
-      enum: [reserved, payment_pending, paid, fulfilled, cancelled, refunded]
+      enum: [reserved, payment_pending, paid, shipped, fulfilled, cancelled, refunded]
+    ShippingAddress:
+      type: object
+      required: [name, line1, city, region, postalCode, country]
+      properties:
+        name:
+          type: string
+        line1:
+          type: string
+        line2:
+          type: string
+        city:
+          type: string
+        region:
+          type: string
+        postalCode:
+          type: string
+        country:
+          type: string
+          description: ISO 3166-1 alpha-2 country code
     DashboardStats:
       type: object
       properties:
@@ -1289,7 +1311,7 @@ components:
           type: integer
     CheckoutRequest:
       type: object
-      required: [dropId, buyerEmail, sizeLabel]
+      required: [dropId, buyerEmail, sizeLabel, shippingAddress]
       properties:
         dropId:
           type: string
@@ -1310,6 +1332,8 @@ components:
           type: string
         referralCode:
           type: string
+        shippingAddress:
+          $ref: "#/components/schemas/ShippingAddress"
     CheckoutResponse:
       type: object
       properties:
@@ -1364,6 +1388,13 @@ components:
           type: string
         buyerEmail:
           type: string
+        shippingAddress:
+          $ref: "#/components/schemas/ShippingAddress"
+        trackingNumber:
+          type: string
+        shippedAt:
+          type: string
+          format: date-time
         updatedAt:
           type: string
           format: date-time

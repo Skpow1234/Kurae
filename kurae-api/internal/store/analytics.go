@@ -69,7 +69,7 @@ func (r *AnalyticsRepository) dailyTraffic(
 			SELECT date_trunc('day', created_at) AS day,
 				COUNT(*)::int AS cnt,
 				COALESCE(SUM(amount_cents) FILTER (
-					WHERE status IN ('paid', 'fulfilled')
+					WHERE status IN ('paid', 'fulfilled', 'shipped')
 				), 0)::int AS revenue
 			FROM orders
 			WHERE seller_id = $1

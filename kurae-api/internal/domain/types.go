@@ -26,6 +26,7 @@ const (
 	OrderReserved       OrderStatus = "reserved"
 	OrderPaymentPending OrderStatus = "payment_pending"
 	OrderPaid           OrderStatus = "paid"
+	OrderShipped        OrderStatus = "shipped"
 	OrderFulfilled      OrderStatus = "fulfilled"
 	OrderCancelled      OrderStatus = "cancelled"
 	OrderRefunded       OrderStatus = "refunded"
@@ -109,6 +110,16 @@ type OrderEvent struct {
 	Detail string `json:"detail,omitempty"`
 }
 
+type ShippingAddress struct {
+	Name       string `json:"name"`
+	Line1      string `json:"line1"`
+	Line2      string `json:"line2,omitempty"`
+	City       string `json:"city"`
+	Region     string `json:"region"`
+	PostalCode string `json:"postalCode"`
+	Country    string `json:"country"`
+}
+
 type SellerOrder struct {
 	ID                   string       `json:"id"`
 	SellerSlug           string       `json:"sellerSlug"`
@@ -118,9 +129,12 @@ type SellerOrder struct {
 	BuyerEmail           string       `json:"buyerEmail"`
 	ProductID            string       `json:"productId,omitempty"`
 	ProductName          string       `json:"productName,omitempty"`
-	SizeLabel            string       `json:"sizeLabel"`
-	Status               OrderStatus  `json:"status"`
-	SubtotalCents        int          `json:"subtotalCents"`
+	SizeLabel            string           `json:"sizeLabel"`
+	Status               OrderStatus      `json:"status"`
+	ShippingAddress      *ShippingAddress `json:"shippingAddress,omitempty"`
+	TrackingNumber       string           `json:"trackingNumber,omitempty"`
+	ShippedAt            string           `json:"shippedAt,omitempty"`
+	SubtotalCents        int              `json:"subtotalCents"`
 	DiscountCents        int          `json:"discountCents"`
 	DiscountCode         *string      `json:"discountCode,omitempty"`
 	AmountCents          int          `json:"amountCents"`

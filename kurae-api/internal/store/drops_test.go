@@ -115,6 +115,10 @@ func TestDeleteDropBlockedWhenOrdersExist(t *testing.T) {
 		SubtotalCents:  1000,
 		Currency:       "USD",
 		IdempotencyKey: "delete-blocked-key",
+		ShippingAddress: domain.ShippingAddress{
+			Name: "Test Buyer", Line1: "123 Main St", City: "NYC",
+			Region: "NY", PostalCode: "10001", Country: "US",
+		},
 		ExpiresAt:      time.Now().Add(15 * time.Minute),
 	})
 	if err != nil {

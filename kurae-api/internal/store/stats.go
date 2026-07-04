@@ -11,9 +11,9 @@ func (r *OrderRepository) DashboardStats(ctx context.Context, sellerID string) (
 	err := r.store.pool.QueryRow(ctx, `
 		SELECT
 			COUNT(*)::int,
-			COUNT(*) FILTER (WHERE status IN ('paid', 'fulfilled'))::int,
+			COUNT(*) FILTER (WHERE status IN ('paid', 'fulfilled', 'shipped'))::int,
 			COALESCE(SUM(amount_cents) FILTER (
-				WHERE status IN ('paid', 'fulfilled')
+				WHERE status IN ('paid', 'fulfilled', 'shipped')
 				AND created_at > now() - interval '7 days'
 			), 0)::int
 		FROM orders
