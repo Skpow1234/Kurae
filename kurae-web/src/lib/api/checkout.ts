@@ -11,11 +11,14 @@ export type CheckoutResult = {
   status: string;
 };
 
+import type { ShippingAddress } from "@/lib/types/shipping";
+
 export async function createCheckout(input: {
   dropId: string;
   productId: string;
   sizeLabel: string;
   buyerEmail: string;
+  shippingAddress: ShippingAddress;
   idempotencyKey?: string;
   discountCode?: string;
 }): Promise<CheckoutResult> {
@@ -34,6 +37,7 @@ export async function createCheckout(input: {
       productId: input.productId,
       sizeLabel: input.sizeLabel,
       buyerEmail: input.buyerEmail.trim(),
+      shippingAddress: input.shippingAddress,
       idempotencyKey: input.idempotencyKey,
       discountCode: input.discountCode?.trim() || undefined,
     }),

@@ -5,6 +5,7 @@ function formatEventLabel(label: string): string {
     reserved: "Reserved",
     payment_pending: "Payment pending",
     paid: "Paid",
+    shipped: "Shipped",
     fulfilled: "Fulfilled",
     cancelled: "Cancelled",
     refunded: "Refunded",

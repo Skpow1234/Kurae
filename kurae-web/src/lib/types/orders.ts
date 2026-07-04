@@ -2,6 +2,7 @@ export type OrderStatus =
   | "reserved"
   | "payment_pending"
   | "paid"
+  | "shipped"
   | "fulfilled"
   | "cancelled"
   | "refunded";
@@ -13,6 +14,8 @@ export type OrderEvent = {
   detail?: string;
 };
 
+import type { ShippingAddress } from "@/lib/types/shipping";
+
 export type SellerOrder = {
   id: string;
   sellerSlug: string;
@@ -23,6 +26,9 @@ export type SellerOrder = {
   productName?: string;
   sizeLabel: string;
   status: OrderStatus;
+  shippingAddress?: ShippingAddress;
+  trackingNumber?: string;
+  shippedAt?: string;
   amountCents: number;
   currency: string;
   createdAt: string;

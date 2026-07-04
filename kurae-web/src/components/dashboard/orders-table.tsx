@@ -66,6 +66,7 @@ export function OrdersTable({
           <option value="all">All statuses</option>
           <option value="payment_pending">Payment pending</option>
           <option value="paid">Paid</option>
+          <option value="shipped">Shipped</option>
           <option value="fulfilled">Fulfilled</option>
           <option value="reserved">Reserved</option>
           <option value="cancelled">Cancelled</option>

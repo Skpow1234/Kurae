@@ -4,6 +4,7 @@ import { notFound, redirect } from "next/navigation";
 import { OrderActions } from "@/components/dashboard/order-actions";
 import { OrderStatusBadge } from "@/components/dashboard/order-status-badge";
 import { OrderTimeline } from "@/components/dashboard/order-timeline";
+import { ShippingInfo } from "@/components/orders/shipping-info";
 import { ApiLoadError } from "@/components/ui/api-load-error";
 import { fetchSellerOrder } from "@/lib/api/orders";
 import { getSellerSession } from "@/lib/auth/session";
@@ -116,6 +117,12 @@ export default async function OrderDetailPage({ params }: PageProps) {
           </div>
         </section>
       </div>
+
+      <ShippingInfo
+        address={order.shippingAddress}
+        trackingNumber={order.trackingNumber}
+        shippedAt={order.shippedAt}
+      />
     </div>
   );
 }

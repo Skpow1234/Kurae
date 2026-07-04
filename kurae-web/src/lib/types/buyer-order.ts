@@ -1,4 +1,5 @@
 import type { OrderEvent, OrderStatus } from "@/lib/types/orders";
+import type { ShippingAddress } from "@/lib/types/shipping";
 
 export type BuyerOrderListItem = {
   orderId: string;
@@ -29,6 +30,9 @@ export type BuyerOrderStatus = {
   amountCents: number;
   currency: string;
   buyerEmail: string;
+  shippingAddress?: ShippingAddress;
+  trackingNumber?: string;
+  shippedAt?: string;
   updatedAt: string;
   events: OrderEvent[];
 };

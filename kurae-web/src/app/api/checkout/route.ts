@@ -6,6 +6,8 @@ import { readToken } from "@/lib/api/proxy";
 import { getBuyerSession } from "@/lib/auth/session";
 import { parseReferralCookie, REFERRAL_COOKIE } from "@/lib/referral";
 
+import type { ShippingAddress } from "@/lib/types/shipping";
+
 export async function POST(request: Request) {
   const body = (await request.json()) as {
     dropId?: string;
@@ -14,6 +16,7 @@ export async function POST(request: Request) {
     idempotencyKey?: string;
     discountCode?: string;
     buyerEmail?: string;
+    shippingAddress?: ShippingAddress;
   };
 
   if (!body.dropId?.trim()) {
@@ -31,6 +34,13 @@ export async function POST(request: Request) {
   if (!buyerEmail) {
     return NextResponse.json(
       { error: "Email is required for checkout" },
+      { status: 400 },
+    );
+  }
+
+  if (!body.shippingAddress) {
+    return NextResponse.json(
+      { error: "Shipping address is required" },
       { status: 400 },
     );
   }
@@ -59,6 +69,7 @@ export async function POST(request: Request) {
       productId: body.productId?.trim(),
       buyerEmail,
       sizeLabel: body.sizeLabel?.trim() ?? "",
+      shippingAddress: body.shippingAddress,
       idempotencyKey,
       discountCode: body.discountCode?.trim(),
       referralCode: referral?.code,

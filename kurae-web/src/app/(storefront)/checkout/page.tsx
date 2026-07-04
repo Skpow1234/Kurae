@@ -7,6 +7,7 @@ import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 
 import { CartLinesPanel } from "@/components/cart/cart-lines-panel";
 import { CheckoutSavingsSummary } from "@/components/checkout/checkout-savings-summary";
+import { ShippingAddressForm } from "@/components/checkout/shipping-address-form";
 import { StripePaymentForm } from "@/components/checkout/stripe-payment-form";
 import { SellerBrandTheme } from "@/components/branding/seller-brand-theme";
 import { Button } from "@/components/ui/button";
@@ -33,7 +34,9 @@ import {
   isStripeConfigured,
 } from "@/lib/stripe/client";
 import type { PublicDrop } from "@/lib/types";
+import { EMPTY_SHIPPING_ADDRESS, type ShippingAddress } from "@/lib/types/shipping";
 import type { DiscountPreview } from "@/lib/types/discount";
+import { validateShippingAddress } from "@/lib/validation/shipping";
 import { readReferralCookie } from "@/lib/referral-client";
 
 type CheckoutSession = {
@@ -163,6 +166,11 @@ function CheckoutLiveForm({
   };
 
   const [email, setEmail] = useState("");
+  const [shippingAddress, setShippingAddress] =
+    useState<ShippingAddress>(EMPTY_SHIPPING_ADDRESS);
+  const [shippingErrors, setShippingErrors] = useState<
+    ReturnType<typeof validateShippingAddress>
+  >({});
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [loadingBuyer, setLoadingBuyer] = useState(true);
   const [session, setSession] = useState<CheckoutSession | null>(null);
@@ -279,6 +287,14 @@ function CheckoutLiveForm({
 
   async function handleReserve() {
     if (!email.trim() || !drop || !canReserve) return;
+
+    const addressErrors = validateShippingAddress(shippingAddress);
+    setShippingErrors(addressErrors);
+    if (Object.keys(addressErrors).length > 0) {
+      setError("Complete your shipping address to continue.");
+      return;
+    }
+
     setReserving(true);
     setError(null);
 
@@ -295,6 +311,16 @@ function CheckoutLiveForm({
         productId: line.productId,
         sizeLabel: line.sizeLabel,
         buyerEmail: email.trim(),
+        shippingAddress: {
+          ...shippingAddress,
+          name: shippingAddress.name.trim(),
+          line1: shippingAddress.line1.trim(),
+          line2: shippingAddress.line2?.trim() || undefined,
+          city: shippingAddress.city.trim(),
+          region: shippingAddress.region.trim(),
+          postalCode: shippingAddress.postalCode.trim(),
+          country: shippingAddress.country.trim().toUpperCase(),
+        },
         idempotencyKey: idempotencyKeyRef.current,
         discountCode: appliedCode ?? undefined,
       });
@@ -470,6 +496,18 @@ function CheckoutLiveForm({
               </p>
             )}
           </div>
+
+          <ShippingAddressForm
+            value={shippingAddress}
+            errors={shippingErrors}
+            disabled={reserving}
+            onChange={(next) => {
+              setShippingAddress(next);
+              if (Object.keys(shippingErrors).length > 0) {
+                setShippingErrors(validateShippingAddress(next));
+              }
+            }}
+          />
 
           <div>
             <label htmlFor="checkout-discount" className="mb-1 block text-sm font-medium">

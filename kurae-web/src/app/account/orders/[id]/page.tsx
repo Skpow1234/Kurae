@@ -5,6 +5,7 @@ import { CheckoutSavingsSummary } from "@/components/checkout/checkout-savings-s
 import { AccountNav } from "@/components/account/account-nav";
 import { OrderStatusBadge } from "@/components/dashboard/order-status-badge";
 import { OrderTimeline } from "@/components/dashboard/order-timeline";
+import { ShippingInfo } from "@/components/orders/shipping-info";
 import { ApiLoadError } from "@/components/ui/api-load-error";
 import { fetchBuyerOrder } from "@/lib/api/buyer-orders-server";
 import { getBuyerSession } from "@/lib/auth/session";
@@ -126,6 +127,12 @@ export default async function BuyerOrderDetailPage({ params }: PageProps) {
             )}
           </dl>
         </section>
+
+        <ShippingInfo
+          address={order.shippingAddress}
+          trackingNumber={order.trackingNumber}
+          shippedAt={order.shippedAt}
+        />
 
         <section className="rounded-lg border border-sakura-petal bg-sakura-surface p-4">
           <h2 className="text-xs font-medium uppercase tracking-wide text-sakura-mist">

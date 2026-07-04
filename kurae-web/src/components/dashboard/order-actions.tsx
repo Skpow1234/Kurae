@@ -5,6 +5,7 @@ import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { Input } from "@/components/ui/input";
 import type { OrderStatus } from "@/lib/types/orders";
 import { formatPrice } from "@/lib/utils";
 
@@ -24,18 +25,20 @@ export function OrderActions({
   buyerEmail,
 }: OrderActionsProps) {
   const router = useRouter();
-  const [pending, setPending] = useState<"fulfill" | "refund" | null>(null);
+  const [pending, setPending] = useState<"ship" | "refund" | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [refundDialogOpen, setRefundDialogOpen] = useState(false);
+  const [shipDialogOpen, setShipDialogOpen] = useState(false);
+  const [trackingNumber, setTrackingNumber] = useState("");
 
-  const canFulfill = status === "paid";
-  const canRefund = status === "paid" || status === "fulfilled";
+  const canShip = status === "paid";
+  const canRefund = status === "paid" || status === "shipped" || status === "fulfilled";
 
-  if (!canFulfill && !canRefund) {
+  if (!canShip && !canRefund) {
     return null;
   }
 
-  async function runAction(action: "fulfill" | "refund") {
+  async function runAction(action: "ship" | "refund", tracking?: string) {
     setPending(action);
     setError(null);
 
@@ -43,7 +46,10 @@ export function OrderActions({
       const res = await fetch(`/api/orders/${orderId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action }),
+        body: JSON.stringify({
+          action,
+          trackingNumber: tracking?.trim(),
+        }),
       });
 
       if (!res.ok) {
@@ -53,6 +59,8 @@ export function OrderActions({
       }
 
       setRefundDialogOpen(false);
+      setShipDialogOpen(false);
+      setTrackingNumber("");
       router.refresh();
     } catch {
       setError("Could not update order.");
@@ -87,15 +95,15 @@ export function OrderActions({
   return (
     <div className="mt-6 space-y-2">
       <div className="flex flex-wrap gap-2">
-        {canFulfill && (
+        {canShip && (
           <Button
             type="button"
             variant="outline"
             size="sm"
             disabled={pending !== null}
-            onClick={() => void runAction("fulfill")}
+            onClick={() => setShipDialogOpen(true)}
           >
-            {pending === "fulfill" ? "Marking fulfilled…" : "Mark fulfilled"}
+            Mark shipped
           </Button>
         )}
         {canRefund && (
@@ -111,6 +119,46 @@ export function OrderActions({
           </Button>
         )}
       </div>
+
+      <ConfirmDialog
+        open={shipDialogOpen}
+        title="Mark order shipped?"
+        description={
+          <>
+            <p>
+              Enter the carrier tracking number. The buyer will see it on their order
+              page.
+            </p>
+            <div className="mt-4">
+              <label htmlFor="tracking-number" className="mb-1 block text-sm font-medium">
+                Tracking number
+              </label>
+              <Input
+                id="tracking-number"
+                value={trackingNumber}
+                onChange={(e) => setTrackingNumber(e.target.value)}
+                placeholder="1Z999AA10123456784"
+                disabled={pending === "ship"}
+              />
+            </div>
+          </>
+        }
+        confirmLabel="Mark shipped"
+        pending={pending === "ship"}
+        onConfirm={() => {
+          if (!trackingNumber.trim()) {
+            setError("Tracking number is required.");
+            return;
+          }
+          void runAction("ship", trackingNumber);
+        }}
+        onCancel={() => {
+          if (pending !== "ship") {
+            setShipDialogOpen(false);
+            setError(null);
+          }
+        }}
+      />
 
       <ConfirmDialog
         open={refundDialogOpen}

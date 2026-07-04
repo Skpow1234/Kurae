@@ -19,7 +19,7 @@ const POLL_MS = 2000;
 const TIMEOUT_MS = 3 * 60 * 1000;
 const MAX_POLL_FAILURES = 3;
 
-const PAID_STATUSES: OrderStatus[] = ["paid", "fulfilled"];
+const PAID_STATUSES: OrderStatus[] = ["paid", "shipped", "fulfilled"];
 const FAILED_STATUSES: OrderStatus[] = ["cancelled", "refunded"];
 
 function PendingFallback() {
