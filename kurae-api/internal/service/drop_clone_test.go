@@ -61,8 +61,11 @@ func TestCloneProductsFromDropLegacySingleProduct(t *testing.T) {
 func TestCopyDropSizes(t *testing.T) {
 	src := []domain.DropSize{{Label: "S", Available: true}}
 	out := copyDropSizes(src)
-	out[0].Available = false
-	if src[0].Available {
-		t.Fatal("expected copied size slice")
+	if len(out) != 1 || out[0].Label != "S" || !out[0].Available {
+		t.Fatal("expected copied sizes")
+	}
+	out[0].Label = "M"
+	if src[0].Label != "S" {
+		t.Fatal("expected independent size values")
 	}
 }
