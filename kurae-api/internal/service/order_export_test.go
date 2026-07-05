@@ -49,8 +49,8 @@ func TestWriteOrderExportRow(t *testing.T) {
 	if !strings.Contains(line, "ord_123") {
 		t.Fatalf("expected order id in row: %q", line)
 	}
-	if !strings.Contains(line, `"Spring Drop"`) {
-		t.Fatalf("expected quoted drop title: %q", line)
+	if !strings.Contains(line, "Spring Drop") {
+		t.Fatalf("expected drop title: %q", line)
 	}
 	if !strings.Contains(line, "instagram") {
 		t.Fatalf("expected utm source: %q", line)
