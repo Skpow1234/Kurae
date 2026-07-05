@@ -18,6 +18,7 @@ import { ApiError } from "@/lib/api/client";
 import { authUrl } from "@/lib/auth/safe-redirect";
 import { createCheckout, type CheckoutResult } from "@/lib/api/checkout";
 import { writeGuestCheckoutEmail, readGuestCheckoutEmail } from "@/lib/checkout/guest-email";
+import { isLatamCurrency, isRedirectCheckout } from "@/lib/checkout/payment-provider";
 import { validateDiscountCode } from "@/lib/api/discount";
 import { getAccentPreset } from "@/lib/branding/accents";
 import { findDropProduct } from "@/lib/drop-products";
@@ -239,7 +240,7 @@ function CheckoutLiveForm({
     );
   }
 
-  if (!isStripeConfigured()) {
+  if (!isLatamCurrency(line.currency) && !isStripeConfigured()) {
     return (
       <div className="rounded-lg border border-sakura-petal bg-sakura-surface p-6 text-center">
         <p className="text-sm text-sakura-stone">
@@ -327,7 +328,24 @@ function CheckoutLiveForm({
 
       writeGuestCheckoutEmail(email.trim());
 
-      if (isDevPaymentIntent(result.clientSecret)) {
+      if (result.checkoutUrl) {
+        window.location.assign(result.checkoutUrl);
+        return;
+      }
+
+      if (isRedirectCheckout(result)) {
+        const params = new URLSearchParams({
+          order: result.orderId,
+          seller: line.sellerSlug,
+          drop: line.dropSlug,
+          size: line.sizeLabel,
+          email: email.trim(),
+        });
+        router.push(`/checkout/pending?${params.toString()}`);
+        return;
+      }
+
+      if (!result.clientSecret || isDevPaymentIntent(result.clientSecret)) {
         router.push(
           buildCheckoutFailedUrl({
             reason: "stripe_not_configured",
@@ -341,7 +359,7 @@ function CheckoutLiveForm({
 
       setSession({
         orderId: result.orderId,
-        clientSecret: result.clientSecret,
+        clientSecret: result.clientSecret!,
       });
       setReservedPricing(result);
     } catch (err) {

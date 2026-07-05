@@ -2,7 +2,9 @@ import { ApiError } from "@/lib/api/client";
 
 export type CheckoutResult = {
   orderId: string;
-  clientSecret: string;
+  clientSecret?: string;
+  checkoutUrl?: string;
+  paymentProvider?: string;
   subtotalCents: number;
   discountCents: number;
   amountCents: number;
