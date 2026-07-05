@@ -20,6 +20,9 @@ export function parseSessionCookie(
         email: parsed.email,
         sellerSlug: String(parsed.sellerSlug ?? ""),
         sellerName: String(parsed.sellerName ?? ""),
+        teamRole: (parsed.teamRole as SellerSession["teamRole"]) ?? "owner",
+        memberName:
+          typeof parsed.memberName === "string" ? parsed.memberName : undefined,
       };
     }
     // Legacy seller cookies created before buyer/seller split.
@@ -29,6 +32,7 @@ export function parseSessionCookie(
         email: String(parsed.email ?? ""),
         sellerSlug: parsed.sellerSlug,
         sellerName: String(parsed.sellerName ?? ""),
+        teamRole: "owner",
       };
     }
     return null;

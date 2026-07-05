@@ -67,11 +67,15 @@ export type SellerDrop = Omit<PublicDrop, "status"> & {
   publishStatus: PublishStatus;
 };
 
+import type { TeamRole } from "@/lib/team-permissions";
+
 export type SellerSession = {
   role: "seller";
   email: string;
   sellerSlug: string;
   sellerName: string;
+  teamRole: TeamRole;
+  memberName?: string;
 };
 
 export type BuyerSession = {

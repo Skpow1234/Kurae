@@ -14,6 +14,7 @@ export const dashboardMoreNav: DashboardNavItem[] = [
   { href: "/dashboard/referrals", label: "Referrals" },
   { href: "/dashboard/discounts", label: "Discounts" },
   { href: "/dashboard/branding", label: "Branding" },
+  { href: "/dashboard/settings/team", label: "Team" },
   { href: "/dashboard/settings", label: "Settings" },
 ];
 
