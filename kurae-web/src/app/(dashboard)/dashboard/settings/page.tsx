@@ -1,8 +1,10 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { SettingsForm } from "@/components/dashboard/settings-form";
 import { getSellerSession } from "@/lib/auth/session";
 import { authUrl } from "@/lib/auth/safe-redirect";
+import { canManageTeam } from "@/lib/team-permissions";
 
 export default async function SettingsPage() {
   const session = await getSellerSession();
@@ -15,6 +17,14 @@ export default async function SettingsPage() {
         <p className="mt-1 text-sm text-sakura-mist">
           Update your account and brand details.
         </p>
+        {canManageTeam(session.teamRole) && (
+          <Link
+            href="/dashboard/settings/team"
+            className="mt-3 inline-block text-sm font-medium text-sakura-dusk hover:underline"
+          >
+            Manage team members →
+          </Link>
+        )}
       </div>
       <SettingsForm session={session} />
     </div>

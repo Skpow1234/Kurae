@@ -34,6 +34,7 @@ import {
 type DropFormProps = {
   session: SellerSession;
   drop?: SellerDrop;
+  readOnly?: boolean;
 };
 
 function defaultValues(): DropFormValues {
@@ -108,7 +109,7 @@ function toPayload(values: DropFormValues) {
   };
 }
 
-export function DropForm({ session, drop }: DropFormProps) {
+export function DropForm({ session, drop, readOnly = false }: DropFormProps) {
   const router = useRouter();
   const [values, setValues] = useState<DropFormValues>(
     drop ? fromSellerDrop(drop) : defaultValues(),
@@ -222,10 +223,12 @@ export function DropForm({ session, drop }: DropFormProps) {
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold text-sakura-ink">
-            {drop ? "Edit drop" : "New drop"}
+            {readOnly ? "View drop" : drop ? "Edit drop" : "New drop"}
           </h1>
           <p className="mt-1 text-sm text-sakura-mist">
-            Launch a limited drop in under 10 minutes.
+            {readOnly
+              ? "You have read-only access to this drop."
+              : "Launch a limited drop in under 10 minutes."}
           </p>
         </div>
         {previewHref && values.heroImageUrl && (
@@ -243,7 +246,10 @@ export function DropForm({ session, drop }: DropFormProps) {
         className="max-w-2xl space-y-6"
         onSubmit={(e) => e.preventDefault()}
       >
-        <fieldset className="space-y-4 rounded-lg border border-sakura-petal bg-sakura-surface/50 p-5">
+        <fieldset
+          disabled={readOnly}
+          className="space-y-4 rounded-lg border border-sakura-petal bg-sakura-surface/50 p-5 disabled:opacity-80"
+        >
           <legend className="px-1 text-sm font-medium text-sakura-ink">
             Basics
           </legend>
@@ -293,7 +299,10 @@ export function DropForm({ session, drop }: DropFormProps) {
           </Field>
         </fieldset>
 
-        <fieldset className="space-y-4 rounded-lg border border-sakura-petal bg-sakura-surface/50 p-5">
+        <fieldset
+          disabled={readOnly}
+          className="space-y-4 rounded-lg border border-sakura-petal bg-sakura-surface/50 p-5 disabled:opacity-80"
+        >
           <legend className="px-1 text-sm font-medium text-sakura-ink">
             Schedule
           </legend>
@@ -329,7 +338,10 @@ export function DropForm({ session, drop }: DropFormProps) {
           onChange={(products) => setField("products", products)}
         />
 
-        <fieldset className="space-y-4 rounded-lg border border-sakura-petal bg-sakura-surface/50 p-5">
+        <fieldset
+          disabled={readOnly}
+          className="space-y-4 rounded-lg border border-sakura-petal bg-sakura-surface/50 p-5 disabled:opacity-80"
+        >
           <legend className="px-1 text-sm font-medium text-sakura-ink">
             Imagery
           </legend>
@@ -404,66 +416,70 @@ export function DropForm({ session, drop }: DropFormProps) {
           </Field>
         </fieldset>
 
-        <div className="flex flex-wrap gap-3">
-          <Button
-            type="button"
-            variant="outline"
-            disabled={saving}
-            onClick={() => save("draft")}
-          >
-            Save draft
-          </Button>
-          {canSchedulePublish && (
-            <Button
-              type="button"
-              variant="outline"
-              disabled={saving}
-              onClick={() => save("scheduled")}
-            >
-              {saving ? "Saving…" : "Schedule publish"}
-            </Button>
-          )}
-          <Button
-            type="button"
-            className="bg-sakura-blush text-sakura-ink hover:bg-sakura-bloom"
-            disabled={saving}
-            onClick={() => save("published")}
-          >
-            {saving
-              ? "Saving…"
-              : drop?.publishStatus === "published"
-                ? "Update drop"
-                : "Publish now"}
-          </Button>
-          {drop?.publishStatus === "published" && (
-            <Button
-              type="button"
-              variant="outline"
-              disabled={saving}
-              onClick={() => save("draft")}
-            >
-              Unpublish
-            </Button>
-          )}
-          {drop?.publishStatus === "scheduled" && (
-            <Button
-              type="button"
-              variant="outline"
-              disabled={saving}
-              onClick={() => save("draft")}
-            >
-              Cancel schedule
-            </Button>
-          )}
-        </div>
-        {canSchedulePublish && (
-          <p className="text-sm text-sakura-mist">
-            Schedule publish keeps the drop private until the start time, then
-            goes live automatically (requires kurae-worker).
-          </p>
+        {!readOnly && (
+          <>
+            <div className="flex flex-wrap gap-3">
+              <Button
+                type="button"
+                variant="outline"
+                disabled={saving}
+                onClick={() => save("draft")}
+              >
+                Save draft
+              </Button>
+              {canSchedulePublish && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={saving}
+                  onClick={() => save("scheduled")}
+                >
+                  {saving ? "Saving…" : "Schedule publish"}
+                </Button>
+              )}
+              <Button
+                type="button"
+                className="bg-sakura-blush text-sakura-ink hover:bg-sakura-bloom"
+                disabled={saving}
+                onClick={() => save("published")}
+              >
+                {saving
+                  ? "Saving…"
+                  : drop?.publishStatus === "published"
+                    ? "Update drop"
+                    : "Publish now"}
+              </Button>
+              {drop?.publishStatus === "published" && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={saving}
+                  onClick={() => save("draft")}
+                >
+                  Unpublish
+                </Button>
+              )}
+              {drop?.publishStatus === "scheduled" && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={saving}
+                  onClick={() => save("draft")}
+                >
+                  Cancel schedule
+                </Button>
+              )}
+            </div>
+            {canSchedulePublish && (
+              <p className="text-sm text-sakura-mist">
+                Schedule publish keeps the drop private until the start time, then
+                goes live automatically (requires kurae-worker).
+              </p>
+            )}
+          </>
         )}
 
-        {drop && (
+        {!readOnly && drop && (
           <div className="rounded-lg border border-sakura-warning/30 bg-sakura-surface/50 p-5">
             <h2 className="text-sm font-medium text-sakura-ink">Danger zone</h2>
             <p className="mt-1 text-sm text-sakura-mist">

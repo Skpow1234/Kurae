@@ -3,11 +3,12 @@
 import { Menu, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 import { DashboardHeaderActions } from "@/components/dashboard/dashboard-header-actions";
 import { Button } from "@/components/ui/button";
 import { authUrl } from "@/lib/auth/safe-redirect";
+import { navItemsForRole } from "@/lib/dashboard-nav-filter";
 import {
   dashboardMainNav,
   dashboardMoreNav,
@@ -39,6 +40,15 @@ export function DashboardHeader({
 }: DashboardHeaderProps) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
+  const teamRole = session?.teamRole ?? "owner";
+  const mainNav = useMemo(
+    () => navItemsForRole(dashboardMainNav, teamRole, "main"),
+    [teamRole],
+  );
+  const moreNav = useMemo(
+    () => navItemsForRole(dashboardMoreNav, teamRole, "more"),
+    [teamRole],
+  );
 
   function closeMenu() {
     setOpen(false);
@@ -68,7 +78,7 @@ export function DashboardHeader({
           className="hidden items-center gap-5 text-sm lg:flex"
           aria-label="Dashboard"
         >
-          {dashboardMainNav.map((item) => (
+          {mainNav.map((item) => (
             <Link
               key={item.href}
               href={item.href}
@@ -80,7 +90,7 @@ export function DashboardHeader({
           <span className="text-sakura-petal" aria-hidden>
             |
           </span>
-          {dashboardMoreNav.map((item) => (
+          {moreNav.map((item) => (
             <Link
               key={item.href}
               href={item.href}
@@ -116,7 +126,7 @@ export function DashboardHeader({
           aria-label="Dashboard"
         >
           <ul className="space-y-1 text-sm">
-            {dashboardMainNav.map((item) => (
+            {mainNav.map((item) => (
               <li key={item.href}>
                 <Link
                   href={item.href}
@@ -135,7 +145,7 @@ export function DashboardHeader({
                 More
               </p>
             </li>
-            {dashboardMoreNav.map((item) => (
+            {moreNav.map((item) => (
               <li key={item.href}>
                 <Link
                   href={item.href}

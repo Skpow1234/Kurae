@@ -6,11 +6,13 @@ import { getSellerBranding } from "@/lib/api/branding-server";
 import { listSellerDrops } from "@/lib/api/drops-server";
 import { authUrl } from "@/lib/auth/safe-redirect";
 import { getSellerSession } from "@/lib/auth/session";
+import { requireTeamRole } from "@/lib/require-team-role";
 import { getStorefrontPreview } from "@/lib/storefront-preview";
 
 export default async function BrandingPage() {
   const session = await getSellerSession();
   if (!session) redirect(authUrl({ role: "seller", next: "/dashboard/branding" }));
+  requireTeamRole(session.teamRole, ["owner", "admin"]);
 
   let brandingData;
   try {

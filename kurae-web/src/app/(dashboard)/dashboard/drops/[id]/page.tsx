@@ -4,6 +4,7 @@ import { DropForm } from "@/components/dashboard/drop-form";
 import { getSellerDrop } from "@/lib/api/drops-server";
 import { getSellerSession } from "@/lib/auth/session";
 import { authUrl } from "@/lib/auth/safe-redirect";
+import { canWriteDrops } from "@/lib/team-permissions";
 
 type PageProps = {
   params: Promise<{ id: string }>;
@@ -20,5 +21,11 @@ export default async function EditDropPage({ params }: PageProps) {
     redirect("/dashboard/drops");
   }
 
-  return <DropForm session={session} drop={drop} />;
+  return (
+    <DropForm
+      session={session}
+      drop={drop}
+      readOnly={!canWriteDrops(session.teamRole)}
+    />
+  );
 }

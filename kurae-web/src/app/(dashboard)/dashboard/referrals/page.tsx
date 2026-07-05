@@ -10,11 +10,13 @@ import { listReferralCodes } from "@/lib/api/referrals-server";
 import { fetchReferralRewardSettings } from "@/lib/api/referral-rewards-server";
 import { authUrl } from "@/lib/auth/safe-redirect";
 import { getSellerSession } from "@/lib/auth/session";
+import { requireTeamRole } from "@/lib/require-team-role";
 import { resolveReferralLinkTarget } from "@/lib/referral-link";
 
 export default async function ReferralsPage() {
   const session = await getSellerSession();
   if (!session) redirect(authUrl({ role: "seller", next: "/dashboard/referrals" }));
+  requireTeamRole(session.teamRole, ["owner", "admin"]);
 
   let codes;
   let drops;

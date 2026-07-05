@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/kurae/kurae-api/internal/domain"
 	"github.com/kurae/kurae-api/internal/service"
 	"github.com/kurae/kurae-api/internal/store"
 )

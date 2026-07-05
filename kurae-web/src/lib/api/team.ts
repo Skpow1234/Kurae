@@ -1,4 +1,3 @@
-import { apiFetch } from "@/lib/api/client";
 import type { TeamMember } from "@/lib/team-permissions";
 
 export async function createTeamMember(input: {
@@ -42,13 +41,4 @@ export async function deleteTeamMember(id: string): Promise<{ ok: boolean; error
     return { ok: false, error: data.error ?? "Could not remove team member" };
   }
   return { ok: true };
-}
-
-export async function listTeamMembersClient(): Promise<TeamMember[]> {
-  try {
-    const data = await apiFetch<{ members: TeamMember[] }>("/api/team/members");
-    return data.members ?? [];
-  } catch {
-    return [];
-  }
 }

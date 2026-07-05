@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 
 import type { StorefrontPreview } from "@/lib/storefront-preview";
 import { authUrl } from "@/lib/auth/safe-redirect";
+import { teamRoleLabel } from "@/lib/team-permissions";
 import type { SellerSession } from "@/lib/types";
 
 type DashboardHeaderActionsProps = {
@@ -27,7 +28,12 @@ export function DashboardHeaderActions({
   return (
     <div className="flex items-center gap-4">
       <span className="hidden text-sm text-sakura-mist sm:inline">
-        {session.sellerName}
+        {session.memberName ?? session.sellerName}
+        {session.teamRole !== "owner" && (
+          <span className="ml-1 text-xs text-sakura-stone">
+            ({teamRoleLabel(session.teamRole)})
+          </span>
+        )}
       </span>
       <button
         type="button"

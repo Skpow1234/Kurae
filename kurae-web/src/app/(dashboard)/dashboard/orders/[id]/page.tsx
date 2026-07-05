@@ -105,6 +105,7 @@ export default async function OrderDetailPage({ params }: PageProps) {
             amountCents={order.amountCents}
             currency={order.currency}
             buyerEmail={order.buyerEmail}
+            teamRole={session.teamRole}
           />
         </section>
 

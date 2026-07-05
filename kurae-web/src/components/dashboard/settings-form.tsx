@@ -5,6 +5,7 @@ import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { canWriteBranding } from "@/lib/team-permissions";
 import type { SellerSession } from "@/lib/types";
 
 type SettingsFormProps = {
@@ -13,7 +14,11 @@ type SettingsFormProps = {
 
 export function SettingsForm({ session }: SettingsFormProps) {
   const router = useRouter();
-  const [sellerName, setSellerName] = useState(session.sellerName);
+  const isOwner = session.teamRole === "owner";
+  const canEditBrand = canWriteBranding(session.teamRole);
+  const [sellerName, setSellerName] = useState(
+    isOwner ? session.sellerName : (session.memberName ?? session.sellerName),
+  );
   const [profileMessage, setProfileMessage] = useState<string | null>(null);
   const [profileError, setProfileError] = useState<string | null>(null);
   const [savingProfile, setSavingProfile] = useState(false);
@@ -48,7 +53,9 @@ export function SettingsForm({ session }: SettingsFormProps) {
       }
 
       if (data?.session) {
-        setSellerName(data.session.sellerName);
+        setSellerName(
+          isOwner ? data.session.sellerName : (data.session.memberName ?? data.session.sellerName),
+        );
       }
       setProfileMessage("Profile updated.");
       router.refresh();
@@ -110,7 +117,7 @@ export function SettingsForm({ session }: SettingsFormProps) {
         </div>
         <div>
           <label htmlFor="settings-name" className="mb-1 block text-sm text-sakura-mist">
-            Brand name
+            {isOwner ? "Brand name" : "Display name"}
           </label>
           <Input
             id="settings-name"
@@ -119,6 +126,14 @@ export function SettingsForm({ session }: SettingsFormProps) {
             disabled={savingProfile}
           />
         </div>
+        {!isOwner && (
+          <div>
+            <label htmlFor="settings-brand" className="mb-1 block text-sm text-sakura-mist">
+              Brand name
+            </label>
+            <Input id="settings-brand" value={session.sellerName} disabled />
+          </div>
+        )}
         <div>
           <label htmlFor="settings-slug" className="mb-1 block text-sm text-sakura-mist">
             Store URL
@@ -128,9 +143,11 @@ export function SettingsForm({ session }: SettingsFormProps) {
             value={`/${session.sellerSlug}`}
             disabled
           />
-          <p className="mt-1 text-xs text-sakura-mist">
-            Store slug cannot be changed after signup.
-          </p>
+          {canEditBrand && (
+            <p className="mt-1 text-xs text-sakura-mist">
+              Store slug cannot be changed after signup.
+            </p>
+          )}
         </div>
         {profileError && (
           <p className="text-sm text-sakura-warning" role="alert">

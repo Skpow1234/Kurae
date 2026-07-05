@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Input } from "@/components/ui/input";
 import type { OrderStatus } from "@/lib/types/orders";
+import type { TeamRole } from "@/lib/team-permissions";
+import { canRefundOrders, canShipOrders } from "@/lib/team-permissions";
 import { formatPrice } from "@/lib/utils";
 
 type OrderActionsProps = {
@@ -15,6 +17,7 @@ type OrderActionsProps = {
   amountCents?: number;
   currency?: string;
   buyerEmail?: string;
+  teamRole: TeamRole;
 };
 
 export function OrderActions({
@@ -23,6 +26,7 @@ export function OrderActions({
   amountCents,
   currency = "USD",
   buyerEmail,
+  teamRole,
 }: OrderActionsProps) {
   const router = useRouter();
   const [pending, setPending] = useState<"ship" | "refund" | null>(null);
@@ -31,8 +35,10 @@ export function OrderActions({
   const [shipDialogOpen, setShipDialogOpen] = useState(false);
   const [trackingNumber, setTrackingNumber] = useState("");
 
-  const canShip = status === "paid";
-  const canRefund = status === "paid" || status === "shipped" || status === "fulfilled";
+  const canShip = canShipOrders(teamRole) && status === "paid";
+  const canRefund =
+    canRefundOrders(teamRole) &&
+    (status === "paid" || status === "shipped" || status === "fulfilled");
 
   if (!canShip && !canRefund) {
     return null;
