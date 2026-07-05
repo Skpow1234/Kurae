@@ -2,6 +2,8 @@
 
 import { useEffect, useRef } from "react";
 
+import { AnalyticsEvents } from "@/lib/analytics/events";
+import { trackEvent } from "@/lib/analytics/track";
 import {
   mergeCampaignAttribution,
   parseCampaignFromSearchParams,
@@ -32,6 +34,27 @@ export function TrafficCapture({ sellerSlug, dropId }: TrafficCaptureProps) {
     if (!hasDrop && !hasCampaign) return;
 
     tracked.current = true;
+
+    const utmProps = {
+      utm_source: campaign?.source,
+      utm_medium: campaign?.medium,
+      utm_campaign: campaign?.campaign,
+      utm_term: campaign?.term,
+      utm_content: campaign?.content,
+    };
+
+    if (hasDrop) {
+      trackEvent(AnalyticsEvents.dropViewed, {
+        seller_slug: sellerSlug,
+        drop_id: dropId!.trim(),
+        ...utmProps,
+      });
+    } else {
+      trackEvent(AnalyticsEvents.sellerStorefrontViewed, {
+        seller_slug: sellerSlug,
+        ...utmProps,
+      });
+    }
 
     void fetch("/api/analytics/view", {
       method: "POST",

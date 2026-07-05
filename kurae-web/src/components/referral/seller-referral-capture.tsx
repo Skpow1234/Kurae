@@ -2,6 +2,9 @@
 
 import { useEffect, useRef } from "react";
 
+import { AnalyticsEvents } from "@/lib/analytics/events";
+import { trackEvent } from "@/lib/analytics/track";
+
 type SellerReferralCaptureProps = {
   sellerSlug: string;
   refCode?: string;
@@ -17,6 +20,11 @@ export function SellerReferralCapture({
     const code = refCode?.trim();
     if (!code || tracked.current) return;
     tracked.current = true;
+
+    trackEvent(AnalyticsEvents.referralLinkClicked, {
+      seller_slug: sellerSlug,
+      referral_code: code,
+    });
 
     fetch("/api/referrals/click", {
       method: "POST",

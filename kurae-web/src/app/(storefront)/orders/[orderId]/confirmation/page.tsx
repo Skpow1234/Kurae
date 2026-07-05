@@ -1,6 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 
 import { ConfirmationActions } from "@/components/checkout/confirmation-actions";
+import { OrderConfirmationTracker } from "@/components/analytics/order-confirmation-tracker";
 import { SellerBrandTheme } from "@/components/branding/seller-brand-theme";
 import { CheckoutSavingsSummary } from "@/components/checkout/checkout-savings-summary";
 import { RemainingCartBanner } from "@/components/cart/remaining-cart-banner";
@@ -95,6 +96,13 @@ export default async function OrderConfirmationPage({
 
   return (
     <SellerBrandTheme accent={sellerProfile?.accent}>
+    <OrderConfirmationTracker
+      orderId={order.orderId}
+      sellerSlug={order.sellerSlug}
+      dropSlug={order.dropSlug}
+      amountCents={order.amountCents}
+      currency={order.currency}
+    />
     <main className="flex min-h-screen items-center justify-center bg-sakura-paper px-4 py-12">
       <div className="w-full max-w-lg rounded-lg border border-sakura-petal bg-sakura-surface p-8">
         <div className="text-center">

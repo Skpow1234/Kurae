@@ -183,6 +183,7 @@ export function DropPageView({
             <WaitlistForm
               dropId={drop.id}
               dropTitle={drop.title}
+              sellerSlug={drop.sellerSlug}
               waitlistCount={drop.waitlistCount}
             />
           </div>

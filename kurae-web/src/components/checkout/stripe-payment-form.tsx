@@ -10,6 +10,8 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { CheckoutSavingsSummary } from "@/components/checkout/checkout-savings-summary";
+import { AnalyticsEvents } from "@/lib/analytics/events";
+import { trackEvent } from "@/lib/analytics/track";
 import { Button } from "@/components/ui/button";
 import type { CheckoutPricing } from "@/lib/checkout/pricing";
 import { formatPrice } from "@/lib/utils";
@@ -45,6 +47,15 @@ export function StripePaymentForm({
 
     setPaying(true);
     setError(null);
+
+    trackEvent(AnalyticsEvents.checkoutPaymentSubmitted, {
+      order_id: orderId,
+      seller_slug: sellerSlug,
+      drop_slug: dropSlug,
+      size_label: sizeLabel,
+      amount_cents: pricing.finalCents,
+      currency: pricing.currency,
+    });
 
     const returnParams = new URLSearchParams({
       order: orderId,

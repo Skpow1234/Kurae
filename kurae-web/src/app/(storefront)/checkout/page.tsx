@@ -19,6 +19,8 @@ import { authUrl } from "@/lib/auth/safe-redirect";
 import { createCheckout, type CheckoutResult } from "@/lib/api/checkout";
 import { writeGuestCheckoutEmail, readGuestCheckoutEmail } from "@/lib/checkout/guest-email";
 import { isLatamCurrency, isRedirectCheckout } from "@/lib/checkout/payment-provider";
+import { AnalyticsEvents } from "@/lib/analytics/events";
+import { trackEvent } from "@/lib/analytics/track";
 import { validateDiscountCode } from "@/lib/api/discount";
 import { getAccentPreset } from "@/lib/branding/accents";
 import { findDropProduct } from "@/lib/drop-products";
@@ -270,6 +272,12 @@ function CheckoutLiveForm({
       }
       setAppliedCode(preview.code ?? discountInput.trim().toUpperCase());
       setDiscountPreview(preview);
+      trackEvent(AnalyticsEvents.discountApplied, {
+        drop_id: drop.id,
+        seller_slug: line.sellerSlug,
+        discount_code: preview.code ?? discountInput.trim().toUpperCase(),
+        discount_cents: preview.discountCents,
+      });
     } catch {
       setError("Could not validate code.");
       setAppliedCode(null);
@@ -327,6 +335,18 @@ function CheckoutLiveForm({
       });
 
       writeGuestCheckoutEmail(email.trim());
+
+      trackEvent(AnalyticsEvents.checkoutStarted, {
+        order_id: result.orderId,
+        drop_id: drop.id,
+        seller_slug: line.sellerSlug,
+        drop_slug: line.dropSlug,
+        size_label: line.sizeLabel,
+        amount_cents: result.amountCents,
+        currency: result.currency,
+        payment_provider: result.paymentProvider,
+        discount_cents: result.discountCents,
+      });
 
       if (result.checkoutUrl) {
         window.location.assign(result.checkoutUrl);

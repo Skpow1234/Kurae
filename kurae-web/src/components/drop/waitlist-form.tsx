@@ -5,16 +5,20 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { joinWaitlist } from "@/lib/api/drops";
+import { AnalyticsEvents } from "@/lib/analytics/events";
+import { trackEvent } from "@/lib/analytics/track";
 
 type WaitlistFormProps = {
   dropId: string;
   dropTitle: string;
+  sellerSlug?: string;
   waitlistCount: number;
 };
 
 export function WaitlistForm({
   dropId,
   dropTitle,
+  sellerSlug,
   waitlistCount,
 }: WaitlistFormProps) {
   const [email, setEmail] = useState("");
@@ -43,6 +47,11 @@ export function WaitlistForm({
     }
 
     setSubmitted(true);
+    trackEvent(AnalyticsEvents.waitlistJoined, {
+      drop_id: dropId,
+      seller_slug: sellerSlug,
+      drop_title: dropTitle,
+    });
   }
 
   if (submitted) {
