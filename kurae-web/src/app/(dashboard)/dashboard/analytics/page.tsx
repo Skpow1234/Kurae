@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 
 import { AnalyticsToolbar } from "@/components/analytics/analytics-toolbar";
+import { CampaignBreakdownTable } from "@/components/analytics/campaign-breakdown-table";
 import { DropBreakdownTable } from "@/components/analytics/drop-breakdown-table";
 import { FunnelChart } from "@/components/analytics/funnel-chart";
 import { MetricCard } from "@/components/analytics/metric-card";
@@ -56,7 +57,7 @@ export default async function AnalyticsPage({ searchParams }: PageProps) {
       <div>
         <h1 className="text-2xl font-semibold text-sakura-ink">Analytics</h1>
         <p className="mt-1 text-sm text-sakura-mist">
-          Drop traffic, waitlist growth, conversion, and revenue
+          Drop traffic, waitlist growth, UTM campaigns, conversion, and revenue
           {selectedDrop ? ` for ${selectedDrop.title}` : ""} — {rangeLabel} vs the prior
           period.
         </p>
@@ -131,6 +132,21 @@ export default async function AnalyticsPage({ searchParams }: PageProps) {
               sellerSlug={session.sellerSlug}
               days={days}
             />
+          </div>
+        </section>
+      )}
+
+      {analytics.campaignBreakdown && analytics.campaignBreakdown.length > 0 && (
+        <section className="rounded-lg border border-sakura-petal bg-sakura-surface/40 p-5">
+          <h2 className="text-sm font-medium text-sakura-ink">Campaign breakdown (UTM)</h2>
+          <p className="mt-1 text-xs text-sakura-mist">
+            Visits and orders attributed to{" "}
+            <code className="font-mono">utm_source</code>,{" "}
+            <code className="font-mono">utm_medium</code>, and{" "}
+            <code className="font-mono">utm_campaign</code> in {rangeLabel}.
+          </p>
+          <div className="mt-4">
+            <CampaignBreakdownTable rows={analytics.campaignBreakdown} />
           </div>
         </section>
       )}

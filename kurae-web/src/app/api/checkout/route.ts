@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 
 import { requireApiBase } from "@/lib/api/config";
 import { readToken } from "@/lib/api/proxy";
+import { parseCampaignCookie, CAMPAIGN_COOKIE } from "@/lib/campaign";
 import { getBuyerSession } from "@/lib/auth/session";
 import { parseReferralCookie, REFERRAL_COOKIE } from "@/lib/referral";
 
@@ -60,6 +61,7 @@ export async function POST(request: Request) {
 
   const cookieStore = await cookies();
   const referral = parseReferralCookie(cookieStore.get(REFERRAL_COOKIE)?.value);
+  const campaign = parseCampaignCookie(cookieStore.get(CAMPAIGN_COOKIE)?.value);
 
   const res = await fetch(`${requireApiBase()}/checkout`, {
     method: "POST",
@@ -73,6 +75,12 @@ export async function POST(request: Request) {
       idempotencyKey,
       discountCode: body.discountCode?.trim(),
       referralCode: referral?.code,
+      campaignSellerSlug: campaign?.sellerSlug,
+      utmSource: campaign?.source,
+      utmMedium: campaign?.medium,
+      utmCampaign: campaign?.campaign,
+      utmTerm: campaign?.term,
+      utmContent: campaign?.content,
     }),
   });
   const data = await res.json();

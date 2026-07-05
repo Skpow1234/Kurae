@@ -23,6 +23,17 @@ export type DropAnalyticsRow = {
   conversionRate: number;
 };
 
+export type CampaignAnalyticsRow = {
+  source: string;
+  medium: string;
+  campaign: string;
+  visits: number;
+  checkouts: number;
+  paidOrders: number;
+  revenueCents: number;
+  conversionRate: number;
+};
+
 export type SellerAnalytics = {
   rangeDays: number;
   periodStart: string;
@@ -39,6 +50,7 @@ export type SellerAnalytics = {
   dailyTraffic: DailyAnalyticsPoint[];
   funnel: AnalyticsFunnel;
   dropBreakdown?: DropAnalyticsRow[];
+  campaignBreakdown?: CampaignAnalyticsRow[];
 };
 
 export type AnalyticsQuery = {

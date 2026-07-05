@@ -89,6 +89,9 @@ export function AnalyticsToolbar({
         <Link href={buildAnalyticsExportHref(exportParams, "daily")} className={exportButtonClass}>
           Export daily CSV
         </Link>
+        <Link href={buildAnalyticsExportHref(exportParams, "campaigns")} className={exportButtonClass}>
+          Export campaigns CSV
+        </Link>
         {showDropBreakdownExport && (
           <Link href={buildAnalyticsExportHref(exportParams, "drops")} className={exportButtonClass}>
             Export drop breakdown

@@ -29,7 +29,7 @@ export function buildAnalyticsHref(params: AnalyticsQuery): string {
 
 export function buildAnalyticsExportHref(
   params: AnalyticsQuery,
-  format: "daily" | "drops",
+  format: "daily" | "drops" | "campaigns",
 ): string {
   const qs = buildAnalyticsQuery(params);
   qs.set("format", format);

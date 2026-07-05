@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { SellerBrandTheme } from "@/components/branding/seller-brand-theme";
+import { TrafficCapture } from "@/components/analytics/traffic-capture";
 import { SellerStorefrontHero } from "@/components/branding/seller-storefront-hero";
 import { DropBrowseCard } from "@/components/drop/drop-browse-card";
 import { SellerReferralCapture } from "@/components/referral/seller-referral-capture";
@@ -150,6 +151,7 @@ export default async function SellerStorefrontPage({
   return (
     <SellerBrandTheme accent={profile.accent}>
       <main className="min-h-[calc(100vh-3.5rem)] bg-sakura-paper">
+        <TrafficCapture sellerSlug={seller} />
         <SellerReferralCapture sellerSlug={seller} refCode={ref} />
 
         <SellerStorefrontHero

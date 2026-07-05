@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useCallback, useRef, useState } from "react";
 
-import { PageViewCapture } from "@/components/analytics/page-view-capture";
+import { TrafficCapture } from "@/components/analytics/traffic-capture";
 import { DropHero } from "@/components/drop/drop-hero";
 import { SellerBrandCard } from "@/components/branding/seller-brand-card";
 import { SellerBrandTheme } from "@/components/branding/seller-brand-theme";
@@ -101,7 +101,7 @@ export function DropPageView({
         sellerSlug={drop.sellerSlug}
         refCode={refCode}
       />
-      <PageViewCapture dropId={drop.id} />
+      <TrafficCapture sellerSlug={drop.sellerSlug} dropId={drop.id} />
       {isPreview && (
         <div className="bg-sakura-petal px-4 py-2 text-center text-xs font-medium text-sakura-dusk">
           Draft preview — only visible to you
