@@ -6,8 +6,9 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { OrderStatusBadge } from "@/components/dashboard/order-status-badge";
 import { Select } from "@/components/ui/select";
 import { ORDERS_PAGE_SIZE } from "@/lib/constants/orders";
+import { buildOrdersExportHref } from "@/lib/orders/query";
 import type { SellerOrder } from "@/lib/types/orders";
-import { formatPrice } from "@/lib/utils";
+import { cn, formatPrice } from "@/lib/utils";
 
 type OrdersTableProps = {
   orders: SellerOrder[];
@@ -43,6 +44,14 @@ export function OrdersTable({
   const router = useRouter();
   const searchParams = useSearchParams();
   const totalPages = Math.max(1, Math.ceil(total / ORDERS_PAGE_SIZE));
+  const exportHref = buildOrdersExportHref({
+    status: statusFilter,
+    sort,
+  });
+  const exportButtonClass = cn(
+    "inline-flex h-9 items-center justify-center rounded-md border border-sakura-petal",
+    "bg-transparent px-3 text-sm font-medium hover:bg-sakura-surface",
+  );
 
   function navigate(updates: Record<string, string | undefined>) {
     router.push(buildOrdersHref(searchParams, updates));
@@ -50,8 +59,9 @@ export function OrdersTable({
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap gap-3">
-        <Select
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap gap-3">
+          <Select
           value={statusFilter}
           onChange={(e) => {
             const value = e.target.value;
@@ -87,6 +97,10 @@ export function OrdersTable({
           <option value="newest">Newest first</option>
           <option value="oldest">Oldest first</option>
         </Select>
+        </div>
+        <Link href={exportHref} className={exportButtonClass}>
+          Export CSV
+        </Link>
       </div>
 
       {orders.length === 0 ? (
