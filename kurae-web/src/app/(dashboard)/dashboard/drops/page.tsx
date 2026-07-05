@@ -53,7 +53,7 @@ export default async function DropsPage() {
           )}
         </div>
       ) : (
-        <DropsTable drops={drops} />
+        <DropsTable drops={drops} canClone={canCreate} />
       )}
     </div>
   );

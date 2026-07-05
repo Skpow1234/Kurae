@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { DropCloneButton } from "@/components/dashboard/drop-clone-button";
 import { DropDeleteButton } from "@/components/dashboard/drop-delete-button";
 import type { SellerDrop } from "@/lib/types";
 import { toPublicDrop } from "@/lib/drop-status";
@@ -7,6 +8,7 @@ import { formatDropPublishStatus } from "@/lib/drop-publish";
 
 type DropsTableProps = {
   drops: SellerDrop[];
+  canClone?: boolean;
 };
 
 function previewHref(drop: SellerDrop) {
@@ -15,7 +17,7 @@ function previewHref(drop: SellerDrop) {
     : `/${drop.sellerSlug}/${drop.slug}?preview=1`;
 }
 
-export function DropsTable({ drops }: DropsTableProps) {
+export function DropsTable({ drops, canClone = false }: DropsTableProps) {
   return (
     <>
       <div className="space-y-3 md:hidden">
@@ -35,6 +37,9 @@ export function DropsTable({ drops }: DropsTableProps) {
                   {drop.title}
                 </Link>
                 <div className="flex shrink-0 items-center gap-3 text-sm">
+                  {canClone && (
+                    <DropCloneButton dropId={drop.id} dropTitle={drop.title} />
+                  )}
                   <Link
                     href={previewHref(drop)}
                     className="text-sakura-dusk hover:underline"
@@ -109,6 +114,9 @@ export function DropsTable({ drops }: DropsTableProps) {
                     </td>
                     <td className="px-4 py-3 text-right">
                       <div className="flex items-center justify-end gap-3">
+                        {canClone && (
+                          <DropCloneButton dropId={drop.id} dropTitle={drop.title} />
+                        )}
                         <Link
                           href={previewHref(drop)}
                           className="text-sakura-dusk hover:underline"

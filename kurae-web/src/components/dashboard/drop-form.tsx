@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { DropCloneButton } from "@/components/dashboard/drop-clone-button";
 import { DropDeleteButton } from "@/components/dashboard/drop-delete-button";
 import {
   DropProductsEditor,
@@ -231,7 +232,11 @@ export function DropForm({ session, drop, readOnly = false }: DropFormProps) {
               : "Launch a limited drop in under 10 minutes."}
           </p>
         </div>
-        {previewHref && values.heroImageUrl && (
+        <div className="flex flex-wrap items-center gap-3">
+          {drop && !readOnly && (
+            <DropCloneButton dropId={drop.id} dropTitle={drop.title} />
+          )}
+          {previewHref && values.heroImageUrl && (
           <Link
             href={previewHref}
             target="_blank"
@@ -239,7 +244,8 @@ export function DropForm({ session, drop, readOnly = false }: DropFormProps) {
           >
             Preview public page →
           </Link>
-        )}
+          )}
+        </div>
       </div>
 
       <form
