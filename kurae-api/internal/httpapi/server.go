@@ -22,7 +22,7 @@ type Server struct {
 
 func NewServer(cfg config.Config, s *store.Store, q *queue.RedisQueue) *Server {
 	authSvc := service.NewAuthService(s, cfg.JWTSecret)
-	waitlistNotify := service.NewWaitlistNotifyService(s, q, cfg.PublicWebURL)
+	waitlistNotify := service.NewWaitlistNotifyService(s, q, cfg.PublicWebURL, cfg.WaitlistSoonNotifyBefore)
 	dropSvc := service.NewDropService(s, waitlistNotify)
 
 	authLimiter := ratelimit.NewIP(10, time.Minute)

@@ -40,6 +40,22 @@ func (s *EmailSender) SendWaitlistLive(ctx context.Context, to, dropTitle, dropU
 	return s.sendTransactional(ctx, to, subject, html, "waitlist live", dropTitle)
 }
 
+func (s *EmailSender) SendWaitlistSoon(
+	ctx context.Context,
+	to, dropTitle, dropURL string,
+	startsAt time.Time,
+) error {
+	launchLabel := startsAt.UTC().Format("Mon Jan 2, 3:04 PM MST")
+	subject := fmt.Sprintf("Reminder: %s goes live soon", dropTitle)
+	html := fmt.Sprintf(
+		"<p><strong>%s</strong> launches %s.</p><p><a href=\"%s\">View the drop page</a> — we'll email you again when checkout opens.</p>",
+		dropTitle,
+		launchLabel,
+		dropURL,
+	)
+	return s.sendTransactional(ctx, to, subject, html, "waitlist soon", dropTitle)
+}
+
 func (s *EmailSender) SendWaitlistRestock(ctx context.Context, to, dropTitle, dropURL string) error {
 	subject := fmt.Sprintf("%s is back in stock", dropTitle)
 	html := fmt.Sprintf(

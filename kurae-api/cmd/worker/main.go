@@ -39,7 +39,7 @@ func main() {
 		defer redisQueue.Close()
 	}
 
-	waitlistNotify := service.NewWaitlistNotifyService(db, redisQueue, cfg.PublicWebURL)
+	waitlistNotify := service.NewWaitlistNotifyService(db, redisQueue, cfg.PublicWebURL, cfg.WaitlistSoonNotifyBefore)
 	orderSvc := service.NewOrderService(db, payments.NewNoopProvider(), redisQueue, cfg.ReservationTTL, false, waitlistNotify)
 	dropSvc := service.NewDropService(db, waitlistNotify)
 	emailSender := jobs.NewEmailSender(cfg)
@@ -66,6 +66,12 @@ func main() {
 					log.Printf("publish scheduled drops: %v", err)
 				} else if published > 0 {
 					log.Printf("published %d scheduled drops", published)
+				}
+				soonNotified, err := waitlistNotify.ProcessDueSoonNotifications(ctx)
+				if err != nil {
+					log.Printf("waitlist soon notifications: %v", err)
+				} else if soonNotified > 0 {
+					log.Printf("enqueued waitlist soon notifications for %d drops", soonNotified)
 				}
 				notified, err := waitlistNotify.ProcessDueLiveNotifications(ctx)
 				if err != nil {
@@ -145,7 +151,7 @@ func processEmailJob(
 
 	var err error
 	switch jobType {
-	case queue.EmailTypeWaitlistLive, queue.EmailTypeWaitlistRestock:
+	case queue.EmailTypeWaitlistLive, queue.EmailTypeWaitlistSoon, queue.EmailTypeWaitlistRestock:
 		err = waitlistNotify.ProcessEmailJob(ctx, job, emailSender)
 	default:
 		err = emailSender.SendOrderConfirmation(ctx, job.OrderID, job.BuyerEmail, job.DropTitle)

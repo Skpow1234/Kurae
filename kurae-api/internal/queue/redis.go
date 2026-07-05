@@ -17,6 +17,7 @@ const (
 
 	EmailTypeOrderConfirmation = "order_confirmation"
 	EmailTypeWaitlistLive      = "waitlist_live"
+	EmailTypeWaitlistSoon      = "waitlist_soon"
 	EmailTypeWaitlistRestock   = "waitlist_restock"
 )
 
@@ -26,10 +27,11 @@ type EmailJob struct {
 	Type       string `json:"type,omitempty"`
 	OrderID    string `json:"orderId,omitempty"`
 	BuyerEmail string `json:"buyerEmail,omitempty"`
-	DropTitle  string `json:"dropTitle,omitempty"`
-	DropID     string `json:"dropId,omitempty"`
-	DropURL    string `json:"dropUrl,omitempty"`
-	Attempt    int    `json:"attempt,omitempty"`
+	DropTitle     string `json:"dropTitle,omitempty"`
+	DropID        string `json:"dropId,omitempty"`
+	DropURL       string `json:"dropUrl,omitempty"`
+	DropStartsAt  string `json:"dropStartsAt,omitempty"`
+	Attempt       int    `json:"attempt,omitempty"`
 }
 
 type EmailDLQEntry struct {

@@ -55,7 +55,7 @@ export function WaitlistForm({
           You&apos;re on the list for {dropTitle}.
         </p>
         <p className="mt-1 text-sm text-sakura-mist">
-          We&apos;ll email you when this drop goes live.
+          We&apos;ll send a reminder before launch and again when checkout opens.
         </p>
       </div>
     );
@@ -70,7 +70,8 @@ export function WaitlistForm({
         Get notified for this drop
       </h2>
       <p className="mt-1 text-sm text-sakura-mist">
-        Join the waitlist — not a store newsletter.{" "}
+        Join the waitlist — not a store newsletter. You&apos;ll get a heads-up
+        before launch and when checkout opens.{" "}
         <span className="font-mono brand-accent-text">{waitlistCount}</span>{" "}
         people waiting.
       </p>

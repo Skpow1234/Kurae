@@ -8,10 +8,11 @@ import (
 )
 
 const (
-	DefaultPort                  = "8080"
-	DefaultReservationTTL        = 15 * time.Minute
-	DefaultWaitlistRatePerMinute = 5
-	minJWTSecretLen              = 32
+	DefaultPort                       = "8080"
+	DefaultReservationTTL             = 15 * time.Minute
+	DefaultWaitlistSoonNotifyBefore   = 24 * time.Hour
+	DefaultWaitlistRatePerMinute      = 5
+	minJWTSecretLen                   = 32
 )
 
 type Config struct {
@@ -27,8 +28,9 @@ type Config struct {
 	S3Region        string
 	AWSAccessKey    string
 	AWSSecretKey    string
-	ReservationTTL  time.Duration
-	ResendAPIKey    string
+	ReservationTTL             time.Duration
+	WaitlistSoonNotifyBefore   time.Duration
+	ResendAPIKey               string
 	PostmarkToken   string
 	EmailFrom       string
 	PublicWebURL    string
@@ -57,8 +59,9 @@ func Load() (Config, error) {
 		S3Region:        os.Getenv("S3_REGION"),
 		AWSAccessKey:    os.Getenv("AWS_ACCESS_KEY_ID"),
 		AWSSecretKey:    os.Getenv("AWS_SECRET_ACCESS_KEY"),
-		ReservationTTL:  DefaultReservationTTL,
-		ResendAPIKey:    os.Getenv("RESEND_API_KEY"),
+		ReservationTTL:           DefaultReservationTTL,
+		WaitlistSoonNotifyBefore: DefaultWaitlistSoonNotifyBefore,
+		ResendAPIKey:             os.Getenv("RESEND_API_KEY"),
 		PostmarkToken:   os.Getenv("POSTMARK_SERVER_TOKEN"),
 		EmailFrom:       envOr("EMAIL_FROM", "orders@kurae.dev"),
 	}
@@ -77,6 +80,17 @@ func Load() (Config, error) {
 	}
 	if cfg.PublicWebURL == "" {
 		cfg.PublicWebURL = "http://localhost:3000"
+	}
+
+	if raw := strings.TrimSpace(os.Getenv("WAITLIST_SOON_NOTIFY_BEFORE")); raw != "" {
+		d, err := time.ParseDuration(raw)
+		if err != nil {
+			return cfg, fmt.Errorf("WAITLIST_SOON_NOTIFY_BEFORE: %w", err)
+		}
+		if d <= 0 {
+			return cfg, fmt.Errorf("WAITLIST_SOON_NOTIFY_BEFORE must be positive")
+		}
+		cfg.WaitlistSoonNotifyBefore = d
 	}
 
 	if cfg.DatabaseURL == "" {

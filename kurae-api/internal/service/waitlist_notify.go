@@ -14,18 +14,28 @@ import (
 )
 
 type WaitlistNotifyService struct {
-	drops    *store.DropRepository
-	waitlist *store.WaitlistRepository
-	queue    *queue.RedisQueue
-	webURL   string
+	drops          *store.DropRepository
+	waitlist       *store.WaitlistRepository
+	queue          *queue.RedisQueue
+	webURL         string
+	soonNotifyLead time.Duration
 }
 
-func NewWaitlistNotifyService(s *store.Store, q *queue.RedisQueue, webURL string) *WaitlistNotifyService {
+func NewWaitlistNotifyService(
+	s *store.Store,
+	q *queue.RedisQueue,
+	webURL string,
+	soonNotifyLead time.Duration,
+) *WaitlistNotifyService {
+	if soonNotifyLead <= 0 {
+		soonNotifyLead = 24 * time.Hour
+	}
 	return &WaitlistNotifyService{
-		drops:    s.Drops(),
-		waitlist: s.Waitlist(),
-		queue:    q,
-		webURL:   strings.TrimRight(strings.TrimSpace(webURL), "/"),
+		drops:          s.Drops(),
+		waitlist:       s.Waitlist(),
+		queue:          q,
+		webURL:         strings.TrimRight(strings.TrimSpace(webURL), "/"),
+		soonNotifyLead: soonNotifyLead,
 	}
 }
 
@@ -55,6 +65,42 @@ func (w *WaitlistNotifyService) NotifyRestock(ctx context.Context, dropID string
 		DropTitle: drop.Title,
 		DropURL:   w.dropURL(drop.SellerSlug, drop.Slug),
 	})
+}
+
+func (w *WaitlistNotifyService) ProcessDueSoonNotifications(ctx context.Context) (int, error) {
+	if w == nil || w.queue == nil {
+		return 0, nil
+	}
+
+	now := time.Now()
+	due, err := w.drops.ListDueSoonWaitlistNotifications(ctx, now, w.soonNotifyLead)
+	if err != nil {
+		return 0, err
+	}
+
+	var enqueued int
+	for _, drop := range due {
+		claimed, err := w.drops.MarkSoonWaitlistNotified(ctx, drop.ID)
+		if err != nil {
+			return enqueued, err
+		}
+		if !claimed {
+			continue
+		}
+
+		if err := w.queue.EnqueueEmail(ctx, queue.EmailJob{
+			Type:         queue.EmailTypeWaitlistSoon,
+			DropID:       drop.ID,
+			DropTitle:    drop.Title,
+			DropURL:      w.dropURL(drop.SellerSlug, drop.Slug),
+			DropStartsAt: drop.StartsAt.UTC().Format(time.RFC3339),
+		}); err != nil {
+			log.Printf("enqueue waitlist soon drop=%s: %v", drop.ID, err)
+			continue
+		}
+		enqueued++
+	}
+	return enqueued, nil
 }
 
 func (w *WaitlistNotifyService) ProcessDueLiveNotifications(ctx context.Context) (int, error) {
@@ -108,19 +154,24 @@ func (w *WaitlistNotifyService) ProcessEmailJob(ctx context.Context, job queue.E
 		return nil
 	}
 
-	var send func(context.Context, string, string, string) error
-	switch job.Type {
-	case queue.EmailTypeWaitlistLive:
-		send = sender.SendWaitlistLive
-	case queue.EmailTypeWaitlistRestock:
-		send = sender.SendWaitlistRestock
-	default:
-		return fmt.Errorf("unsupported waitlist job type %q", job.Type)
-	}
-
 	var firstErr error
 	for _, email := range emails {
-		if err := send(ctx, email, job.DropTitle, job.DropURL); err != nil {
+		var err error
+		switch job.Type {
+		case queue.EmailTypeWaitlistLive:
+			err = sender.SendWaitlistLive(ctx, email, job.DropTitle, job.DropURL)
+		case queue.EmailTypeWaitlistSoon:
+			startsAt, parseErr := time.Parse(time.RFC3339, job.DropStartsAt)
+			if parseErr != nil {
+				return fmt.Errorf("waitlist soon job missing starts at: %w", parseErr)
+			}
+			err = sender.SendWaitlistSoon(ctx, email, job.DropTitle, job.DropURL, startsAt)
+		case queue.EmailTypeWaitlistRestock:
+			err = sender.SendWaitlistRestock(ctx, email, job.DropTitle, job.DropURL)
+		default:
+			return fmt.Errorf("unsupported waitlist job type %q", job.Type)
+		}
+		if err != nil {
 			log.Printf("waitlist email drop=%s to=%s: %v", job.DropID, email, err)
 			firstErr = err
 		}
