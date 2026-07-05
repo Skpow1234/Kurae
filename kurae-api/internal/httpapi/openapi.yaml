@@ -584,6 +584,43 @@ paths:
       responses:
         "200":
           description: OK
+  /orders/export:
+    get:
+      tags: [orders]
+      summary: Export seller orders as CSV
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: status
+          in: query
+          schema:
+            $ref: "#/components/schemas/OrderStatus"
+        - name: sort
+          in: query
+          schema:
+            type: string
+            enum: [newest, oldest]
+            default: newest
+        - name: from
+          in: query
+          description: Filter orders created on or after this time (RFC3339 or YYYY-MM-DD)
+          schema:
+            type: string
+        - name: to
+          in: query
+          description: Filter orders created before this time (RFC3339 or YYYY-MM-DD, inclusive for date-only)
+          schema:
+            type: string
+      responses:
+        "200":
+          description: CSV file
+          content:
+            text/csv:
+              schema:
+                type: string
+                format: binary
+        "400":
+          $ref: "#/components/responses/Error"
   /orders/{id}:
     get:
       tags: [orders]

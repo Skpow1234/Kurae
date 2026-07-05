@@ -57,6 +57,48 @@ func (h *OrderHandler) List(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+func (h *OrderHandler) Export(w http.ResponseWriter, r *http.Request) {
+	claims, ok := claimsFromContext(r.Context())
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+
+	status := r.URL.Query().Get("status")
+	sortAsc := r.URL.Query().Get("sort") == "oldest"
+	createdAfter, err := parseOrderTimeFilter(r.URL.Query().Get("from"), false)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "Invalid from date")
+		return
+	}
+	createdBefore, err := parseOrderTimeFilter(r.URL.Query().Get("to"), true)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "Invalid to date")
+		return
+	}
+
+	csv, filename, err := h.orders.ExportCSV(r.Context(), service.OrderExportRequest{
+		SellerID:      claims.SellerID,
+		Status:        status,
+		SortAsc:       sortAsc,
+		CreatedAfter:  createdAfter,
+		CreatedBefore: createdBefore,
+	})
+	if errors.Is(err, service.ErrOrderExportTooLarge) {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "Could not export orders")
+		return
+	}
+
+	w.Header().Set("Content-Type", "text/csv; charset=utf-8")
+	w.Header().Set("Content-Disposition", `attachment; filename="`+filename+`"`)
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write(csv)
+}
+
 func (h *OrderHandler) Get(w http.ResponseWriter, r *http.Request) {
 	claims, ok := claimsFromContext(r.Context())
 	if !ok {

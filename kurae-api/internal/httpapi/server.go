@@ -117,6 +117,7 @@ func NewServer(cfg config.Config, s *store.Store, q *queue.RedisQueue) *Server {
 		protected.With(RequirePermission(domain.PermDropsWrite)).Patch("/drops/{id}", dropH.Update)
 		protected.With(RequirePermission(domain.PermDropsWrite)).Delete("/drops/{id}", dropH.Delete)
 		protected.With(RequirePermission(domain.PermOrdersRead)).Get("/orders", orderH.List)
+		protected.With(RequirePermission(domain.PermOrdersRead)).Get("/orders/export", orderH.Export)
 		protected.With(RequirePermission(domain.PermOrdersRead)).Get("/orders/{id}", orderH.Get)
 		protected.With(RequirePermission(domain.PermOrdersFulfill)).Patch("/orders/{id}", orderH.Update)
 		protected.With(RequirePermission(domain.PermAnalyticsRead)).Get("/dashboard/stats", dashboardH.Stats)

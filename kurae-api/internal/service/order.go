@@ -3,7 +3,9 @@ package service
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log"
+	"strconv"
 	"strings"
 	"time"
 
@@ -18,6 +20,17 @@ var ErrInvalidOrderAction = errors.New("invalid order action")
 var ErrCheckoutIncomplete = errors.New("checkout incomplete")
 var ErrInvalidShippingAddress = validate.ErrInvalidShippingAddress
 var ErrInvalidTrackingNumber = validate.ErrInvalidTrackingNumber
+var ErrOrderExportTooLarge = errors.New("too many orders match filters; narrow the date range or status")
+
+const maxOrderExportRows = 10000
+
+type OrderExportRequest struct {
+	SellerID      string
+	Status        string
+	SortAsc       bool
+	CreatedAfter  *time.Time
+	CreatedBefore *time.Time
+}
 
 type OrderService struct {
 	orders             *store.OrderRepository
@@ -527,4 +540,116 @@ func (o *OrderService) ListForBuyer(ctx context.Context, email string, page, pag
 		})
 	}
 	return items, total, nil
+}
+
+func (o *OrderService) ExportCSV(ctx context.Context, req OrderExportRequest) ([]byte, string, error) {
+	records, total, err := o.orders.ListForSeller(ctx, store.ListOrdersFilter{
+		SellerID:      req.SellerID,
+		Status:        req.Status,
+		Limit:         maxOrderExportRows,
+		Offset:        0,
+		SortAsc:       req.SortAsc,
+		CreatedAfter:  req.CreatedAfter,
+		CreatedBefore: req.CreatedBefore,
+	})
+	if err != nil {
+		return nil, "", err
+	}
+	if total > maxOrderExportRows {
+		return nil, "", ErrOrderExportTooLarge
+	}
+
+	var b strings.Builder
+	b.WriteString("order_id,created_at,status,drop_title,drop_slug,product_name,size,buyer_email,subtotal_cents,discount_cents,discount_code,amount_cents,currency,shipping_name,shipping_line1,shipping_line2,shipping_city,shipping_region,shipping_postal_code,shipping_country,tracking_number,shipped_at,referral_code,utm_source,utm_medium,utm_campaign,utm_term,utm_content\n")
+	for _, r := range records {
+		writeOrderExportRow(&b, r)
+	}
+
+	filename := fmt.Sprintf("orders-%s.csv", time.Now().UTC().Format("20060102"))
+	return []byte(b.String()), filename, nil
+}
+
+func writeOrderExportRow(b *strings.Builder, r store.OrderRecord) {
+	b.WriteString(orderCSVCell(r.ID))
+	b.WriteByte(',')
+	b.WriteString(orderCSVCell(r.CreatedAt.UTC().Format(time.RFC3339)))
+	b.WriteByte(',')
+	b.WriteString(orderCSVCell(string(r.Status)))
+	b.WriteByte(',')
+	b.WriteString(orderCSVCell(r.DropTitle))
+	b.WriteByte(',')
+	b.WriteString(orderCSVCell(r.DropSlug))
+	b.WriteByte(',')
+	b.WriteString(orderCSVCell(r.ProductName))
+	b.WriteByte(',')
+	b.WriteString(orderCSVCell(r.SizeLabel))
+	b.WriteByte(',')
+	b.WriteString(orderCSVCell(r.BuyerEmail))
+	b.WriteByte(',')
+	b.WriteString(strconv.Itoa(r.SubtotalCents))
+	b.WriteByte(',')
+	b.WriteString(strconv.Itoa(r.DiscountCents))
+	b.WriteByte(',')
+	b.WriteString(orderCSVCell(derefString(r.DiscountCodeSnapshot)))
+	b.WriteByte(',')
+	b.WriteString(strconv.Itoa(r.AmountCents))
+	b.WriteByte(',')
+	b.WriteString(orderCSVCell(r.Currency))
+	b.WriteByte(',')
+	writeShippingCells(b, r.ShippingAddress)
+	b.WriteString(orderCSVCell(r.TrackingNumber))
+	b.WriteByte(',')
+	b.WriteString(orderCSVCell(formatShippedAt(r.ShippedAt)))
+	b.WriteByte(',')
+	b.WriteString(orderCSVCell(derefString(r.ReferralCodeSnapshot)))
+	b.WriteByte(',')
+	b.WriteString(orderCSVCell(r.UTMSource))
+	b.WriteByte(',')
+	b.WriteString(orderCSVCell(r.UTMMedium))
+	b.WriteByte(',')
+	b.WriteString(orderCSVCell(r.UTMCampaign))
+	b.WriteByte(',')
+	b.WriteString(orderCSVCell(r.UTMTerm))
+	b.WriteByte(',')
+	b.WriteString(orderCSVCell(r.UTMContent))
+	b.WriteByte('\n')
+}
+
+func writeShippingCells(b *strings.Builder, addr *domain.ShippingAddress) {
+	if addr == nil {
+		for i := 0; i < 7; i++ {
+			if i > 0 {
+				b.WriteByte(',')
+			}
+		}
+		return
+	}
+	b.WriteString(orderCSVCell(addr.Name))
+	b.WriteByte(',')
+	b.WriteString(orderCSVCell(addr.Line1))
+	b.WriteByte(',')
+	b.WriteString(orderCSVCell(addr.Line2))
+	b.WriteByte(',')
+	b.WriteString(orderCSVCell(addr.City))
+	b.WriteByte(',')
+	b.WriteString(orderCSVCell(addr.Region))
+	b.WriteByte(',')
+	b.WriteString(orderCSVCell(addr.PostalCode))
+	b.WriteByte(',')
+	b.WriteString(orderCSVCell(addr.Country))
+	b.WriteByte(',')
+}
+
+func derefString(value *string) string {
+	if value == nil {
+		return ""
+	}
+	return *value
+}
+
+func orderCSVCell(value string) string {
+	if strings.ContainsAny(value, ",\"\n\r") {
+		return `"` + strings.ReplaceAll(value, `"`, `""`) + `"`
+	}
+	return value
 }

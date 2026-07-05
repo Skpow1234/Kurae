@@ -33,6 +33,7 @@ func TestEmbeddedOpenAPISpec(t *testing.T) {
 		"ReferralPreview:",
 		"/team/members:",
 		"TeamMember:",
+		"/orders/export:",
 		"SellerAnalytics:",
 		"DiscountPreview:",
 		"sellerLogoUrl:",
