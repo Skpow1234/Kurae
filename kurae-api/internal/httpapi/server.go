@@ -8,6 +8,7 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
 	"github.com/kurae/kurae-api/internal/config"
+	"github.com/kurae/kurae-api/internal/domain"
 	"github.com/kurae/kurae-api/internal/payments"
 	"github.com/kurae/kurae-api/internal/queue"
 	"github.com/kurae/kurae-api/internal/ratelimit"
@@ -35,6 +36,7 @@ func NewServer(cfg config.Config, s *store.Store, q *queue.RedisQueue) *Server {
 	referralSvc := service.NewReferralService(s)
 	brandingSvc := service.NewBrandingService(s)
 	analyticsSvc := service.NewAnalyticsService(s)
+	teamSvc := service.NewTeamService(s)
 	provider := payments.NewFromConfig(cfg.StripeSecretKey, cfg.StripeWebhook, cfg.IsProduction())
 	orderSvc := service.NewOrderService(s, provider, q, cfg.ReservationTTL, !cfg.IsProduction(), waitlistNotify)
 
@@ -50,6 +52,7 @@ func NewServer(cfg config.Config, s *store.Store, q *queue.RedisQueue) *Server {
 	analyticsH := NewAnalyticsHandler(analyticsSvc)
 	webhookH := NewWebhookHandler(s, provider, orderSvc)
 	dashboardH := NewDashboardHandler(dashboardSvc)
+	teamH := NewTeamHandler(teamSvc)
 	uploadH := NewUploadHandler(s3Storage)
 
 	r := chi.NewRouter()
@@ -108,32 +111,36 @@ func NewServer(cfg config.Config, s *store.Store, q *queue.RedisQueue) *Server {
 
 	r.Group(func(protected chi.Router) {
 		protected.Use(SellerAuthMiddleware(authSvc))
-		protected.Get("/drops", dropH.List)
-		protected.Post("/drops", dropH.Create)
-		protected.Get("/drops/{id}", dropH.Get)
-		protected.Patch("/drops/{id}", dropH.Update)
-		protected.Delete("/drops/{id}", dropH.Delete)
-		protected.Get("/orders", orderH.List)
-		protected.Get("/orders/{id}", orderH.Get)
-		protected.Patch("/orders/{id}", orderH.Update)
-		protected.Get("/dashboard/stats", dashboardH.Stats)
-		protected.Get("/discount-codes", discountH.List)
-		protected.Post("/discount-codes", discountH.Create)
-		protected.Patch("/discount-codes/{id}", discountH.Update)
-		protected.Delete("/discount-codes/{id}", discountH.Delete)
-		protected.Get("/referral-codes", referralH.List)
-		protected.Post("/referral-codes", referralH.Create)
-		protected.Delete("/referral-codes/{id}", referralH.Delete)
-		protected.Get("/referral-rewards/settings", referralH.GetRewardSettings)
-		protected.Patch("/referral-rewards/settings", referralH.UpdateRewardSettings)
-		protected.Get("/branding", brandingH.Get)
-		protected.Patch("/branding", brandingH.Update)
-		protected.Get("/dashboard/analytics", analyticsH.Get)
-		protected.Get("/dashboard/analytics/export", analyticsH.Export)
-		protected.Post("/uploads/presign", uploadH.Presign)
+		protected.With(RequirePermission(domain.PermDropsRead)).Get("/drops", dropH.List)
+		protected.With(RequirePermission(domain.PermDropsWrite)).Post("/drops", dropH.Create)
+		protected.With(RequirePermission(domain.PermDropsRead)).Get("/drops/{id}", dropH.Get)
+		protected.With(RequirePermission(domain.PermDropsWrite)).Patch("/drops/{id}", dropH.Update)
+		protected.With(RequirePermission(domain.PermDropsWrite)).Delete("/drops/{id}", dropH.Delete)
+		protected.With(RequirePermission(domain.PermOrdersRead)).Get("/orders", orderH.List)
+		protected.With(RequirePermission(domain.PermOrdersRead)).Get("/orders/{id}", orderH.Get)
+		protected.With(RequirePermission(domain.PermOrdersFulfill)).Patch("/orders/{id}", orderH.Update)
+		protected.With(RequirePermission(domain.PermAnalyticsRead)).Get("/dashboard/stats", dashboardH.Stats)
+		protected.With(RequirePermission(domain.PermDiscountsWrite)).Get("/discount-codes", discountH.List)
+		protected.With(RequirePermission(domain.PermDiscountsWrite)).Post("/discount-codes", discountH.Create)
+		protected.With(RequirePermission(domain.PermDiscountsWrite)).Patch("/discount-codes/{id}", discountH.Update)
+		protected.With(RequirePermission(domain.PermDiscountsWrite)).Delete("/discount-codes/{id}", discountH.Delete)
+		protected.With(RequirePermission(domain.PermReferralsWrite)).Get("/referral-codes", referralH.List)
+		protected.With(RequirePermission(domain.PermReferralsWrite)).Post("/referral-codes", referralH.Create)
+		protected.With(RequirePermission(domain.PermReferralsWrite)).Delete("/referral-codes/{id}", referralH.Delete)
+		protected.With(RequirePermission(domain.PermReferralsWrite)).Get("/referral-rewards/settings", referralH.GetRewardSettings)
+		protected.With(RequirePermission(domain.PermReferralsWrite)).Patch("/referral-rewards/settings", referralH.UpdateRewardSettings)
+		protected.With(RequirePermission(domain.PermBrandingWrite)).Get("/branding", brandingH.Get)
+		protected.With(RequirePermission(domain.PermBrandingWrite)).Patch("/branding", brandingH.Update)
+		protected.With(RequirePermission(domain.PermAnalyticsRead)).Get("/dashboard/analytics", analyticsH.Get)
+		protected.With(RequirePermission(domain.PermAnalyticsRead)).Get("/dashboard/analytics/export", analyticsH.Export)
+		protected.With(RequirePermission(domain.PermUploadsWrite)).Post("/uploads/presign", uploadH.Presign)
 		protected.Get("/auth/me", authH.Me)
 		protected.Patch("/auth/profile", authH.UpdateProfile)
 		protected.Patch("/auth/password", authH.ChangePassword)
+		protected.With(RequirePermission(domain.PermTeamManage)).Get("/team/members", teamH.List)
+		protected.With(RequirePermission(domain.PermTeamManage)).Post("/team/members", teamH.Create)
+		protected.With(RequirePermission(domain.PermTeamManage)).Patch("/team/members/{id}", teamH.Update)
+		protected.With(RequirePermission(domain.PermTeamManage)).Delete("/team/members/{id}", teamH.Delete)
 	})
 
 	return &Server{router: r}

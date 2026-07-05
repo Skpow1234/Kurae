@@ -95,6 +95,8 @@ type SellerSession struct {
 	Email      string `json:"email"`
 	SellerSlug string `json:"sellerSlug"`
 	SellerName string `json:"sellerName"`
+	TeamRole   string `json:"teamRole"`
+	MemberName string `json:"memberName,omitempty"`
 }
 
 type BuyerSession struct {

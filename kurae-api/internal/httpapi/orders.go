@@ -94,6 +94,20 @@ func (h *OrderHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	action := strings.TrimSpace(body.Action)
+	switch action {
+	case "ship":
+		if !claims.Allows(domain.PermOrdersFulfill) {
+			writeError(w, http.StatusForbidden, "Insufficient permissions")
+			return
+		}
+	case "refund":
+		if !claims.Allows(domain.PermOrdersRefund) {
+			writeError(w, http.StatusForbidden, "Insufficient permissions")
+			return
+		}
+	}
+
 	order, err := h.orders.UpdateForSeller(r.Context(), claims.SellerID, id, service.OrderUpdateRequest{
 		Action:         strings.TrimSpace(body.Action),
 		TrackingNumber: strings.TrimSpace(body.TrackingNumber),

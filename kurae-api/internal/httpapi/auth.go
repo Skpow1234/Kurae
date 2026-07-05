@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/kurae/kurae-api/internal/domain"
 	"github.com/kurae/kurae-api/internal/service"
 	"github.com/kurae/kurae-api/internal/store"
 )
@@ -274,7 +275,7 @@ func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	session, err := h.auth.GetSession(r.Context(), claims.SellerID)
+	session, err := h.auth.GetSession(r.Context(), claims)
 	if errors.Is(err, store.ErrNotFound) {
 		writeError(w, http.StatusNotFound, "Not found")
 		return
@@ -303,11 +304,15 @@ func (h *AuthHandler) UpdateProfile(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if strings.TrimSpace(body.Name) == "" {
-		writeError(w, http.StatusBadRequest, "Brand name is required")
+		if claims.TeamMemberID != "" {
+			writeError(w, http.StatusBadRequest, "Name is required")
+		} else {
+			writeError(w, http.StatusBadRequest, "Brand name is required")
+		}
 		return
 	}
 
-	session, token, err := h.auth.UpdateProfile(r.Context(), claims.SellerID, body.Name)
+	session, token, err := h.auth.UpdateProfile(r.Context(), claims, body.Name)
 	if errors.Is(err, store.ErrNotFound) {
 		writeError(w, http.StatusNotFound, "Not found")
 		return
@@ -344,7 +349,7 @@ func (h *AuthHandler) ChangePassword(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err := h.auth.ChangePassword(r.Context(), claims.SellerID, body.CurrentPassword, body.NewPassword)
+	err := h.auth.ChangePassword(r.Context(), claims, body.CurrentPassword, body.NewPassword)
 	if errors.Is(err, service.ErrInvalidCredentials) {
 		writeError(w, http.StatusUnauthorized, "Current password is incorrect")
 		return
