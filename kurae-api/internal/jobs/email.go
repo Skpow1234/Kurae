@@ -66,6 +66,40 @@ func (s *EmailSender) SendWaitlistRestock(ctx context.Context, to, dropTitle, dr
 	return s.sendTransactional(ctx, to, subject, html, "waitlist restock", dropTitle)
 }
 
+func (s *EmailSender) SendInventoryLowUnits(
+	ctx context.Context,
+	to, dropTitle string,
+	remaining, total int,
+	dashboardURL string,
+) error {
+	subject := fmt.Sprintf("Low inventory: %s — %d units left", dropTitle, remaining)
+	html := fmt.Sprintf(
+		"<p><strong>%s</strong> has only <strong>%d</strong> of %d units remaining.</p><p><a href=\"%s\">Manage drop</a></p>",
+		dropTitle,
+		remaining,
+		total,
+		dashboardURL,
+	)
+	return s.sendTransactional(ctx, to, subject, html, "inventory alert 5", dropTitle)
+}
+
+func (s *EmailSender) SendInventoryLowPercent(
+	ctx context.Context,
+	to, dropTitle string,
+	remaining, total int,
+	dashboardURL string,
+) error {
+	subject := fmt.Sprintf("Low inventory: %s — 20%% threshold reached", dropTitle)
+	html := fmt.Sprintf(
+		"<p><strong>%s</strong> is down to <strong>%d</strong> of %d units (20%% or less).</p><p><a href=\"%s\">Manage drop</a></p>",
+		dropTitle,
+		remaining,
+		total,
+		dashboardURL,
+	)
+	return s.sendTransactional(ctx, to, subject, html, "inventory alert 20", dropTitle)
+}
+
 func (s *EmailSender) sendTransactional(ctx context.Context, to, subject, html, kind, ref string) error {
 	if s.resendKey != "" {
 		return s.sendResend(ctx, to, subject, html)

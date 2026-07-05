@@ -39,6 +39,7 @@ type OrderService struct {
 	provider           payments.Provider
 	queue              *queue.RedisQueue
 	notify             *WaitlistNotifyService
+	inventoryAlerts    *InventoryAlertService
 	ttl                time.Duration
 	devPaymentPollSync bool
 }
@@ -50,6 +51,7 @@ func NewOrderService(
 	ttl time.Duration,
 	devPaymentPollSync bool,
 	notify *WaitlistNotifyService,
+	inventoryAlerts *InventoryAlertService,
 ) *OrderService {
 	return &OrderService{
 		orders:             s.Orders(),
@@ -58,6 +60,7 @@ func NewOrderService(
 		provider:           provider,
 		queue:              q,
 		notify:             notify,
+		inventoryAlerts:    inventoryAlerts,
 		ttl:                ttl,
 		devPaymentPollSync: devPaymentPollSync,
 	}
@@ -186,6 +189,8 @@ func (o *OrderService) Checkout(ctx context.Context, req CheckoutRequest) (Check
 	}); err != nil {
 		return CheckoutResponse{}, err
 	}
+
+	o.checkInventoryAlerts(ctx, req.DropID)
 
 	return CheckoutResponse{
 		OrderID:          result.Order.ID,
@@ -447,7 +452,19 @@ func (o *OrderService) ExpireReservations(ctx context.Context) (int, error) {
 			}
 		}
 	}
+	for _, dropID := range restocked {
+		o.checkInventoryAlerts(ctx, dropID)
+	}
 	return n, nil
+}
+
+func (o *OrderService) checkInventoryAlerts(ctx context.Context, dropID string) {
+	if o.inventoryAlerts == nil {
+		return
+	}
+	if err := o.inventoryAlerts.CheckDrop(ctx, dropID); err != nil {
+		log.Printf("inventory alert drop=%s: %v", dropID, err)
+	}
 }
 
 func (o *OrderService) GetBuyerOrderStatus(ctx context.Context, orderID, email string) (domain.BuyerOrderStatus, error) {

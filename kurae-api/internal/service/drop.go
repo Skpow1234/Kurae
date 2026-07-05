@@ -13,16 +13,22 @@ import (
 )
 
 type DropService struct {
-	drops    *store.DropRepository
-	products *store.ProductRepository
-	notify   *WaitlistNotifyService
+	drops           *store.DropRepository
+	products        *store.ProductRepository
+	notify          *WaitlistNotifyService
+	inventoryAlerts *InventoryAlertService
 }
 
-func NewDropService(s *store.Store, notify *WaitlistNotifyService) *DropService {
+func NewDropService(
+	s *store.Store,
+	notify *WaitlistNotifyService,
+	inventoryAlerts *InventoryAlertService,
+) *DropService {
 	return &DropService{
-		drops:    s.Drops(),
-		products: s.Products(),
-		notify:   notify,
+		drops:           s.Drops(),
+		products:        s.Products(),
+		notify:          notify,
+		inventoryAlerts: inventoryAlerts,
 	}
 }
 
@@ -237,6 +243,11 @@ func (d *DropService) Update(ctx context.Context, req CreateDropRequest, dropID 
 	if prevRemaining == 0 && record.InventoryRemaining > 0 && d.notify != nil {
 		if err := d.notify.NotifyRestock(ctx, dropID); err != nil {
 			log.Printf("enqueue waitlist restock drop=%s: %v", dropID, err)
+		}
+	}
+	if d.inventoryAlerts != nil {
+		if err := d.inventoryAlerts.CheckDrop(ctx, dropID); err != nil {
+			log.Printf("inventory alert drop=%s: %v", dropID, err)
 		}
 	}
 	out := record.ToSellerDrop(time.Now())

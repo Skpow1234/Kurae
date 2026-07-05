@@ -40,8 +40,9 @@ func main() {
 	}
 
 	waitlistNotify := service.NewWaitlistNotifyService(db, redisQueue, cfg.PublicWebURL, cfg.WaitlistSoonNotifyBefore)
-	orderSvc := service.NewOrderService(db, payments.NewNoopProvider(), redisQueue, cfg.ReservationTTL, false, waitlistNotify)
-	dropSvc := service.NewDropService(db, waitlistNotify)
+	inventoryAlerts := service.NewInventoryAlertService(db, redisQueue, cfg.PublicWebURL)
+	orderSvc := service.NewOrderService(db, payments.NewNoopProvider(), redisQueue, cfg.ReservationTTL, false, waitlistNotify, inventoryAlerts)
+	dropSvc := service.NewDropService(db, waitlistNotify, inventoryAlerts)
 	emailSender := jobs.NewEmailSender(cfg)
 
 	log.Println("kurae-worker started (reservation expiry + scheduled publish + waitlist notify + email queue)")
@@ -98,7 +99,7 @@ func main() {
 
 		job, err := redisQueue.DequeueEmail(ctx, 5*time.Second)
 		if err == nil {
-			processEmailJob(ctx, redisQueue, emailSender, waitlistNotify, job)
+			processEmailJob(ctx, redisQueue, emailSender, waitlistNotify, inventoryAlerts, job)
 			continue
 		}
 		if errors.Is(err, redis.Nil) {
@@ -142,6 +143,7 @@ func processEmailJob(
 	redisQueue *queue.RedisQueue,
 	emailSender *jobs.EmailSender,
 	waitlistNotify *service.WaitlistNotifyService,
+	inventoryAlerts *service.InventoryAlertService,
 	job queue.EmailJob,
 ) {
 	jobType := job.Type
@@ -153,6 +155,8 @@ func processEmailJob(
 	switch jobType {
 	case queue.EmailTypeWaitlistLive, queue.EmailTypeWaitlistSoon, queue.EmailTypeWaitlistRestock:
 		err = waitlistNotify.ProcessEmailJob(ctx, job, emailSender)
+	case queue.EmailTypeInventoryLow:
+		err = inventoryAlerts.ProcessEmailJob(ctx, job, emailSender)
 	default:
 		err = emailSender.SendOrderConfirmation(ctx, job.OrderID, job.BuyerEmail, job.DropTitle)
 	}

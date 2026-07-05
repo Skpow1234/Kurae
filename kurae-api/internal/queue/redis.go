@@ -19,19 +19,25 @@ const (
 	EmailTypeWaitlistLive      = "waitlist_live"
 	EmailTypeWaitlistSoon      = "waitlist_soon"
 	EmailTypeWaitlistRestock   = "waitlist_restock"
+	EmailTypeInventoryLow      = "inventory_low"
 )
 
 var ErrQueueDisabled = errors.New("redis not configured")
 
 type EmailJob struct {
-	Type       string `json:"type,omitempty"`
-	OrderID    string `json:"orderId,omitempty"`
-	BuyerEmail string `json:"buyerEmail,omitempty"`
-	DropTitle     string `json:"dropTitle,omitempty"`
-	DropID        string `json:"dropId,omitempty"`
-	DropURL       string `json:"dropUrl,omitempty"`
-	DropStartsAt  string `json:"dropStartsAt,omitempty"`
-	Attempt       int    `json:"attempt,omitempty"`
+	Type                  string `json:"type,omitempty"`
+	OrderID               string `json:"orderId,omitempty"`
+	BuyerEmail            string `json:"buyerEmail,omitempty"`
+	DropTitle             string `json:"dropTitle,omitempty"`
+	DropID                string `json:"dropId,omitempty"`
+	DropURL               string `json:"dropUrl,omitempty"`
+	DropStartsAt          string `json:"dropStartsAt,omitempty"`
+	SellerEmail           string `json:"sellerEmail,omitempty"`
+	InventoryRemaining    int    `json:"inventoryRemaining,omitempty"`
+	InventoryTotal        int    `json:"inventoryTotal,omitempty"`
+	InventoryAlertLevel   string `json:"inventoryAlertLevel,omitempty"`
+	DashboardURL          string `json:"dashboardUrl,omitempty"`
+	Attempt               int    `json:"attempt,omitempty"`
 }
 
 type EmailDLQEntry struct {
