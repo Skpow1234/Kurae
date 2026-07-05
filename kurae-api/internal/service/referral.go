@@ -173,6 +173,65 @@ func (r *ReferralService) GetStats(ctx context.Context, dropID, code string) (do
 	}, nil
 }
 
+func (r *ReferralService) GetPreview(
+	ctx context.Context,
+	sellerSlug, dropSlug, code string,
+) (domain.ReferralPreview, error) {
+	if strings.TrimSpace(sellerSlug) == "" || strings.TrimSpace(code) == "" {
+		return domain.ReferralPreview{Valid: false}, nil
+	}
+
+	preview, err := r.referrals.BuildPreview(ctx, sellerSlug, dropSlug, code)
+	if errors.Is(err, store.ErrNotFound) {
+		return domain.ReferralPreview{Valid: false}, nil
+	}
+	if err != nil {
+		return domain.ReferralPreview{}, err
+	}
+
+	return domain.ReferralPreview{
+		Valid:         true,
+		Code:          preview.Code,
+		ReferrerLabel: preview.ReferrerLabel,
+		SellerName:    preview.SellerName,
+		SellerSlug:    preview.SellerSlug,
+		DropTitle:     preview.DropTitle,
+		DropSlug:      preview.DropSlug,
+		Description:   preview.Description,
+		HeroImageURL:  preview.HeroImageURL,
+		LogoURL:       preview.LogoURL,
+		Accent:        preview.Accent,
+	}, nil
+}
+
+func (r *ReferralService) GetPreviewByDropID(ctx context.Context, dropID, code string) (domain.ReferralPreview, error) {
+	if strings.TrimSpace(dropID) == "" || strings.TrimSpace(code) == "" {
+		return domain.ReferralPreview{Valid: false}, nil
+	}
+
+	preview, sellerSlug, err := r.referrals.GetPreviewByDropID(ctx, dropID, code)
+	if errors.Is(err, store.ErrNotFound) {
+		return domain.ReferralPreview{Valid: false}, nil
+	}
+	if err != nil {
+		return domain.ReferralPreview{}, err
+	}
+	preview.SellerSlug = sellerSlug
+	return domain.ReferralPreview{
+		Valid:         true,
+		Code:          preview.Code,
+		ReferrerLabel: preview.ReferrerLabel,
+		SellerName:    preview.SellerName,
+		SellerSlug:    preview.SellerSlug,
+		DropTitle:     preview.DropTitle,
+		DropSlug:      preview.DropSlug,
+		Description:   preview.Description,
+		HeroImageURL:  preview.HeroImageURL,
+		LogoURL:       preview.LogoURL,
+		Accent:        preview.Accent,
+	}, nil
+}
+
 func (r *ReferralService) GetRewardSettings(ctx context.Context, sellerID string) (domain.ReferralRewardSettings, error) {
 	cfg, err := r.referrals.GetRewardConfig(ctx, sellerID)
 	if err != nil {

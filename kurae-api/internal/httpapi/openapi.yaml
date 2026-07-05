@@ -397,6 +397,40 @@ paths:
           $ref: "#/components/responses/Error"
         "429":
           $ref: "#/components/responses/Error"
+  /public/referrals/preview:
+    get:
+      tags: [public, referrals]
+      summary: Referral link share preview (OG metadata)
+      parameters:
+        - name: code
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: sellerSlug
+          in: query
+          schema:
+            type: string
+        - name: dropSlug
+          in: query
+          schema:
+            type: string
+        - name: dropId
+          in: query
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Preview (valid false if code not found or not scoped)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReferralPreview"
+        "400":
+          $ref: "#/components/responses/Error"
+        "429":
+          $ref: "#/components/responses/Error"
   /public/analytics/view:
     post:
       tags: [public, analytics]
@@ -1597,6 +1631,31 @@ components:
           type: integer
         ordersCount:
           type: integer
+    ReferralPreview:
+      type: object
+      properties:
+        valid:
+          type: boolean
+        code:
+          type: string
+        referrerLabel:
+          type: string
+        sellerName:
+          type: string
+        sellerSlug:
+          type: string
+        dropTitle:
+          type: string
+        dropSlug:
+          type: string
+        description:
+          type: string
+        heroImageUrl:
+          type: string
+        logoUrl:
+          type: string
+        accent:
+          type: string
     ReferralCode:
       type: object
       properties:

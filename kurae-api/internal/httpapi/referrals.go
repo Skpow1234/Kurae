@@ -144,6 +144,35 @@ func (h *ReferralHandler) GetStats(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, stats)
 }
 
+func (h *ReferralHandler) GetPreview(w http.ResponseWriter, r *http.Request) {
+	sellerSlug := strings.TrimSpace(r.URL.Query().Get("sellerSlug"))
+	dropSlug := strings.TrimSpace(r.URL.Query().Get("dropSlug"))
+	dropID := strings.TrimSpace(r.URL.Query().Get("dropId"))
+	code := strings.TrimSpace(r.URL.Query().Get("code"))
+
+	if code == "" {
+		writeError(w, http.StatusBadRequest, "code is required")
+		return
+	}
+
+	var preview domain.ReferralPreview
+	var err error
+	switch {
+	case sellerSlug != "":
+		preview, err = h.referrals.GetPreview(r.Context(), sellerSlug, dropSlug, code)
+	case dropID != "":
+		preview, err = h.referrals.GetPreviewByDropID(r.Context(), dropID, code)
+	default:
+		writeError(w, http.StatusBadRequest, "sellerSlug or dropId is required")
+		return
+	}
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "Could not load referral preview")
+		return
+	}
+	writeJSON(w, http.StatusOK, preview)
+}
+
 func (h *ReferralHandler) GetRewardSettings(w http.ResponseWriter, r *http.Request) {
 	claims, ok := claimsFromContext(r.Context())
 	if !ok {

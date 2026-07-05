@@ -28,6 +28,8 @@ func TestEmbeddedOpenAPISpec(t *testing.T) {
 		"DropAnalyticsRow:",
 		"/public/referrals/click:",
 		"/public/referrals/stats:",
+		"/public/referrals/preview:",
+		"ReferralPreview:",
 		"/public/analytics/view:",
 		"SellerAnalytics:",
 		"DiscountPreview:",
