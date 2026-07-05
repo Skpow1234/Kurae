@@ -23,6 +23,7 @@ import { useCart } from "@/contexts/cart-context";
 import { useDropInventory } from "@/lib/hooks/use-drop-inventory";
 import { findDropProduct, resolveDropProducts } from "@/lib/drop-products";
 import { shouldUnoptimizeImageSrc } from "@/lib/images";
+import { buildReferralLink } from "@/lib/referral";
 import type { PublicDrop } from "@/lib/types";
 
 type DropPageViewProps = {
@@ -81,6 +82,17 @@ export function DropPageView({
     purchaseRef.current?.scrollIntoView({ behavior: "smooth" });
   }, []);
 
+  const trimmedRef = refCode?.trim();
+  const referralShareUrl =
+    trimmedRef && typeof window !== "undefined"
+      ? buildReferralLink(
+          window.location.origin,
+          drop.sellerSlug,
+          drop.slug,
+          trimmedRef,
+        )
+      : undefined;
+
   return (
     <SellerBrandTheme accent={drop.sellerAccent}>
       <div className="min-h-screen bg-sakura-paper pb-24 sm:pb-0">
@@ -116,7 +128,20 @@ export function DropPageView({
         <DropStatusBanner status={drop.status} />
 
         <div className="flex flex-wrap items-center gap-3">
-          <ShareButton title={drop.title} text={drop.description} />
+          <ShareButton
+            title={drop.title}
+            text={drop.description}
+            shareUrl={referralShareUrl}
+            referralShare={
+              trimmedRef
+                ? {
+                    sellerSlug: drop.sellerSlug,
+                    dropSlug: drop.slug,
+                    code: trimmedRef,
+                  }
+                : undefined
+            }
+          />
         </div>
 
         {refCode?.trim() && (

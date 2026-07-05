@@ -1,8 +1,9 @@
 "use client";
 
-import { Check, Copy } from "lucide-react";
+import { Check, Copy, Eye } from "lucide-react";
 import { useState } from "react";
 
+import { ShareCardPreview } from "@/components/referral/share-card-preview";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { buildReferralLinkForCode } from "@/lib/referral";
@@ -21,6 +22,7 @@ export function ReferralLinkCopy({
   hint,
 }: ReferralLinkCopyProps) {
   const [copied, setCopied] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
   const link =
     typeof window !== "undefined"
       ? buildReferralLinkForCode(
@@ -45,8 +47,26 @@ export function ReferralLinkCopy({
         <Button type="button" variant="outline" size="icon" onClick={() => void copy()}>
           {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
         </Button>
+        <Button
+          type="button"
+          variant="outline"
+          size="icon"
+          onClick={() => setPreviewOpen(true)}
+          aria-label="Preview share card"
+        >
+          <Eye className="h-4 w-4" />
+        </Button>
       </div>
       {hint && <p className="text-xs text-sakura-mist">{hint}</p>}
+
+      <ShareCardPreview
+        open={previewOpen}
+        onClose={() => setPreviewOpen(false)}
+        shareUrl={link}
+        sellerSlug={sellerSlug}
+        dropSlug={dropSlug}
+        code={code}
+      />
     </div>
   );
 }

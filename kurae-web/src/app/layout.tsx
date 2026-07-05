@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 
 import { SiteHeader } from "@/components/layout/site-header";
+import { getSiteUrl } from "@/lib/site-url";
 
 import "./globals.css";
 
@@ -15,7 +16,10 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const siteUrl = getSiteUrl();
+
 export const metadata: Metadata = {
+  ...(siteUrl ? { metadataBase: new URL(siteUrl) } : {}),
   title: {
     default: "Kurae",
     template: "%s · Kurae",

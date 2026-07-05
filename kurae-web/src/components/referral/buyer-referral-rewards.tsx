@@ -1,10 +1,11 @@
 "use client";
 
-import { Check, Copy } from "lucide-react";
+import { Check, Copy, Share2 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { ShareCardPreview } from "@/components/referral/share-card-preview";
 import { fetchBuyerReferralProgress } from "@/lib/api/buyer-referrals";
 import { authUrl } from "@/lib/auth/safe-redirect";
 import { buildReferralLink } from "@/lib/referral";
@@ -104,6 +105,7 @@ function BuyerReferralRewardsPanel({
   dropSlug: string;
 }) {
   const [copied, setCopied] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
   const link =
     typeof window !== "undefined"
       ? buildReferralLink(window.location.origin, sellerSlug, dropSlug, progress.code)
@@ -136,17 +138,38 @@ function BuyerReferralRewardsPanel({
             <span className="font-medium text-sakura-ink">{rewardLabel(progress)}</span>
           </p>
         </div>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          className="gap-2"
-          onClick={() => void copyLink()}
-        >
-          {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-          {copied ? "Copied" : "Copy link"}
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="gap-2"
+            onClick={() => setPreviewOpen(true)}
+          >
+            <Share2 className="h-4 w-4" />
+            Share
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="gap-2"
+            onClick={() => void copyLink()}
+          >
+            {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+            {copied ? "Copied" : "Copy link"}
+          </Button>
+        </div>
       </div>
+
+      <ShareCardPreview
+        open={previewOpen}
+        onClose={() => setPreviewOpen(false)}
+        shareUrl={link}
+        sellerSlug={sellerSlug}
+        dropSlug={dropSlug}
+        code={progress.code}
+      />
 
       <div className="mt-4 space-y-2">
         <div className="flex justify-between text-xs text-sakura-mist">

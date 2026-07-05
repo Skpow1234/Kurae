@@ -7,6 +7,13 @@ import { SellerStorefrontHero } from "@/components/branding/seller-storefront-he
 import { DropBrowseCard } from "@/components/drop/drop-browse-card";
 import { SellerReferralCapture } from "@/components/referral/seller-referral-capture";
 import { fetchPublicSeller, listPublicDrops } from "@/lib/api/drops-server";
+import {
+  buildReferralOgImagePath,
+  buildReferralPageDescription,
+  buildReferralPageTitle,
+  buildReferralShareUrl,
+  fetchReferralPreviewServer,
+} from "@/lib/referral-preview";
 import type { PublicDrop } from "@/lib/types";
 
 type PageProps = {
@@ -14,12 +21,55 @@ type PageProps = {
   searchParams: Promise<{ ref?: string }>;
 };
 
-export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+export async function generateMetadata({
+  params,
+  searchParams,
+}: PageProps): Promise<Metadata> {
   const { seller } = await params;
+  const { ref } = await searchParams;
   const profile = await fetchPublicSeller(seller);
 
   if (!profile) {
     return { title: "Seller not found" };
+  }
+
+  const refCode = ref?.trim();
+  if (refCode) {
+    const referralPreview = await fetchReferralPreviewServer({
+      sellerSlug: seller,
+      code: refCode,
+    });
+
+    if (referralPreview) {
+      const title = buildReferralPageTitle(referralPreview);
+      const description = buildReferralPageDescription(referralPreview);
+      const ogImage = buildReferralOgImagePath({
+        sellerSlug: seller,
+        code: refCode,
+      });
+      const pageUrl = buildReferralShareUrl({
+        sellerSlug: seller,
+        code: refCode,
+      });
+
+      return {
+        title,
+        description,
+        openGraph: {
+          title,
+          description,
+          url: pageUrl,
+          images: [{ url: ogImage, width: 1200, height: 630 }],
+          type: "website",
+        },
+        twitter: {
+          card: "summary_large_image",
+          title,
+          description,
+          images: [ogImage],
+        },
+      };
+    }
   }
 
   const description =
