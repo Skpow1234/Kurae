@@ -38,7 +38,7 @@ func NewServer(cfg config.Config, s *store.Store, q *queue.RedisQueue) *Server {
 	brandingSvc := service.NewBrandingService(s)
 	analyticsSvc := service.NewAnalyticsService(s)
 	teamSvc := service.NewTeamService(s)
-	provider := payments.NewFromConfig(cfg.StripeSecretKey, cfg.StripeWebhook, cfg.IsProduction())
+	provider := payments.NewFromConfig(cfg.PaymentsConfig())
 	orderSvc := service.NewOrderService(s, provider, q, cfg.ReservationTTL, !cfg.IsProduction(), waitlistNotify, inventoryAlerts)
 
 	s3Storage, _ := storage.NewS3Storage(cfg)
@@ -109,6 +109,9 @@ func NewServer(cfg config.Config, s *store.Store, q *queue.RedisQueue) *Server {
 	r.With(RateLimit(checkoutLimiter)).Post("/checkout/discount/validate", discountH.ValidateCheckout)
 	r.Get("/checkout/orders/{id}/status", orderH.BuyerStatus)
 	r.Post("/webhooks/stripe", webhookH.Stripe)
+	r.Post("/webhooks/mercadopago", webhookH.MercadoPago)
+	r.Post("/webhooks/wompi", webhookH.Wompi)
+	r.Post("/webhooks/payu", webhookH.PayU)
 
 	r.Group(func(protected chi.Router) {
 		protected.Use(SellerAuthMiddleware(authSvc))

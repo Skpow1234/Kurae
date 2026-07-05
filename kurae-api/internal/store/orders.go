@@ -649,11 +649,11 @@ func (r *OrderRepository) MarkWebhookProcessed(ctx context.Context, provider, ev
 	return err
 }
 
-func (r *OrderRepository) CreatePayment(ctx context.Context, orderID, providerPaymentID string, amountCents int, currency string) error {
+func (r *OrderRepository) CreatePayment(ctx context.Context, orderID, provider, providerPaymentID string, amountCents int, currency string) error {
 	_, err := r.store.pool.Exec(ctx, `
-		INSERT INTO payments (order_id, provider_payment_id, status, amount_cents, currency)
-		VALUES ($1, $2, 'pending', $3, $4)
-	`, orderID, providerPaymentID, amountCents, currency)
+		INSERT INTO payments (order_id, provider, provider_payment_id, status, amount_cents, currency)
+		VALUES ($1, $2, $3, 'pending', $4, $5)
+	`, orderID, provider, providerPaymentID, amountCents, currency)
 	return err
 }
 
@@ -700,6 +700,7 @@ func (r *OrderRepository) MarkPaymentPaid(ctx context.Context, orderID, provider
 }
 
 type PaymentRecord struct {
+	Provider          string
 	ProviderPaymentID string
 	Status            string
 }
@@ -724,10 +725,10 @@ func (r *OrderRepository) GetReservationByOrderID(ctx context.Context, orderID s
 func (r *OrderRepository) GetPaymentByOrderID(ctx context.Context, orderID string) (PaymentRecord, error) {
 	var p PaymentRecord
 	err := r.store.pool.QueryRow(ctx, `
-		SELECT provider_payment_id, status
+		SELECT provider, provider_payment_id, status
 		FROM payments
 		WHERE order_id = $1
-	`, orderID).Scan(&p.ProviderPaymentID, &p.Status)
+	`, orderID).Scan(&p.Provider, &p.ProviderPaymentID, &p.Status)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return PaymentRecord{}, ErrNotFound
 	}

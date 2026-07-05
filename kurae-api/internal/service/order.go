@@ -86,7 +86,9 @@ type OrderUpdateRequest struct {
 
 type CheckoutResponse struct {
 	OrderID          string             `json:"orderId"`
-	ClientSecret     string             `json:"clientSecret"`
+	ClientSecret     string             `json:"clientSecret,omitempty"`
+	CheckoutURL      string             `json:"checkoutUrl,omitempty"`
+	PaymentProvider  string             `json:"paymentProvider,omitempty"`
 	SubtotalCents    int                `json:"subtotalCents"`
 	DiscountCents    int                `json:"discountCents"`
 	AmountCents      int                `json:"amountCents"`
@@ -180,28 +182,39 @@ func (o *OrderService) Checkout(ctx context.Context, req CheckoutRequest) (Check
 		return CheckoutResponse{}, err
 	}
 
-	if err := o.orders.CreatePayment(ctx, result.Order.ID, intent.ID, finalAmount, drop.Currency); err != nil {
+	if err := o.orders.CreatePayment(ctx, result.Order.ID, intent.Provider, intent.ID, finalAmount, drop.Currency); err != nil {
 		return CheckoutResponse{}, err
 	}
 
 	if err := o.orders.TransitionStatus(ctx, result.Order.ID, domain.OrderReserved, domain.OrderPaymentPending, map[string]any{
 		"paymentIntentId": intent.ID,
+		"paymentProvider": intent.Provider,
 	}); err != nil {
 		return CheckoutResponse{}, err
 	}
 
 	o.checkInventoryAlerts(ctx, req.DropID)
 
-	return CheckoutResponse{
-		OrderID:          result.Order.ID,
-		ClientSecret:     intent.ClientSecret,
-		SubtotalCents:    result.Order.SubtotalCents,
-		DiscountCents:    result.Order.DiscountCents,
+	return o.buildCheckoutResponse(result.Order, intent, finalAmount, drop.Currency, expiresAt), nil
+}
+
+func (o *OrderService) buildCheckoutResponse(order store.OrderRecord, intent payments.IntentResult, finalAmount int, currency string, expiresAt time.Time) CheckoutResponse {
+	resp := CheckoutResponse{
+		OrderID:          order.ID,
+		SubtotalCents:    order.SubtotalCents,
+		DiscountCents:    order.DiscountCents,
 		AmountCents:      finalAmount,
-		Currency:         drop.Currency,
+		Currency:         currency,
 		ReservationUntil: expiresAt.UTC().Format(time.RFC3339),
 		Status:           domain.OrderPaymentPending,
-	}, nil
+		PaymentProvider:  intent.Provider,
+	}
+	if intent.CheckoutURL != "" {
+		resp.CheckoutURL = intent.CheckoutURL
+	} else {
+		resp.ClientSecret = intent.ClientSecret
+	}
+	return resp
 }
 
 func (o *OrderService) resolveCheckoutProduct(ctx context.Context, dropID, productID string) (domain.DropProduct, error) {
@@ -235,7 +248,18 @@ func (o *OrderService) checkoutResponseFromExisting(ctx context.Context, order s
 		return CheckoutResponse{}, err
 	}
 
-	clientSecret, err := o.provider.ClientSecret(ctx, payment.ProviderPaymentID)
+	providerName := payment.Provider
+	if providerName == "" {
+		providerName = payments.ProviderStripe
+	}
+
+	checkoutURL := ""
+	clientSecret := ""
+	if payments.IsRedirectProvider(providerName) {
+		checkoutURL, err = o.provider.ClientSecret(ctx, providerName, payment.ProviderPaymentID)
+	} else {
+		clientSecret, err = o.provider.ClientSecret(ctx, providerName, payment.ProviderPaymentID)
+	}
 	if err != nil {
 		return CheckoutResponse{}, err
 	}
@@ -248,6 +272,8 @@ func (o *OrderService) checkoutResponseFromExisting(ctx context.Context, order s
 	return CheckoutResponse{
 		OrderID:          order.ID,
 		ClientSecret:     clientSecret,
+		CheckoutURL:      checkoutURL,
+		PaymentProvider:  providerName,
 		SubtotalCents:    order.SubtotalCents,
 		DiscountCents:    order.DiscountCents,
 		AmountCents:      order.AmountCents,
@@ -427,8 +453,18 @@ func (o *OrderService) refundForSeller(ctx context.Context, sellerID, orderID st
 		return domain.SellerOrder{}, store.ErrInvalidTransition
 	}
 
-	if payment.ProviderPaymentID != "" && !strings.HasPrefix(payment.ProviderPaymentID, "pi_dev_") {
-		if err := o.provider.RefundPayment(ctx, payment.ProviderPaymentID); err != nil {
+	if payment.ProviderPaymentID != "" && !strings.HasPrefix(payment.ProviderPaymentID, "pi_dev_") && !strings.HasPrefix(payment.ProviderPaymentID, "latam_dev_") {
+		providerName := payment.Provider
+		if providerName == "" {
+			providerName = payments.ProviderStripe
+		}
+		if err := o.provider.RefundPayment(ctx, payments.RefundInput{
+			Provider:          providerName,
+			ProviderPaymentID: payment.ProviderPaymentID,
+			OrderID:           orderID,
+			AmountCents:       record.AmountCents,
+			Currency:          record.Currency,
+		}); err != nil {
 			return domain.SellerOrder{}, err
 		}
 	}
@@ -518,7 +554,16 @@ func (o *OrderService) syncPaymentFromProvider(ctx context.Context, orderID stri
 		return nil
 	}
 
-	succeeded, err := o.provider.PaymentSucceeded(ctx, payment.ProviderPaymentID)
+	providerName := payment.Provider
+	if providerName == "" {
+		providerName = payments.ProviderStripe
+	}
+	paymentRef := payment.ProviderPaymentID
+	if payments.IsRedirectProvider(providerName) {
+		paymentRef = orderID
+	}
+
+	succeeded, err := o.provider.PaymentSucceeded(ctx, providerName, paymentRef)
 	if err != nil || !succeeded {
 		return err
 	}

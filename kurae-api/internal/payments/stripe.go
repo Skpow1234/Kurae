@@ -46,10 +46,12 @@ func (s *StripeProvider) CreatePaymentIntent(ctx context.Context, in IntentInput
 	return IntentResult{
 		ID:           pi.ID,
 		ClientSecret: pi.ClientSecret,
+		Provider:     ProviderStripe,
 	}, nil
 }
 
-func (s *StripeProvider) ClientSecret(ctx context.Context, providerPaymentID string) (string, error) {
+func (s *StripeProvider) ClientSecret(ctx context.Context, providerName, providerPaymentID string) (string, error) {
+	_ = providerName
 	_ = ctx
 	if providerPaymentID == "" {
 		return "", errors.New("missing payment intent id")
@@ -61,15 +63,16 @@ func (s *StripeProvider) ClientSecret(ctx context.Context, providerPaymentID str
 	return pi.ClientSecret, nil
 }
 
-func (s *StripeProvider) RefundPayment(ctx context.Context, providerPaymentID string) error {
+func (s *StripeProvider) RefundPayment(ctx context.Context, in RefundInput) error {
 	_ = ctx
 	_, err := refund.New(&stripe.RefundParams{
-		PaymentIntent: stripe.String(providerPaymentID),
+		PaymentIntent: stripe.String(in.ProviderPaymentID),
 	})
 	return err
 }
 
-func (s *StripeProvider) VerifyWebhook(payload []byte, signature string) (string, string, bool, error) {
+func (s *StripeProvider) VerifyWebhook(providerName string, payload []byte, signature string) (string, string, bool, error) {
+	_ = providerName
 	if s.webhookSecret == "" {
 		return "", "", false, errors.New("webhook secret not configured")
 	}
@@ -96,7 +99,8 @@ func (s *StripeProvider) VerifyWebhook(payload []byte, signature string) (string
 	return event.ID, orderID, true, nil
 }
 
-func (s *StripeProvider) PaymentSucceeded(ctx context.Context, providerPaymentID string) (bool, error) {
+func (s *StripeProvider) PaymentSucceeded(ctx context.Context, providerName, providerPaymentID string) (bool, error) {
+	_ = providerName
 	_ = ctx
 	if providerPaymentID == "" {
 		return false, nil
@@ -116,49 +120,52 @@ func NewNoopProvider() *NoopProvider {
 
 func (n *NoopProvider) CreatePaymentIntent(ctx context.Context, in IntentInput) (IntentResult, error) {
 	_ = ctx
+	if IsLatamCurrency(in.Currency) {
+		id := "latam_dev_" + uuid.NewString()
+		return IntentResult{
+			ID:       id,
+			Provider: SelectProviderForCurrency(in.Currency, Config{}),
+		}, nil
+	}
 	id := "pi_dev_" + uuid.NewString()
 	return IntentResult{
 		ID:           id,
 		ClientSecret: fmt.Sprintf("%s_secret_dev", id),
+		Provider:     ProviderStripe,
 	}, nil
 }
 
-func (n *NoopProvider) ClientSecret(ctx context.Context, providerPaymentID string) (string, error) {
+func (n *NoopProvider) ClientSecret(ctx context.Context, providerName, providerPaymentID string) (string, error) {
 	_ = ctx
+	_ = providerName
 	if providerPaymentID == "" {
 		return "", errors.New("missing payment intent id")
 	}
 	if strings.HasPrefix(providerPaymentID, "pi_dev_") {
 		return fmt.Sprintf("%s_secret_dev", providerPaymentID), nil
 	}
+	if strings.HasPrefix(providerPaymentID, "latam_dev_") {
+		return "", nil
+	}
 	return "", errors.New("unknown payment intent id")
 }
 
-func (n *NoopProvider) RefundPayment(ctx context.Context, providerPaymentID string) error {
+func (n *NoopProvider) RefundPayment(ctx context.Context, in RefundInput) error {
 	_ = ctx
-	_ = providerPaymentID
+	_ = in
 	return nil
 }
 
-func (n *NoopProvider) VerifyWebhook(payload []byte, signature string) (string, string, bool, error) {
+func (n *NoopProvider) VerifyWebhook(providerName string, payload []byte, signature string) (string, string, bool, error) {
+	_ = providerName
 	_ = payload
 	_ = signature
 	return "", "", false, errors.New("noop provider does not process webhooks")
 }
 
-func (n *NoopProvider) PaymentSucceeded(ctx context.Context, providerPaymentID string) (bool, error) {
+func (n *NoopProvider) PaymentSucceeded(ctx context.Context, providerName, providerPaymentID string) (bool, error) {
 	_ = ctx
+	_ = providerName
 	_ = providerPaymentID
 	return false, nil
-}
-
-func NewFromConfig(secretKey, webhookSecret string, production bool) Provider {
-	if secretKey == "" {
-		if production {
-			// Config.Validate should prevent reaching production without Stripe keys.
-			return NewNoopProvider()
-		}
-		return NewNoopProvider()
-	}
-	return NewStripeProvider(secretKey, webhookSecret)
 }

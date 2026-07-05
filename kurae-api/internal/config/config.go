@@ -5,6 +5,8 @@ import (
 	"os"
 	"strings"
 	"time"
+
+	"github.com/kurae/kurae-api/internal/payments"
 )
 
 const (
@@ -24,6 +26,15 @@ type Config struct {
 	CORSOrigins     []string
 	StripeSecretKey string
 	StripeWebhook   string
+	MercadoPagoAccessToken   string
+	MercadoPagoWebhookSecret string
+	WompiPrivateKey          string
+	WompiEventsSecret        string
+	PayUApiLogin             string
+	PayUApiKey               string
+	PayUMerchantID           string
+	PayUAccountID            string
+	APIPublicURL             string
 	S3Bucket        string
 	S3Region        string
 	AWSAccessKey    string
@@ -53,8 +64,16 @@ func Load() (Config, error) {
 		DatabaseURL:     os.Getenv("DATABASE_URL"),
 		RedisURL:        os.Getenv("REDIS_URL"),
 		JWTSecret:       os.Getenv("JWT_SECRET"),
-		StripeSecretKey: os.Getenv("STRIPE_SECRET_KEY"),
-		StripeWebhook:   os.Getenv("STRIPE_WEBHOOK_SECRET"),
+		StripeSecretKey:          os.Getenv("STRIPE_SECRET_KEY"),
+		StripeWebhook:            os.Getenv("STRIPE_WEBHOOK_SECRET"),
+		MercadoPagoAccessToken:   os.Getenv("MERCADOPAGO_ACCESS_TOKEN"),
+		MercadoPagoWebhookSecret: os.Getenv("MERCADOPAGO_WEBHOOK_SECRET"),
+		WompiPrivateKey:          os.Getenv("WOMPI_PRIVATE_KEY"),
+		WompiEventsSecret:        os.Getenv("WOMPI_EVENTS_SECRET"),
+		PayUApiLogin:             os.Getenv("PAYU_API_LOGIN"),
+		PayUApiKey:               os.Getenv("PAYU_API_KEY"),
+		PayUMerchantID:           os.Getenv("PAYU_MERCHANT_ID"),
+		PayUAccountID:            os.Getenv("PAYU_ACCOUNT_ID"),
 		S3Bucket:        os.Getenv("S3_BUCKET"),
 		S3Region:        os.Getenv("S3_REGION"),
 		AWSAccessKey:    os.Getenv("AWS_ACCESS_KEY_ID"),
@@ -80,6 +99,11 @@ func Load() (Config, error) {
 	}
 	if cfg.PublicWebURL == "" {
 		cfg.PublicWebURL = "http://localhost:3000"
+	}
+
+	cfg.APIPublicURL = strings.TrimSpace(os.Getenv("API_PUBLIC_URL"))
+	if cfg.APIPublicURL == "" {
+		cfg.APIPublicURL = fmt.Sprintf("http://localhost:%s", cfg.Port)
 	}
 
 	if raw := strings.TrimSpace(os.Getenv("WAITLIST_SOON_NOTIFY_BEFORE")); raw != "" {
@@ -183,4 +207,22 @@ func envOr(key, fallback string) string {
 		return v
 	}
 	return fallback
+}
+
+func (c Config) PaymentsConfig() payments.Config {
+	return payments.Config{
+		StripeSecretKey:          c.StripeSecretKey,
+		StripeWebhook:            c.StripeWebhook,
+		MercadoPagoToken:         c.MercadoPagoAccessToken,
+		MercadoPagoWebhookSecret: c.MercadoPagoWebhookSecret,
+		WompiPrivateKey:          c.WompiPrivateKey,
+		WompiEventsSecret:        c.WompiEventsSecret,
+		PayUApiLogin:             c.PayUApiLogin,
+		PayUApiKey:               c.PayUApiKey,
+		PayUMerchantID:           c.PayUMerchantID,
+		PayUAccountID:            c.PayUAccountID,
+		PublicWebURL:             c.PublicWebURL,
+		APIPublicURL:             c.APIPublicURL,
+		Production:               c.IsProduction(),
+	}
 }

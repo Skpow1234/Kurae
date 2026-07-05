@@ -1584,6 +1584,12 @@ components:
           format: uuid
         clientSecret:
           type: string
+        checkoutUrl:
+          type: string
+          format: uri
+        paymentProvider:
+          type: string
+          enum: [stripe, mercadopago, wompi, payu]
         subtotalCents:
           type: integer
         discountCents:

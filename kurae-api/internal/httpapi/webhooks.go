@@ -10,8 +10,8 @@ import (
 )
 
 type WebhookHandler struct {
-	orders   *store.OrderRepository
-	provider payments.Provider
+	orders    *store.OrderRepository
+	provider  payments.Provider
 	ordersSvc *service.OrderService
 }
 
@@ -24,14 +24,29 @@ func NewWebhookHandler(s *store.Store, provider payments.Provider, ordersSvc *se
 }
 
 func (h *WebhookHandler) Stripe(w http.ResponseWriter, r *http.Request) {
+	h.handle(payments.ProviderStripe, w, r, r.Header.Get("Stripe-Signature"))
+}
+
+func (h *WebhookHandler) MercadoPago(w http.ResponseWriter, r *http.Request) {
+	h.handle(payments.ProviderMercadoPago, w, r, r.Header.Get("X-Signature"))
+}
+
+func (h *WebhookHandler) Wompi(w http.ResponseWriter, r *http.Request) {
+	h.handle(payments.ProviderWompi, w, r, r.Header.Get("X-Event-Checksum"))
+}
+
+func (h *WebhookHandler) PayU(w http.ResponseWriter, r *http.Request) {
+	h.handle(payments.ProviderPayU, w, r, r.Header.Get("Sign"))
+}
+
+func (h *WebhookHandler) handle(provider string, w http.ResponseWriter, r *http.Request, signature string) {
 	payload, err := io.ReadAll(r.Body)
 	if err != nil {
 		writeError(w, http.StatusBadRequest, "Invalid payload")
 		return
 	}
 
-	sig := r.Header.Get("Stripe-Signature")
-	eventID, orderID, paid, err := h.provider.VerifyWebhook(payload, sig)
+	eventID, orderID, paid, err := h.provider.VerifyWebhook(provider, payload, signature)
 	if err != nil {
 		writeError(w, http.StatusBadRequest, "Invalid signature")
 		return
@@ -41,7 +56,7 @@ func (h *WebhookHandler) Stripe(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	inserted, err := h.orders.SaveWebhookEvent(r.Context(), "stripe", eventID, payload)
+	inserted, err := h.orders.SaveWebhookEvent(r.Context(), provider, eventID, payload)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "Could not persist event")
 		return
@@ -58,6 +73,6 @@ func (h *WebhookHandler) Stripe(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	_ = h.orders.MarkWebhookProcessed(r.Context(), "stripe", eventID)
+	_ = h.orders.MarkWebhookProcessed(r.Context(), provider, eventID)
 	writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
 }
