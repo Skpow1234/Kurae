@@ -56,8 +56,10 @@ type CheckoutRequest struct {
 	BuyerEmail      string
 	SizeLabel       string
 	IdempotencyKey  string
-	DiscountCode    string
-	ReferralCode    string
+	DiscountCode       string
+	ReferralCode       string
+	CampaignSellerSlug string
+	Campaign           domain.CampaignAttribution
 	ShippingAddress domain.ShippingAddress
 }
 
@@ -117,6 +119,13 @@ func (o *OrderService) Checkout(ctx context.Context, req CheckoutRequest) (Check
 	}
 
 	expiresAt := time.Now().Add(o.ttl)
+	campaign := validate.NormalizeCampaign(req.Campaign)
+	if campaign.HasTracking() {
+		if slug := strings.TrimSpace(req.CampaignSellerSlug); slug == "" ||
+			!strings.EqualFold(slug, drop.SellerSlug) {
+			campaign = domain.CampaignAttribution{}
+		}
+	}
 	result, err := o.orders.ReserveInventory(ctx, store.CheckoutInput{
 		SellerID:        drop.SellerID,
 		DropID:          req.DropID,
@@ -127,6 +136,7 @@ func (o *OrderService) Checkout(ctx context.Context, req CheckoutRequest) (Check
 		SubtotalCents:   product.PriceCents,
 		DiscountCode:    req.DiscountCode,
 		ReferralCode:    req.ReferralCode,
+		Campaign:        campaign,
 		Currency:        drop.Currency,
 		IdempotencyKey:  req.IdempotencyKey,
 		ShippingAddress: shipping,

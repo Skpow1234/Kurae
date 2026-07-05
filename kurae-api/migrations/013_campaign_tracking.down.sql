@@ -1,0 +1,7 @@
+ALTER TABLE orders DROP COLUMN IF EXISTS utm_content;
+ALTER TABLE orders DROP COLUMN IF EXISTS utm_term;
+ALTER TABLE orders DROP COLUMN IF EXISTS utm_campaign;
+ALTER TABLE orders DROP COLUMN IF EXISTS utm_medium;
+ALTER TABLE orders DROP COLUMN IF EXISTS utm_source;
+
+DROP TABLE IF EXISTS campaign_touchpoints;

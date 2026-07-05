@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/kurae/kurae-api/internal/domain"
 	"github.com/kurae/kurae-api/internal/service"
 	"github.com/kurae/kurae-api/internal/store"
 )
@@ -97,23 +98,61 @@ func parseAnalyticsRequest(r *http.Request, sellerID string) (service.AnalyticsR
 
 func (h *AnalyticsHandler) RecordView(w http.ResponseWriter, r *http.Request) {
 	var body struct {
-		DropID string `json:"dropId"`
+		SellerSlug string `json:"sellerSlug"`
+		DropID     string `json:"dropId"`
+		UTMSource  string `json:"utmSource"`
+		UTMMedium  string `json:"utmMedium"`
+		UTMCampaign string `json:"utmCampaign"`
+		UTMTerm    string `json:"utmTerm"`
+		UTMContent string `json:"utmContent"`
 	}
 	if err := decodeJSON(r, &body); err != nil {
 		writeError(w, http.StatusBadRequest, "Invalid JSON")
 		return
 	}
-	if strings.TrimSpace(body.DropID) == "" {
-		writeError(w, http.StatusBadRequest, "dropId is required")
+
+	dropID := strings.TrimSpace(body.DropID)
+	sellerSlug := strings.TrimSpace(body.SellerSlug)
+	campaign := domain.CampaignAttribution{
+		Source:   body.UTMSource,
+		Medium:   body.UTMMedium,
+		Campaign: body.UTMCampaign,
+		Term:     body.UTMTerm,
+		Content:  body.UTMContent,
+	}
+
+	if dropID != "" && sellerSlug == "" {
+		if err := h.analytics.RecordView(r.Context(), dropID); err != nil {
+			if errors.Is(err, store.ErrNotFound) {
+				writeError(w, http.StatusNotFound, "Drop not found")
+				return
+			}
+			writeError(w, http.StatusInternalServerError, "Could not record view")
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
 		return
 	}
 
-	if err := h.analytics.RecordView(r.Context(), body.DropID); err != nil {
+	if sellerSlug == "" {
+		writeError(w, http.StatusBadRequest, "sellerSlug is required")
+		return
+	}
+
+	if err := h.analytics.RecordTouch(r.Context(), service.RecordTouchRequest{
+		SellerSlug: sellerSlug,
+		DropID:     dropID,
+		Campaign:   campaign,
+	}); err != nil {
 		if errors.Is(err, store.ErrNotFound) {
-			writeError(w, http.StatusNotFound, "Drop not found")
+			writeError(w, http.StatusNotFound, "Not found")
 			return
 		}
-		writeError(w, http.StatusInternalServerError, "Could not record view")
+		if err.Error() == "dropId or campaign params required" {
+			writeError(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		writeError(w, http.StatusInternalServerError, "Could not record touch")
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]bool{"ok": true})

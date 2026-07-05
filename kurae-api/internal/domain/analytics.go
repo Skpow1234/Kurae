@@ -41,4 +41,5 @@ type SellerAnalytics struct {
 	DailyTraffic         []DailyAnalyticsPoint `json:"dailyTraffic"`
 	Funnel               AnalyticsFunnel       `json:"funnel"`
 	DropBreakdown        []DropAnalyticsRow    `json:"dropBreakdown,omitempty"`
+	CampaignBreakdown    []CampaignAnalyticsRow `json:"campaignBreakdown,omitempty"`
 }

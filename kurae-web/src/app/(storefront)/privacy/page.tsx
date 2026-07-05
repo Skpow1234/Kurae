@@ -25,7 +25,8 @@ export default function PrivacyPage() {
         <p>
           We use your email to send order receipts, waitlist notifications, and
           account-related messages. Sellers can see buyer email addresses for orders
-          on their drops.
+          on their drops. Campaign link tags (UTM parameters) may be stored to show
+          sellers which marketing channels drive traffic and orders.
         </p>
         <p>
           For privacy questions, contact your seller directly for order-specific

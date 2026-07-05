@@ -41,6 +41,11 @@ type OrderRecord struct {
 	DiscountCodeSnapshot *string
 	ReferralCodeID       *string
 	ReferralCodeSnapshot *string
+	UTMSource            string
+	UTMMedium            string
+	UTMCampaign          string
+	UTMTerm              string
+	UTMContent           string
 	AmountCents          int
 	Currency             string
 	IdempotencyKey       *string
@@ -70,7 +75,8 @@ type CheckoutInput struct {
 	SizeLabel      string
 	SubtotalCents  int
 	DiscountCode   string
-	ReferralCode   string
+	ReferralCode       string
+	Campaign           domain.CampaignAttribution
 	Currency       string
 	IdempotencyKey string
 	ShippingAddress domain.ShippingAddress
@@ -96,6 +102,7 @@ const orderSelect = `
 		o.product_id, o.product_name_snapshot,
 		o.buyer_email, o.size_label, o.status, o.subtotal_cents, o.discount_cents,
 		o.discount_code_id, o.discount_code_snapshot, o.referral_code_id, o.referral_code_snapshot,
+		o.utm_source, o.utm_medium, o.utm_campaign, o.utm_term, o.utm_content,
 		o.amount_cents, o.currency,
 		o.idempotency_key, o.shipping_address, o.tracking_number, o.shipped_at,
 		o.created_at, o.updated_at
@@ -115,6 +122,7 @@ func (r *OrderRepository) scanOrder(row pgx.Row) (OrderRecord, error) {
 		&o.ProductID, &o.ProductName,
 		&o.BuyerEmail, &o.SizeLabel, &o.Status, &o.SubtotalCents, &o.DiscountCents,
 		&o.DiscountCodeID, &o.DiscountCodeSnapshot, &o.ReferralCodeID, &o.ReferralCodeSnapshot,
+		&o.UTMSource, &o.UTMMedium, &o.UTMCampaign, &o.UTMTerm, &o.UTMContent,
 		&o.AmountCents, &o.Currency,
 		&idem, &shippingRaw, &tracking, &shippedAt,
 		&o.CreatedAt, &o.UpdatedAt,
@@ -203,6 +211,11 @@ func (r *OrderRepository) ReserveInventory(ctx context.Context, in CheckoutInput
 		finalAmount = 0
 	}
 
+	campaign := in.Campaign
+	if !campaign.HasTracking() {
+		campaign = domain.CampaignAttribution{}
+	}
+
 	_, err = tx.Exec(ctx, `
 		UPDATE drop_products SET inventory_remaining = inventory_remaining - 1, updated_at = now()
 		WHERE id = $1
@@ -228,13 +241,15 @@ func (r *OrderRepository) ReserveInventory(ctx context.Context, in CheckoutInput
 			seller_id, drop_id, product_id, product_name_snapshot, buyer_email, size_label, status,
 			subtotal_cents, discount_cents, discount_code_id, discount_code_snapshot,
 			referral_code_id, referral_code_snapshot,
+			utm_source, utm_medium, utm_campaign, utm_term, utm_content,
 			amount_cents, currency, idempotency_key, shipping_address
 		)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22)
 		RETURNING id
 	`, in.SellerID, in.DropID, in.ProductID, in.ProductName, in.BuyerEmail, in.SizeLabel, domain.OrderReserved,
 		subtotal, discountCents, discountCodeID, discountCodeSnapshot,
 		referralCodeID, referralCodeSnapshot,
+		campaign.Source, campaign.Medium, campaign.Campaign, campaign.Term, campaign.Content,
 		finalAmount, in.Currency, in.IdempotencyKey, shippingJSON).Scan(&orderID)
 	if err != nil {
 		if isUniqueViolation(err) {

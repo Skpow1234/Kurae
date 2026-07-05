@@ -118,6 +118,14 @@ func (r *AnalyticsRepository) querySellerAnalytics(ctx context.Context, q Analyt
 		out.DropBreakdown = breakdown
 	}
 
+	campaigns, err := r.campaignBreakdown(ctx, q.SellerID, currentStart, q.Now, q.DropID)
+	if err != nil {
+		return domain.SellerAnalytics{}, err
+	}
+	if len(campaigns) > 0 {
+		out.CampaignBreakdown = campaigns
+	}
+
 	return out, nil
 }
 

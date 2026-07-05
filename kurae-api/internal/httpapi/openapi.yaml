@@ -434,18 +434,29 @@ paths:
   /public/analytics/view:
     post:
       tags: [public, analytics]
-      summary: Record drop page view
+      summary: Record drop page view and optional UTM campaign touch
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [dropId]
               properties:
+                sellerSlug:
+                  type: string
                 dropId:
                   type: string
                   format: uuid
+                utmSource:
+                  type: string
+                utmMedium:
+                  type: string
+                utmCampaign:
+                  type: string
+                utmTerm:
+                  type: string
+                utmContent:
+                  type: string
       responses:
         "200":
           description: Recorded
@@ -1859,6 +1870,30 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/DropAnalyticsRow"
+        campaignBreakdown:
+          type: array
+          items:
+            $ref: "#/components/schemas/CampaignAnalyticsRow"
+    CampaignAnalyticsRow:
+      type: object
+      properties:
+        source:
+          type: string
+        medium:
+          type: string
+        campaign:
+          type: string
+        visits:
+          type: integer
+        checkouts:
+          type: integer
+        paidOrders:
+          type: integer
+        revenueCents:
+          type: integer
+        conversionRate:
+          type: number
+          format: double
     DropAnalyticsRow:
       type: object
       properties:

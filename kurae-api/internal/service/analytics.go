@@ -10,6 +10,7 @@ import (
 
 	"github.com/kurae/kurae-api/internal/domain"
 	"github.com/kurae/kurae-api/internal/store"
+	"github.com/kurae/kurae-api/internal/validate"
 )
 
 var ErrInvalidAnalyticsRange = errors.New("days must be 7, 30, or 90")
@@ -40,6 +41,53 @@ func (a *AnalyticsService) RecordView(ctx context.Context, dropID string) error 
 	return a.analytics.RecordView(ctx, dropID, sellerID)
 }
 
+type RecordTouchRequest struct {
+	SellerSlug string
+	DropID     string
+	Campaign   domain.CampaignAttribution
+}
+
+func normalizeCampaignAttribution(c domain.CampaignAttribution) domain.CampaignAttribution {
+	return validate.NormalizeCampaign(c)
+}
+
+func (a *AnalyticsService) RecordTouch(ctx context.Context, req RecordTouchRequest) error {
+	sellerSlug := strings.TrimSpace(req.SellerSlug)
+	if sellerSlug == "" {
+		return errors.New("sellerSlug is required")
+	}
+
+	sellerID, err := a.analytics.LookupSellerIDBySlug(ctx, sellerSlug)
+	if err != nil {
+		return err
+	}
+
+	campaign := normalizeCampaignAttribution(req.Campaign)
+	dropID := strings.TrimSpace(req.DropID)
+
+	if dropID != "" {
+		if err := a.analytics.LookupDropForSeller(ctx, dropID, sellerID); err != nil {
+			return err
+		}
+		if err := a.analytics.RecordView(ctx, dropID, sellerID); err != nil {
+			return err
+		}
+	}
+
+	if !campaign.HasTracking() {
+		if dropID == "" {
+			return errors.New("dropId or campaign params required")
+		}
+		return nil
+	}
+
+	var dropPtr *string
+	if dropID != "" {
+		dropPtr = &dropID
+	}
+	return a.analytics.RecordCampaignTouchpoint(ctx, sellerID, dropPtr, campaign)
+}
+
 func (a *AnalyticsService) GetForSeller(ctx context.Context, req AnalyticsRequest) (domain.SellerAnalytics, error) {
 	days, err := normalizeAnalyticsDays(req.Days)
 	if err != nil {
@@ -68,6 +116,8 @@ func (a *AnalyticsService) ExportCSV(ctx context.Context, req AnalyticsRequest, 
 	switch strings.ToLower(strings.TrimSpace(format)) {
 	case "drops":
 		return exportDropBreakdownCSV(data), "drop-breakdown.csv", nil
+	case "campaigns":
+		return exportCampaignBreakdownCSV(data), "campaign-breakdown.csv", nil
 	default:
 		return exportDailyTrafficCSV(data), "daily-traffic.csv", nil
 	}
@@ -125,6 +175,30 @@ func exportDropBreakdownCSV(data domain.SellerAnalytics) []byte {
 		b.WriteString(strconv.Itoa(row.Views))
 		b.WriteByte(',')
 		b.WriteString(strconv.Itoa(row.WaitlistSignups))
+		b.WriteByte(',')
+		b.WriteString(strconv.Itoa(row.Checkouts))
+		b.WriteByte(',')
+		b.WriteString(strconv.Itoa(row.PaidOrders))
+		b.WriteByte(',')
+		b.WriteString(strconv.Itoa(row.RevenueCents))
+		b.WriteByte(',')
+		b.WriteString(fmt.Sprintf("%.1f", row.ConversionRate))
+		b.WriteByte('\n')
+	}
+	return []byte(b.String())
+}
+
+func exportCampaignBreakdownCSV(data domain.SellerAnalytics) []byte {
+	var b strings.Builder
+	b.WriteString("source,medium,campaign,visits,checkouts,paid_orders,revenue_cents,conversion_rate\n")
+	for _, row := range data.CampaignBreakdown {
+		b.WriteString(csvCell(row.Source))
+		b.WriteByte(',')
+		b.WriteString(csvCell(row.Medium))
+		b.WriteByte(',')
+		b.WriteString(csvCell(row.Campaign))
+		b.WriteByte(',')
+		b.WriteString(strconv.Itoa(row.Visits))
 		b.WriteByte(',')
 		b.WriteString(strconv.Itoa(row.Checkouts))
 		b.WriteByte(',')

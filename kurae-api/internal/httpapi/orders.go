@@ -130,7 +130,13 @@ func (h *OrderHandler) Checkout(w http.ResponseWriter, r *http.Request) {
 		SizeLabel       string `json:"sizeLabel"`
 		IdempotencyKey  string `json:"idempotencyKey"`
 		DiscountCode    string `json:"discountCode"`
-		ReferralCode    string `json:"referralCode"`
+		ReferralCode       string `json:"referralCode"`
+		CampaignSellerSlug string `json:"campaignSellerSlug"`
+		UTMSource          string `json:"utmSource"`
+		UTMMedium          string `json:"utmMedium"`
+		UTMCampaign        string `json:"utmCampaign"`
+		UTMTerm            string `json:"utmTerm"`
+		UTMContent         string `json:"utmContent"`
 		ShippingAddress struct {
 			Name       string `json:"name"`
 			Line1      string `json:"line1"`
@@ -163,13 +169,21 @@ func (h *OrderHandler) Checkout(w http.ResponseWriter, r *http.Request) {
 	}
 
 	result, err := h.orders.Checkout(r.Context(), service.CheckoutRequest{
-		DropID:         body.DropID,
-		ProductID:      body.ProductID,
-		BuyerEmail:     buyerEmail,
-		SizeLabel:      body.SizeLabel,
-		IdempotencyKey: idem,
-		DiscountCode:   body.DiscountCode,
-		ReferralCode:   body.ReferralCode,
+		DropID:             body.DropID,
+		ProductID:          body.ProductID,
+		BuyerEmail:         buyerEmail,
+		SizeLabel:          body.SizeLabel,
+		IdempotencyKey:     idem,
+		DiscountCode:       body.DiscountCode,
+		ReferralCode:       body.ReferralCode,
+		CampaignSellerSlug: body.CampaignSellerSlug,
+		Campaign: domain.CampaignAttribution{
+			Source:   body.UTMSource,
+			Medium:   body.UTMMedium,
+			Campaign: body.UTMCampaign,
+			Term:     body.UTMTerm,
+			Content:  body.UTMContent,
+		},
 		ShippingAddress: domain.ShippingAddress{
 			Name:       body.ShippingAddress.Name,
 			Line1:      body.ShippingAddress.Line1,
