@@ -114,6 +114,7 @@ func NewServer(cfg config.Config, s *store.Store, q *queue.RedisQueue) *Server {
 		protected.Use(SellerAuthMiddleware(authSvc))
 		protected.With(RequirePermission(domain.PermDropsRead)).Get("/drops", dropH.List)
 		protected.With(RequirePermission(domain.PermDropsWrite)).Post("/drops", dropH.Create)
+		protected.With(RequirePermission(domain.PermDropsWrite)).Post("/drops/{id}/clone", dropH.Clone)
 		protected.With(RequirePermission(domain.PermDropsRead)).Get("/drops/{id}", dropH.Get)
 		protected.With(RequirePermission(domain.PermDropsWrite)).Patch("/drops/{id}", dropH.Update)
 		protected.With(RequirePermission(domain.PermDropsWrite)).Delete("/drops/{id}", dropH.Delete)

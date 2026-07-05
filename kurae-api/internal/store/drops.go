@@ -202,6 +202,14 @@ func (r *DropRepository) ListPublished(ctx context.Context, limit int) ([]domain
 	return drops, rows.Err()
 }
 
+func (r *DropRepository) SlugExistsForSeller(ctx context.Context, sellerID, slug string) (bool, error) {
+	var exists bool
+	err := r.store.pool.QueryRow(ctx, `
+		SELECT EXISTS(SELECT 1 FROM drops WHERE seller_id = $1 AND slug = $2)
+	`, sellerID, slug).Scan(&exists)
+	return exists, err
+}
+
 func (r *DropRepository) DeleteForSeller(ctx context.Context, id, sellerID string) error {
 	var orderCount int
 	if err := r.store.pool.QueryRow(ctx, `

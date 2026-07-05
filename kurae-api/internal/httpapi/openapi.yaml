@@ -544,6 +544,20 @@ paths:
           $ref: "#/components/responses/Error"
         "409":
           description: Drop has orders and cannot be deleted
+  /drops/{id}/clone:
+    post:
+      tags: [drops]
+      summary: Clone drop as a new draft
+      description: Copies content, products, images, and inventory totals into a new draft drop with fresh dates and a unique slug.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/DropId"
+      responses:
+        "201":
+          description: Cloned drop created
+        "404":
+          $ref: "#/components/responses/Error"
   /orders:
     get:
       tags: [orders]
