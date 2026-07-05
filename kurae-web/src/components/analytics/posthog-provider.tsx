@@ -1,23 +1,19 @@
 "use client";
 
 import { PostHogProvider as PHProvider } from "posthog-js/react";
-import { Suspense, useEffect, useState } from "react";
+import { Suspense } from "react";
 
 import { PostHogPageView } from "@/components/analytics/posthog-pageview";
-import {
-  getPostHogClient,
-  getPostHogConfig,
-  initPostHog,
-} from "@/lib/analytics/posthog";
+import { getPostHogConfig, initPostHog } from "@/lib/analytics/posthog";
 
 export function PostHogProvider({ children }: { children: React.ReactNode }) {
-  const [client, setClient] = useState<ReturnType<typeof getPostHogClient>>(null);
+  const cfg = getPostHogConfig();
+  if (!cfg) {
+    return <>{children}</>;
+  }
 
-  useEffect(() => {
-    setClient(initPostHog());
-  }, []);
-
-  if (!getPostHogConfig() || !client) {
+  const client = initPostHog();
+  if (!client) {
     return <>{children}</>;
   }
 
