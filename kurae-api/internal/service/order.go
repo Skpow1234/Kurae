@@ -503,6 +503,39 @@ func (o *OrderService) checkInventoryAlerts(ctx context.Context, dropID string) 
 	}
 }
 
+func (o *OrderService) ListWebhookEventsForSeller(ctx context.Context, sellerID string, page, pageSize int) ([]domain.SellerWebhookEvent, int, error) {
+	if page < 1 {
+		page = 1
+	}
+	if pageSize <= 0 {
+		pageSize = 20
+	}
+	offset := (page - 1) * pageSize
+
+	records, total, err := o.orders.ListWebhookEventsForSeller(ctx, sellerID, pageSize, offset)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	out := make([]domain.SellerWebhookEvent, len(records))
+	for i, r := range records {
+		out[i] = domain.SellerWebhookEvent{
+			ID:         r.ID,
+			Provider:   r.Provider,
+			EventID:    r.EventID,
+			OrderID:    r.OrderID,
+			DropTitle:  r.DropTitle,
+			BuyerEmail: r.BuyerEmail,
+			CreatedAt:  r.CreatedAt.UTC().Format(time.RFC3339),
+		}
+		if r.ProcessedAt != nil {
+			processed := r.ProcessedAt.UTC().Format(time.RFC3339)
+			out[i].ProcessedAt = &processed
+		}
+	}
+	return out, total, nil
+}
+
 func (o *OrderService) GetBuyerOrderStatus(ctx context.Context, orderID, email string) (domain.BuyerOrderStatus, error) {
 	if o.devPaymentPollSync {
 		_ = o.syncPaymentFromProvider(ctx, orderID)

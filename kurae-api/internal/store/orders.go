@@ -629,16 +629,88 @@ func (r *OrderRepository) insertAudit(ctx context.Context, tx pgx.Tx, entityType
 	return err
 }
 
-func (r *OrderRepository) SaveWebhookEvent(ctx context.Context, provider, eventID string, payload []byte) (bool, error) {
+func (r *OrderRepository) SaveWebhookEvent(ctx context.Context, provider, eventID string, payload []byte, orderID string) (bool, error) {
+	var orderPtr *string
+	if trimmed := strings.TrimSpace(orderID); trimmed != "" {
+		orderPtr = &trimmed
+	}
+	inserted, err := r.insertWebhookEvent(ctx, provider, eventID, payload, orderPtr)
+	if err != nil && orderPtr != nil {
+		// Invalid or unknown order ids should not block webhook persistence.
+		return r.insertWebhookEvent(ctx, provider, eventID, payload, nil)
+	}
+	return inserted, err
+}
+
+func (r *OrderRepository) insertWebhookEvent(ctx context.Context, provider, eventID string, payload []byte, orderID *string) (bool, error) {
 	tag, err := r.store.pool.Exec(ctx, `
-		INSERT INTO webhook_events (provider, event_id, payload)
-		VALUES ($1, $2, $3)
+		INSERT INTO webhook_events (provider, event_id, payload, order_id)
+		VALUES ($1, $2, $3, $4)
 		ON CONFLICT (provider, event_id) DO NOTHING
-	`, provider, eventID, payload)
+	`, provider, eventID, payload, orderID)
 	if err != nil {
 		return false, err
 	}
 	return tag.RowsAffected() > 0, nil
+}
+
+type WebhookEventRecord struct {
+	ID          string
+	Provider    string
+	EventID     string
+	OrderID     *string
+	DropTitle   string
+	BuyerEmail  string
+	ProcessedAt *time.Time
+	CreatedAt   time.Time
+}
+
+func (r *OrderRepository) ListWebhookEventsForSeller(ctx context.Context, sellerID string, limit, offset int) ([]WebhookEventRecord, int, error) {
+	if limit <= 0 {
+		limit = 20
+	}
+	if offset < 0 {
+		offset = 0
+	}
+
+	var total int
+	if err := r.store.pool.QueryRow(ctx, `
+		SELECT COUNT(*)
+		FROM webhook_events we
+		INNER JOIN orders o ON o.id = we.order_id
+		WHERE o.seller_id = $1
+	`, sellerID).Scan(&total); err != nil {
+		return nil, 0, err
+	}
+
+	rows, err := r.store.pool.Query(ctx, `
+		SELECT we.id, we.provider, we.event_id, we.order_id,
+		       COALESCE(d.title, ''), COALESCE(o.buyer_email, ''),
+		       we.processed_at, we.created_at
+		FROM webhook_events we
+		INNER JOIN orders o ON o.id = we.order_id
+		INNER JOIN drops d ON d.id = o.drop_id
+		WHERE o.seller_id = $1
+		ORDER BY we.created_at DESC
+		LIMIT $2 OFFSET $3
+	`, sellerID, limit, offset)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer rows.Close()
+
+	events := make([]WebhookEventRecord, 0)
+	for rows.Next() {
+		var e WebhookEventRecord
+		if err := rows.Scan(
+			&e.ID, &e.Provider, &e.EventID, &e.OrderID,
+			&e.DropTitle, &e.BuyerEmail, &e.ProcessedAt, &e.CreatedAt,
+		); err != nil {
+			return nil, 0, err
+		}
+		events = append(events, e)
+	}
+	return events, total, rows.Err()
 }
 
 func (r *OrderRepository) MarkWebhookProcessed(ctx context.Context, provider, eventID string) error {

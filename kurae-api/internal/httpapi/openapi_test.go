@@ -35,6 +35,8 @@ func TestEmbeddedOpenAPISpec(t *testing.T) {
 		"TeamMember:",
 		"/orders/export:",
 		"/drops/{id}/clone:",
+		"/webhook-events:",
+		"SellerWebhookEvent:",
 		"SellerAnalytics:",
 		"DiscountPreview:",
 		"sellerLogoUrl:",

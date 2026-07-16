@@ -118,7 +118,7 @@ func TestWebhookEventIdempotency(t *testing.T) {
 	defer s.Close()
 
 	payload := []byte(`{"id":"evt_test_123","type":"payment_intent.succeeded"}`)
-	inserted, err := s.Orders().SaveWebhookEvent(ctx, "stripe", "evt_test_123", payload)
+	inserted, err := s.Orders().SaveWebhookEvent(ctx, "stripe", "evt_test_123", payload, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -126,7 +126,7 @@ func TestWebhookEventIdempotency(t *testing.T) {
 		t.Fatal("expected first webhook insert")
 	}
 
-	inserted, err = s.Orders().SaveWebhookEvent(ctx, "stripe", "evt_test_123", payload)
+	inserted, err = s.Orders().SaveWebhookEvent(ctx, "stripe", "evt_test_123", payload, "")
 	if err != nil {
 		t.Fatal(err)
 	}

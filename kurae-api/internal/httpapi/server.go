@@ -125,6 +125,7 @@ func NewServer(cfg config.Config, s *store.Store, q *queue.RedisQueue) *Server {
 		protected.With(RequirePermission(domain.PermOrdersRead)).Get("/orders/export", orderH.Export)
 		protected.With(RequirePermission(domain.PermOrdersRead)).Get("/orders/{id}", orderH.Get)
 		protected.With(RequirePermission(domain.PermOrdersFulfill)).Patch("/orders/{id}", orderH.Update)
+		protected.With(RequirePermission(domain.PermOrdersRead)).Get("/webhook-events", webhookH.ListForSeller)
 		protected.With(RequirePermission(domain.PermAnalyticsRead)).Get("/dashboard/stats", dashboardH.Stats)
 		protected.With(RequirePermission(domain.PermDiscountsWrite)).Get("/discount-codes", discountH.List)
 		protected.With(RequirePermission(domain.PermDiscountsWrite)).Post("/discount-codes", discountH.Create)

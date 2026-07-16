@@ -3,6 +3,7 @@ package httpapi
 import (
 	"io"
 	"net/http"
+	"strconv"
 
 	"github.com/kurae/kurae-api/internal/payments"
 	"github.com/kurae/kurae-api/internal/service"
@@ -39,6 +40,29 @@ func (h *WebhookHandler) PayU(w http.ResponseWriter, r *http.Request) {
 	h.handle(payments.ProviderPayU, w, r, r.Header.Get("Sign"))
 }
 
+func (h *WebhookHandler) ListForSeller(w http.ResponseWriter, r *http.Request) {
+	claims, ok := claimsFromContext(r.Context())
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+
+	page, _ := strconv.Atoi(r.URL.Query().Get("page"))
+	pageSize, _ := strconv.Atoi(r.URL.Query().Get("pageSize"))
+
+	events, total, err := h.ordersSvc.ListWebhookEventsForSeller(r.Context(), claims.SellerID, page, pageSize)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "Could not list webhook events")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]any{
+		"events": events,
+		"total":  total,
+		"page":   max(page, 1),
+	})
+}
+
 func (h *WebhookHandler) handle(provider string, w http.ResponseWriter, r *http.Request, signature string) {
 	payload, err := io.ReadAll(r.Body)
 	if err != nil {
@@ -56,7 +80,7 @@ func (h *WebhookHandler) handle(provider string, w http.ResponseWriter, r *http.
 		return
 	}
 
-	inserted, err := h.orders.SaveWebhookEvent(r.Context(), provider, eventID, payload)
+	inserted, err := h.orders.SaveWebhookEvent(r.Context(), provider, eventID, payload, orderID)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "Could not persist event")
 		return
