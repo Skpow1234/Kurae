@@ -16,10 +16,10 @@ Kurae is split into two independent repos. **Both are required for local develop
 - **Frontend:** Next.js, React, TypeScript, Tailwind CSS, shadcn/ui
 - **Backend:** Go, PostgreSQL, Redis (Docker locally)
 - **Payments:** Stripe, Mercado Pago, Wompi, and PayU
-- **Storage:** S3-compatible (product images)
+- **Storage:** S3-compatible when configured; data-URL images in local dev without S3
 - **Email:** Resend / Postmark
 - **Analytics:** First-party campaign analytics + PostHog
-- **Queue:** Redis for checkout events, emails, and reservation expiry
+- **Queue:** Redis for checkout events, emails, reservation expiry, rate limits, and JWT revocation
 
 ## Architecture
 
@@ -47,7 +47,7 @@ The MVP and Phase 2 feature set are implemented:
 cd kurae-api
 cp .env.example .env
 docker compose up -d --build
-make docker-seed   # optional demo data
+make docker-seed   # optional demo + test catalog
 
 # Terminal 2 — Web
 cd kurae-web
@@ -55,32 +55,16 @@ cp .env.example .env.local
 npm install && npm run dev
 ```
 
-Open http://localhost:3000 — API at http://localhost:8080.
+Open http://localhost:3000 — API at http://localhost:8080 — health: `curl http://localhost:8080/health`.
 
-After seeding, use these local-only test accounts:
+After seeding, local-only test accounts:
 
-- Seller: `test.seller@kurae.dev` / `KuraeTest123!`
-- Buyer: `test.buyer@kurae.dev` / `KuraeTest123!`
+| Role | Login | Open |
+|------|-------|------|
+| Seller | `test.seller@kurae.dev` / `KuraeTest123!` | [/dashboard](http://localhost:3000/dashboard), [/kurae-test-store](http://localhost:3000/kurae-test-store) |
+| Buyer | `test.buyer@kurae.dev` / `KuraeTest123!` | [/login](http://localhost:3000/login) |
 
-The test seller owns 32 varied seeded drops across live, upcoming, scheduled, draft, expired, and sold-out states.
+Hana Studio demo seller: `demo@hana.studio` / `demo1234`. Seed catalog details live in the [web](./kurae-web/README.md) and [API](./kurae-api/README.md) READMEs.
 
-The original Hana Studio demo remains available at `demo@hana.studio` / `demo1234`. See the repository READMEs for seeded-data details.
-
-### Restarting the API (Docker)
-
-```bash
-cd kurae-api
-
-# After code changes — rebuild and restart API
-docker compose up -d --build api
-
-# Restart entire stack
-docker compose up -d --build
-
-# Logs
-docker compose logs -f api worker
-```
-
-Health check: `curl http://localhost:8080/health`
-
-See [kurae-api/README.md](./kurae-api/README.md) for Stripe Block A E2E and full Docker commands.
+API Docker restart, Stripe Block A, and env vars: [kurae-api/README.md](./kurae-api/README.md).  
+Routes, BFF, and frontend env: [kurae-web/README.md](./kurae-web/README.md).

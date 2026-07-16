@@ -1,6 +1,6 @@
 # kurae-web
 
-Frontend for [Kurae](https://github.com/your-org/kurae) — public drop pages, buyer checkout, and the seller dashboard.
+Frontend for Kurae — public drop pages, buyer checkout, and the seller dashboard.
 
 **Requires [kurae-api](../kurae-api/)** running locally or deployed. All data comes from the API; there is no mock mode.
 
@@ -15,17 +15,14 @@ Frontend for [Kurae](https://github.com/your-org/kurae) — public drop pages, b
 
 ## Development
 
-**Prerequisites:** kurae-api running in Docker on port 8080 (see kurae-api README).
+**Prerequisites:** kurae-api running in Docker on port 8080 (see [kurae-api README](../kurae-api/README.md)).
 
 ```bash
 # Terminal 1 — API (Docker)
 cd ../kurae-api
 cp .env.example .env
 docker compose up -d --build
-make docker-seed   # optional demo seller + drops
-
-# After API code changes:
-docker compose up -d --build api
+make docker-seed   # optional demo seller + test catalog
 
 # Terminal 2 — Web
 cp .env.example .env.local
@@ -35,7 +32,9 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000).
 
-### Local test accounts (after `make seed`)
+Useful scripts: `npm run lint`, `npm run typecheck`, `npm run build`.
+
+### Local test accounts (after `make docker-seed`)
 
 These credentials are local seed data only. Do not use them in production.
 
@@ -44,9 +43,9 @@ These credentials are local seed data only. Do not use them in production.
 | **Seller** | `test.seller@kurae.dev` / `KuraeTest123!` | http://localhost:3000/dashboard/login |
 | **Buyer** | `test.buyer@kurae.dev` / `KuraeTest123!` | http://localhost:3000/login |
 
-The test seller includes 32 varied drops for dashboard, storefront, pagination, inventory, scheduling, and sold-out-state testing. Open the storefront at http://localhost:3000/kurae-test-store.
+The test seller includes 32 varied drops for dashboard, storefront, pagination, inventory, scheduling, and sold-out-state testing. Storefront: http://localhost:3000/kurae-test-store.
 
-The original Hana Studio demo seller is also available:
+Hana Studio demo seller:
 
 | | |
 |--|--|
@@ -59,7 +58,7 @@ You can also **sign up** at `/dashboard/signup` for your own seller account. The
 
 Buyer accounts use `/login` and `/signup`. Guest checkout remains available without an account; signing in adds order history and referral progress under `/account`.
 
-### Stripe checkout (Block A)
+### Stripe checkout (browser)
 
 Add Stripe **test** keys to both repos:
 
@@ -68,19 +67,17 @@ Add Stripe **test** keys to both repos:
 | kurae-api `.env` | `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` |
 | kurae-web `.env.local` | `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` |
 
-Rebuild API after changing keys: `docker compose up -d --build api`
+Rebuild API after changing keys: `cd ../kurae-api && make docker-restart-api`
 
-Automated API test: `cd kurae-api && make stripe-block-a`
+Automated API test: see [kurae-api Stripe Block A](../kurae-api/README.md#stripe-block-a-e2e-pre-ship).
 
-**Browser checkout (no Stripe CLI needed):** in development, after you pay with test card `4242 4242 4242 4242`, the pending page polls the API; the API checks Stripe and marks the order paid. Rebuild API after key changes: `docker compose up -d --build api`.
+**Browser checkout (no Stripe CLI needed):** pay with test card `4242 4242 4242 4242`. The pending page polls the API; in development the API can sync from Stripe and mark the order paid.
 
 Optional — forward webhooks like production:
 
 ```bash
 stripe listen --forward-to http://localhost:8080/webhooks/stripe
 ```
-
-Use test card `4242 4242 4242 4242` in Elements. Pending page polls until paid → confirmation.
 
 ### Image uploads (optional in dev)
 
