@@ -15,30 +15,30 @@ Kurae is split into two independent repos. **Both are required for local develop
 
 - **Frontend:** Next.js, React, TypeScript, Tailwind CSS, shadcn/ui
 - **Backend:** Go, PostgreSQL, Redis (Docker locally)
-- **Payments:** Stripe (MVP); LATAM providers post-MVP
+- **Payments:** Stripe, Mercado Pago, Wompi, and PayU
 - **Storage:** S3-compatible (product images)
 - **Email:** Resend / Postmark
-- **Analytics:** PostHog
+- **Analytics:** First-party campaign analytics + PostHog
 - **Queue:** Redis for checkout events, emails, and reservation expiry
 
 ## Architecture
 
-- **kurae-web** serves public drop pages, checkout UI, and the seller dashboard. Browser calls go through Next.js BFF routes (`/api/*`) which proxy to kurae-api with the seller JWT cookie.
-- **kurae-api** runs in **Docker** locally (Postgres, Redis, API, worker). Business logic, Stripe webhooks, inventory reservations, and background jobs live here.
+- **kurae-web** serves seller storefronts, public drop pages, buyer accounts, checkout UI, and the seller dashboard. Browser calls go through Next.js BFF routes (`/api/*`) which proxy to kurae-api with buyer or seller JWT cookies.
+- **kurae-api** runs in **Docker** locally (Postgres, Redis, API, worker). Business logic, payment-provider webhooks, inventory reservations, distributed rate limits, email jobs, and reservation expiry live here.
 - Contract: OpenAPI spec at `kurae-api/internal/httpapi/openapi.yaml` (Swagger UI at `/swagger/`).
 
-## MVP status
+## Product status
 
-**Implemented:**
+The MVP and Phase 2 feature set are implemented:
 
-- Seller auth, profile, and password change
-- Drop builder with image upload (S3 when configured; local embed fallback)
-- Public drop pages (countdown, live inventory polling, waitlist, OG metadata)
-- Stripe Elements checkout, pending polling, confirmation, and failure states
-- Seller orders (paginated, filterable), fulfill, and refund
-- Dashboard stats and dynamic storefront preview links
-
-**Deferred (phase 2):** referrals, discount codes, custom branding UI, LATAM payments, advanced analytics.
+- Seller and buyer authentication, profiles, buyer order history, and seller team RBAC
+- Seller storefronts and a drop builder with products, variants, inventory, schedules, cloning, and previews
+- Public drop pages with countdowns, live inventory, waitlists, referral links, campaign tracking, and OG metadata
+- Guest or account checkout with shipping, discounts, referrals, atomic reservations, and webhook-confirmed payments
+- Stripe Elements plus redirect checkout through Mercado Pago, Wompi, and PayU
+- Seller orders with pagination, CSV export, shipment tracking, fulfillment, refunds, and payment-event history
+- Branding, referral rewards, inventory alerts, waitlist email campaigns, first-party analytics, and PostHog
+- Redis-backed email jobs, distributed rate limits, reservation expiry, and JWT revocation
 
 ## Getting started
 
@@ -56,6 +56,8 @@ npm install && npm run dev
 ```
 
 Open http://localhost:3000 — API at http://localhost:8080.
+
+After seeding, the seller demo account is `demo@hana.studio` / `demo1234`. See the repository READMEs for seeded-data details.
 
 ### Restarting the API (Docker)
 
