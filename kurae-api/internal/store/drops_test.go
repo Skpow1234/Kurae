@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/kurae/kurae-api/internal/domain"
 	"github.com/kurae/kurae-api/internal/store"
 )
@@ -23,10 +24,10 @@ func TestDeleteDropForSeller(t *testing.T) {
 	}
 	defer s.Close()
 
-	slug := "test-delete-drop"
+	slug := "test-delete-drop-" + uuid.NewString()[:8]
 	_, _ = s.Pool().Exec(ctx, `DELETE FROM sellers WHERE slug = $1`, slug)
 
-	seller, err := s.Sellers().Create(ctx, "delete@test.local", "hash", "Delete Test", slug)
+	seller, err := s.Sellers().Create(ctx, slug+"@test.local", "hash", "Delete Test", slug)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -69,10 +70,10 @@ func TestDeleteDropBlockedWhenOrdersExist(t *testing.T) {
 	}
 	defer s.Close()
 
-	slug := "test-delete-blocked"
+	slug := "test-delete-blocked-" + uuid.NewString()[:8]
 	_, _ = s.Pool().Exec(ctx, `DELETE FROM sellers WHERE slug = $1`, slug)
 
-	seller, err := s.Sellers().Create(ctx, "delete-blocked@test.local", "hash", "Blocked", slug)
+	seller, err := s.Sellers().Create(ctx, slug+"@test.local", "hash", "Blocked", slug)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -114,7 +115,7 @@ func TestDeleteDropBlockedWhenOrdersExist(t *testing.T) {
 		SizeLabel:      "M",
 		SubtotalCents:  1000,
 		Currency:       "USD",
-		IdempotencyKey: "delete-blocked-key",
+		IdempotencyKey: "delete-blocked-key-" + uuid.NewString(),
 		ShippingAddress: domain.ShippingAddress{
 			Name: "Test Buyer", Line1: "123 Main St", City: "NYC",
 			Region: "NY", PostalCode: "10001", Country: "US",

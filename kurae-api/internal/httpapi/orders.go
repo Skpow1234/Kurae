@@ -274,6 +274,10 @@ func (h *OrderHandler) Checkout(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "Invalid or unavailable size")
 		return
 	}
+	if errors.Is(err, service.ErrInvalidProduct) {
+		writeError(w, http.StatusBadRequest, "Invalid or unavailable product")
+		return
+	}
 	if errors.Is(err, store.ErrInvalidDiscount) {
 		writeError(w, http.StatusBadRequest, "Invalid or expired discount code")
 		return

@@ -109,3 +109,115 @@ func TestValidateCheckoutDrop(t *testing.T) {
 		})
 	}
 }
+
+func TestValidateCheckoutProduct(t *testing.T) {
+	now := time.Date(2026, 6, 15, 12, 0, 0, 0, time.UTC)
+	start := now.Add(-time.Hour)
+	end := now.Add(24 * time.Hour)
+
+	liveDrop := domain.DropRecord{
+		PublishStatus:      domain.PublishPublished,
+		StartsAt:           start,
+		EndsAt:             end,
+		InventoryRemaining: 5,
+		Sizes:              []domain.DropSize{{ID: "m", Label: "M", Available: true}},
+	}
+
+	product := domain.DropProduct{
+		ID:                 "prod-1",
+		InventoryRemaining: 3,
+		Sizes: []domain.DropSize{
+			{ID: "m", Label: "M", Available: true},
+			{ID: "l", Label: "L", Available: false},
+		},
+	}
+
+	tests := []struct {
+		name      string
+		drop      domain.DropRecord
+		product   domain.DropProduct
+		sizeLabel string
+		wantErr   error
+	}{
+		{
+			name:      "live product valid size",
+			drop:      liveDrop,
+			product:   product,
+			sizeLabel: "M",
+			wantErr:   nil,
+		},
+		{
+			name: "product sold out",
+			drop: liveDrop,
+			product: func() domain.DropProduct {
+				p := product
+				p.InventoryRemaining = 0
+				return p
+			}(),
+			sizeLabel: "M",
+			wantErr:   store.ErrSoldOut,
+		},
+		{
+			name:      "unavailable product size",
+			drop:      liveDrop,
+			product:   product,
+			sizeLabel: "L",
+			wantErr:   ErrInvalidSize,
+		},
+		{
+			name:      "unknown product size",
+			drop:      liveDrop,
+			product:   product,
+			sizeLabel: "XL",
+			wantErr:   ErrInvalidSize,
+		},
+		{
+			name: "empty product sizes skips size check",
+			drop: liveDrop,
+			product: func() domain.DropProduct {
+				p := product
+				p.Sizes = nil
+				return p
+			}(),
+			sizeLabel: "anything",
+			wantErr:   nil,
+		},
+		{
+			name: "draft drop rejected",
+			drop: func() domain.DropRecord {
+				d := liveDrop
+				d.PublishStatus = domain.PublishDraft
+				return d
+			}(),
+			product:   product,
+			sizeLabel: "M",
+			wantErr:   ErrDropNotCheckoutable,
+		},
+		{
+			name: "upcoming drop rejected",
+			drop: func() domain.DropRecord {
+				d := liveDrop
+				d.StartsAt = now.Add(time.Hour)
+				return d
+			}(),
+			product:   product,
+			sizeLabel: "M",
+			wantErr:   ErrDropNotStarted,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			err := validateCheckoutProduct(tc.drop, tc.product, tc.sizeLabel, now)
+			if tc.wantErr == nil {
+				if err != nil {
+					t.Fatalf("expected nil, got %v", err)
+				}
+				return
+			}
+			if !errors.Is(err, tc.wantErr) {
+				t.Fatalf("expected %v, got %v", tc.wantErr, err)
+			}
+		})
+	}
+}

@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/kurae/kurae-api/internal/domain"
 	"github.com/kurae/kurae-api/internal/store"
 )
@@ -24,9 +25,10 @@ func TestReserveInventorySoldOutRace(t *testing.T) {
 	defer s.Close()
 
 	// Ensure clean slate for test seller slug
-	_, _ = s.Pool().Exec(ctx, `DELETE FROM sellers WHERE slug = 'test-inventory'`)
+	slug := "test-inventory-" + uuid.NewString()[:8]
+	_, _ = s.Pool().Exec(ctx, `DELETE FROM sellers WHERE slug = $1`, slug)
 
-	seller, err := s.Sellers().Create(ctx, "inventory@test.local", "hash", "Test", "test-inventory")
+	seller, err := s.Sellers().Create(ctx, slug+"@test.local", "hash", "Test", slug)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -75,7 +77,7 @@ func TestReserveInventorySoldOutRace(t *testing.T) {
 				SizeLabel:      "M",
 				SubtotalCents:  1000,
 				Currency:       "USD",
-				IdempotencyKey: "key-" + string(rune('a'+n)),
+				IdempotencyKey: "key-" + uuid.NewString() + "-" + string(rune('a'+n)),
 				ShippingAddress: domain.ShippingAddress{
 					Name: "Test Buyer", Line1: "123 Main St", City: "NYC",
 					Region: "NY", PostalCode: "10001", Country: "US",
@@ -118,7 +120,8 @@ func TestWebhookEventIdempotency(t *testing.T) {
 	defer s.Close()
 
 	payload := []byte(`{"id":"evt_test_123","type":"payment_intent.succeeded"}`)
-	inserted, err := s.Orders().SaveWebhookEvent(ctx, "stripe", "evt_test_123", payload, "")
+	eventID := "evt_idem_" + uuid.NewString()
+	inserted, err := s.Orders().SaveWebhookEvent(ctx, "stripe", eventID, payload, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -126,7 +129,7 @@ func TestWebhookEventIdempotency(t *testing.T) {
 		t.Fatal("expected first webhook insert")
 	}
 
-	inserted, err = s.Orders().SaveWebhookEvent(ctx, "stripe", "evt_test_123", payload, "")
+	inserted, err = s.Orders().SaveWebhookEvent(ctx, "stripe", eventID, payload, "")
 	if err != nil {
 		t.Fatal(err)
 	}

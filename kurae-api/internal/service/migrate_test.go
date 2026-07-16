@@ -1,4 +1,4 @@
-package store_test
+package service_test
 
 import (
 	"fmt"
@@ -10,7 +10,7 @@ import (
 
 func TestMain(m *testing.M) {
 	if err := testutil.ApplyMigrations(); err != nil {
-		fmt.Fprintf(os.Stderr, "store tests: migrations: %v\n", err)
+		fmt.Fprintf(os.Stderr, "service tests: migrations: %v\n", err)
 		os.Exit(1)
 	}
 	os.Exit(m.Run())
