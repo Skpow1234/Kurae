@@ -544,6 +544,13 @@ func (r *OrderRepository) ExpireStaleReservations(ctx context.Context, now time.
 		`, e.id, domain.ReservationExpired); err != nil {
 			return 0, nil, err
 		}
+		if err := r.insertAudit(ctx, tx, "reservation", e.orderID, "expired", map[string]any{
+			"reservationId": e.id,
+			"dropId":        e.dropID,
+			"productId":     e.productID,
+		}); err != nil {
+			return 0, nil, err
+		}
 		if e.productID != "" {
 			if _, err := tx.Exec(ctx, `
 				UPDATE drop_products SET inventory_remaining = inventory_remaining + 1, updated_at = now()
@@ -561,11 +568,28 @@ func (r *OrderRepository) ExpireStaleReservations(ctx context.Context, now time.
 		if remainingBefore == 0 {
 			restockedSet[e.dropID] = struct{}{}
 		}
-		if _, err := tx.Exec(ctx, `
+		var orderStatus string
+		if err := tx.QueryRow(ctx, `
+			SELECT status FROM orders WHERE id = $1 FOR UPDATE
+		`, e.orderID).Scan(&orderStatus); err != nil {
+			return 0, nil, err
+		}
+		tag, err := tx.Exec(ctx, `
 			UPDATE orders SET status = $2, updated_at = now()
 			WHERE id = $1 AND status IN ('reserved', 'payment_pending')
-		`, e.orderID, domain.OrderCancelled); err != nil {
+		`, e.orderID, domain.OrderCancelled)
+		if err != nil {
 			return 0, nil, err
+		}
+		if tag.RowsAffected() > 0 {
+			if err := r.insertAudit(ctx, tx, "order", e.orderID, "reservation_expired", map[string]any{
+				"reason":         "reservation_timeout",
+				"reservationId":  e.id,
+				"dropId":         e.dropID,
+				"previousStatus": orderStatus,
+			}); err != nil {
+				return 0, nil, err
+			}
 		}
 		var discountCodeID *string
 		if err := tx.QueryRow(ctx, `

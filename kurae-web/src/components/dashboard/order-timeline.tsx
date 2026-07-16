@@ -9,6 +9,8 @@ function formatEventLabel(label: string): string {
     fulfilled: "Fulfilled",
     cancelled: "Cancelled",
     refunded: "Refunded",
+    reservation_expired: "Reservation expired",
+    expired: "Expired",
   };
   return (
     labels[label] ??

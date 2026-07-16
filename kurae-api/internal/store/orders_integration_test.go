@@ -67,6 +67,36 @@ func TestExpireStaleReservationsRestocksAndCancels(t *testing.T) {
 	if updated.InventoryRemaining != 2 {
 		t.Fatalf("expected inventory restored to 2, got %d", updated.InventoryRemaining)
 	}
+
+	orderEvents, err := s.Orders().ListAuditEvents(ctx, "order", result.Order.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	foundExpired := false
+	for _, ev := range orderEvents {
+		if ev.Label == "reservation_expired" {
+			foundExpired = true
+			break
+		}
+	}
+	if !foundExpired {
+		t.Fatalf("expected reservation_expired audit on order, got %#v", orderEvents)
+	}
+
+	reservationEvents, err := s.Orders().ListAuditEvents(ctx, "reservation", result.Order.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	foundReservationExpired := false
+	for _, ev := range reservationEvents {
+		if ev.Label == "expired" {
+			foundReservationExpired = true
+			break
+		}
+	}
+	if !foundReservationExpired {
+		t.Fatalf("expected expired audit on reservation, got %#v", reservationEvents)
+	}
 }
 
 func TestExpireStaleReservationsIgnoresActiveFuture(t *testing.T) {
