@@ -156,10 +156,6 @@ Point `NEXT_PUBLIC_API_URL` in kurae-web at this API. Protected seller routes ex
 - Production env guards for JWT, Stripe, Redis, email, and CORS
 - Payment webhook signature verification per provider
 
-## Design
-
-Feature specifications live in `docs/design.md` (local only, gitignored).
-
 ## Related
 
 - [kurae-web](../kurae-web/) — frontend storefront and dashboard
