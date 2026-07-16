@@ -3,13 +3,16 @@ package service
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
 	"github.com/kurae/kurae-api/internal/domain"
 	"github.com/kurae/kurae-api/internal/store"
 	"github.com/kurae/kurae-api/internal/validate"
+	"github.com/redis/go-redis/v9"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -19,21 +22,26 @@ var (
 	ErrWeakPassword       = errors.New("weak password")
 )
 
-const minPasswordLength = 8
+const (
+	minPasswordLength = 8
+	tokenTTL          = 7 * 24 * time.Hour
+)
 
 type AuthService struct {
 	sellers   *store.SellerRepository
 	buyers    *store.BuyerRepository
 	team      *store.TeamRepository
 	jwtSecret []byte
+	rdb       redis.Cmdable // nil => token revocation disabled
 }
 
-func NewAuthService(s *store.Store, jwtSecret string) *AuthService {
+func NewAuthService(s *store.Store, jwtSecret string, rdb redis.Cmdable) *AuthService {
 	return &AuthService{
 		sellers:   s.Sellers(),
 		buyers:    s.Buyers(),
 		team:      s.Team(),
 		jwtSecret: []byte(jwtSecret),
+		rdb:       rdb,
 	}
 }
 
@@ -420,9 +428,17 @@ func (c AuthClaims) IsBuyer() bool {
 }
 
 func (a *AuthService) ParseToken(tokenStr string) (AuthClaims, error) {
-	token, err := jwt.ParseWithClaims(tokenStr, &AuthClaims{}, func(t *jwt.Token) (any, error) {
-		return a.jwtSecret, nil
-	})
+	token, err := jwt.ParseWithClaims(
+		tokenStr,
+		&AuthClaims{},
+		func(t *jwt.Token) (any, error) {
+			if t.Method != jwt.SigningMethodHS256 {
+				return nil, fmt.Errorf("unexpected signing method: %v", t.Header["alg"])
+			}
+			return a.jwtSecret, nil
+		},
+		jwt.WithValidMethods([]string{jwt.SigningMethodHS256.Alg()}),
+	)
 	if err != nil {
 		return AuthClaims{}, ErrUnauthorized
 	}
@@ -430,21 +446,61 @@ func (a *AuthService) ParseToken(tokenStr string) (AuthClaims, error) {
 	if !ok || !token.Valid {
 		return AuthClaims{}, ErrUnauthorized
 	}
+	if a.isRevoked(context.Background(), c.ID) {
+		return AuthClaims{}, ErrUnauthorized
+	}
 	return *c, nil
+}
+
+// RevokeToken blacklists the token's jti until expiry when Redis is configured.
+func (a *AuthService) RevokeToken(ctx context.Context, claims AuthClaims) error {
+	if a.rdb == nil || strings.TrimSpace(claims.ID) == "" {
+		return nil
+	}
+	ttl := time.Until(claims.ExpiresAt.Time)
+	if ttl <= 0 {
+		return nil
+	}
+	key := revokedTokenKey(claims.ID)
+	return a.rdb.Set(ctx, key, "1", ttl).Err()
+}
+
+func (a *AuthService) isRevoked(ctx context.Context, jti string) bool {
+	if a.rdb == nil || strings.TrimSpace(jti) == "" {
+		return false
+	}
+	checkCtx, cancel := context.WithTimeout(ctx, 50*time.Millisecond)
+	defer cancel()
+	n, err := a.rdb.Exists(checkCtx, revokedTokenKey(jti)).Result()
+	if err != nil {
+		// Fail open: Redis blip should not lock out valid sessions.
+		return false
+	}
+	return n > 0
+}
+
+func revokedTokenKey(jti string) string {
+	return "kurae:jwt:revoked:" + jti
+}
+
+func (a *AuthService) newRegisteredClaims() jwt.RegisteredClaims {
+	now := time.Now()
+	return jwt.RegisteredClaims{
+		ID:        uuid.NewString(),
+		ExpiresAt: jwt.NewNumericDate(now.Add(tokenTTL)),
+		IssuedAt:  jwt.NewNumericDate(now),
+	}
 }
 
 func (a *AuthService) issueOwnerToken(seller domain.Seller) (string, error) {
 	c := AuthClaims{
-		Role:       "seller",
-		SellerID:   seller.ID,
-		TeamRole:   string(domain.TeamRoleOwner),
-		Email:      seller.Email,
-		SellerSlug: seller.Slug,
-		SellerName: seller.Name,
-		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(7 * 24 * time.Hour)),
-			IssuedAt:  jwt.NewNumericDate(time.Now()),
-		},
+		Role:             "seller",
+		SellerID:         seller.ID,
+		TeamRole:         string(domain.TeamRoleOwner),
+		Email:            seller.Email,
+		SellerSlug:       seller.Slug,
+		SellerName:       seller.Name,
+		RegisteredClaims: a.newRegisteredClaims(),
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, c)
 	return token.SignedString(a.jwtSecret)
@@ -452,18 +508,15 @@ func (a *AuthService) issueOwnerToken(seller domain.Seller) (string, error) {
 
 func (a *AuthService) issueTeamMemberToken(seller domain.Seller, member store.TeamMemberRecord) (string, error) {
 	c := AuthClaims{
-		Role:         "seller",
-		SellerID:     seller.ID,
-		TeamMemberID: member.ID,
-		TeamRole:     string(member.Role),
-		Email:        member.Email,
-		SellerSlug:   seller.Slug,
-		SellerName:   seller.Name,
-		MemberName:   member.Name,
-		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(7 * 24 * time.Hour)),
-			IssuedAt:  jwt.NewNumericDate(time.Now()),
-		},
+		Role:             "seller",
+		SellerID:         seller.ID,
+		TeamMemberID:     member.ID,
+		TeamRole:         string(member.Role),
+		Email:            member.Email,
+		SellerSlug:       seller.Slug,
+		SellerName:       seller.Name,
+		MemberName:       member.Name,
+		RegisteredClaims: a.newRegisteredClaims(),
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, c)
 	return token.SignedString(a.jwtSecret)
@@ -471,14 +524,11 @@ func (a *AuthService) issueTeamMemberToken(seller domain.Seller, member store.Te
 
 func (a *AuthService) issueBuyerToken(buyer domain.Buyer) (string, error) {
 	c := AuthClaims{
-		Role:      "buyer",
-		BuyerID:   buyer.ID,
-		Email:     buyer.Email,
-		BuyerName: buyer.Name,
-		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(7 * 24 * time.Hour)),
-			IssuedAt:  jwt.NewNumericDate(time.Now()),
-		},
+		Role:             "buyer",
+		BuyerID:          buyer.ID,
+		Email:            buyer.Email,
+		BuyerName:        buyer.Name,
+		RegisteredClaims: a.newRegisteredClaims(),
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, c)
 	return token.SignedString(a.jwtSecret)

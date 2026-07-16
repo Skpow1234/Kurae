@@ -23,7 +23,7 @@ type Server struct {
 }
 
 func NewServer(cfg config.Config, s *store.Store, q *queue.RedisQueue, rdb *redis.Client) *Server {
-	authSvc := service.NewAuthService(s, cfg.JWTSecret)
+	authSvc := service.NewAuthService(s, cfg.JWTSecret, rdb)
 	waitlistNotify := service.NewWaitlistNotifyService(s, q, cfg.PublicWebURL, cfg.WaitlistSoonNotifyBefore)
 	inventoryAlerts := service.NewInventoryAlertService(s, q, cfg.PublicWebURL)
 	dropSvc := service.NewDropService(s, waitlistNotify, inventoryAlerts)

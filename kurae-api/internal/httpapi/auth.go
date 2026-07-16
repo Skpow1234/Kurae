@@ -88,6 +88,11 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
+	if token := bearerToken(r); token != "" {
+		if claims, err := h.auth.ParseToken(token); err == nil {
+			_ = h.auth.RevokeToken(r.Context(), claims)
+		}
+	}
 	writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
 }
 

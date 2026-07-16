@@ -81,10 +81,12 @@ paths:
   /auth/logout:
     post:
       tags: [auth]
-      summary: Logout (client clears token)
+      summary: Logout (clears client token; revokes JWT server-side when Redis is configured)
+      security:
+        - bearerAuth: []
       responses:
         "200":
-          description: OK
+          description: OK — always succeeds; Bearer token is revoked when Redis is available
   /auth/me:
     get:
       tags: [auth]
