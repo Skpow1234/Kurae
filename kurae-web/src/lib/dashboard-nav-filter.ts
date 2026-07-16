@@ -7,7 +7,11 @@ function roleCanSeeTeam(role: TeamRole): boolean {
 
 function roleCanSeeMore(role: TeamRole, href: string): boolean {
   if (role === "staff") {
-    return href === "/dashboard/analytics" || href === "/dashboard/settings";
+    return (
+      href === "/dashboard/analytics" ||
+      href === "/dashboard/webhooks" ||
+      href === "/dashboard/settings"
+    );
   }
   if (role === "admin") {
     return href !== "/dashboard/settings/team";
