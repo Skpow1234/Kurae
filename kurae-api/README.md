@@ -51,6 +51,8 @@ The seed is idempotent and creates local-only test credentials:
 | Seller | `test.seller@kurae.dev` | `KuraeTest123!` |
 | Buyer | `test.buyer@kurae.dev` | `KuraeTest123!` |
 
+The test seller owns 32 catalog drops spanning live, upcoming, scheduled, draft, expired, and sold-out states. The data includes varied inventory levels, waitlist counts, apparel categories, sizes, prices, images, and USD/COP/MXN/BRL currencies.
+
 It also preserves the original Hana Studio demo seller (`demo@hana.studio` / `demo1234`). Running the seed again resets the explicit test-account passwords above. Never run development seed data against production.
 
 | Service | URL / port |

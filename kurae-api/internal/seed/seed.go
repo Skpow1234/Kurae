@@ -122,16 +122,20 @@ func Run(ctx context.Context, s *store.Store) error {
 	if err := seedOrders(ctx, s, seller.ID, dropIDs); err != nil {
 		return err
 	}
-	return seedTestAccounts(ctx, s)
+	testSeller, err := seedTestAccounts(ctx, s)
+	if err != nil {
+		return err
+	}
+	return seedTestCatalog(ctx, s, testSeller.ID)
 }
 
-func seedTestAccounts(ctx context.Context, s *store.Store) error {
+func seedTestAccounts(ctx context.Context, s *store.Store) (domain.Seller, error) {
 	sellerHash, err := bcrypt.GenerateFromPassword(
 		[]byte(TestSellerPassword),
 		bcrypt.DefaultCost,
 	)
 	if err != nil {
-		return err
+		return domain.Seller{}, err
 	}
 
 	testSeller, err := s.Sellers().Create(
@@ -142,16 +146,16 @@ func seedTestAccounts(ctx context.Context, s *store.Store) error {
 		TestSellerSlug,
 	)
 	if err != nil && err != store.ErrConflict {
-		return err
+		return domain.Seller{}, err
 	}
 	if err == store.ErrConflict {
 		testSeller, err = s.Sellers().GetBySlug(ctx, TestSellerSlug)
 		if err != nil {
-			return fmt.Errorf("get test seller: %w", err)
+			return domain.Seller{}, fmt.Errorf("get test seller: %w", err)
 		}
 	}
 	if err := s.Sellers().UpdatePasswordHash(ctx, testSeller.ID, string(sellerHash)); err != nil {
-		return fmt.Errorf("reset test seller password: %w", err)
+		return domain.Seller{}, fmt.Errorf("reset test seller password: %w", err)
 	}
 
 	buyerHash, err := bcrypt.GenerateFromPassword(
@@ -159,7 +163,7 @@ func seedTestAccounts(ctx context.Context, s *store.Store) error {
 		bcrypt.DefaultCost,
 	)
 	if err != nil {
-		return err
+		return domain.Seller{}, err
 	}
 	testBuyer, err := s.Buyers().Create(
 		ctx,
@@ -168,19 +172,19 @@ func seedTestAccounts(ctx context.Context, s *store.Store) error {
 		"Kurae Test Buyer",
 	)
 	if err != nil && err != store.ErrConflict {
-		return err
+		return domain.Seller{}, err
 	}
 	if err == store.ErrConflict {
 		testBuyer, err = s.Buyers().GetByEmail(ctx, TestBuyerEmail)
 		if err != nil {
-			return fmt.Errorf("get test buyer: %w", err)
+			return domain.Seller{}, fmt.Errorf("get test buyer: %w", err)
 		}
 	}
 	if err := s.Buyers().UpdatePasswordHash(ctx, testBuyer.ID, string(buyerHash)); err != nil {
-		return fmt.Errorf("reset test buyer password: %w", err)
+		return domain.Seller{}, fmt.Errorf("reset test buyer password: %w", err)
 	}
 
-	return nil
+	return testSeller, nil
 }
 
 func patchDropStats(ctx context.Context, s *store.Store, dropID string, remaining, waitlist int) error {

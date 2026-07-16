@@ -44,6 +44,8 @@ These credentials are local seed data only. Do not use them in production.
 | **Seller** | `test.seller@kurae.dev` / `KuraeTest123!` | http://localhost:3000/dashboard/login |
 | **Buyer** | `test.buyer@kurae.dev` / `KuraeTest123!` | http://localhost:3000/login |
 
+The test seller includes 32 varied drops for dashboard, storefront, pagination, inventory, scheduling, and sold-out-state testing. Open the storefront at http://localhost:3000/kurae-test-store.
+
 The original Hana Studio demo seller is also available:
 
 | | |

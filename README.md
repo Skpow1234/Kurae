@@ -62,6 +62,8 @@ After seeding, use these local-only test accounts:
 - Seller: `test.seller@kurae.dev` / `KuraeTest123!`
 - Buyer: `test.buyer@kurae.dev` / `KuraeTest123!`
 
+The test seller owns 32 varied seeded drops across live, upcoming, scheduled, draft, expired, and sold-out states.
+
 The original Hana Studio demo remains available at `demo@hana.studio` / `demo1234`. See the repository READMEs for seeded-data details.
 
 ### Restarting the API (Docker)

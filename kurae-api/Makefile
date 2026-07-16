@@ -35,7 +35,7 @@ docker-logs:
 	docker compose logs -f api worker
 
 docker-seed:
-	docker compose run --rm api seed
+	docker compose run --rm --build api seed
 
 migrate-up:
 	go run ./cmd/migrate up
