@@ -106,6 +106,17 @@ func Load() (Config, error) {
 		cfg.APIPublicURL = fmt.Sprintf("http://localhost:%s", cfg.Port)
 	}
 
+	if raw := strings.TrimSpace(os.Getenv("RESERVATION_TTL")); raw != "" {
+		d, err := time.ParseDuration(raw)
+		if err != nil {
+			return cfg, fmt.Errorf("RESERVATION_TTL: %w", err)
+		}
+		if d <= 0 {
+			return cfg, fmt.Errorf("RESERVATION_TTL must be positive")
+		}
+		cfg.ReservationTTL = d
+	}
+
 	if raw := strings.TrimSpace(os.Getenv("WAITLIST_SOON_NOTIFY_BEFORE")); raw != "" {
 		d, err := time.ParseDuration(raw)
 		if err != nil {

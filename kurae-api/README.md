@@ -119,6 +119,7 @@ Host `.env` uses `localhost` for `DATABASE_URL` / `REDIS_URL` (see `.env.example
 | `ENV` | `development` (default) or `production` — enables prod guards |
 | `DATABASE_URL` | PostgreSQL connection string |
 | `REDIS_URL` | Redis connection string |
+| `RESERVATION_TTL` | Inventory hold duration as a Go duration (default `15m`) |
 | `JWT_SECRET` | Session signing secret (32+ chars required in production) |
 | `STRIPE_SECRET_KEY` | Stripe API secret (required in production) |
 | `STRIPE_WEBHOOK_SECRET` | Stripe webhook signing secret (required in production) |

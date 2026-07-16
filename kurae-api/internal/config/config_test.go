@@ -1,6 +1,9 @@
 package config
 
-import "testing"
+import (
+	"testing"
+	"time"
+)
 
 func TestValidateProductionGuards(t *testing.T) {
 	t.Parallel()
@@ -88,5 +91,50 @@ func TestIsLocalhostOrigin(t *testing.T) {
 	}
 	if isLocalhostOrigin("https://kurae.example.com") {
 		t.Fatal("expected non-localhost")
+	}
+}
+
+func TestLoadReservationTTL(t *testing.T) {
+	t.Setenv("ENV", "development")
+	t.Setenv("DATABASE_URL", "postgres://test")
+	t.Setenv("JWT_SECRET", "dev-secret")
+	t.Setenv("RESERVATION_TTL", "20m")
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if cfg.ReservationTTL != 20*time.Minute {
+		t.Fatalf("expected 20m, got %s", cfg.ReservationTTL)
+	}
+}
+
+func TestLoadReservationTTLDefaultsToFifteenMinutes(t *testing.T) {
+	t.Setenv("ENV", "development")
+	t.Setenv("DATABASE_URL", "postgres://test")
+	t.Setenv("JWT_SECRET", "dev-secret")
+	t.Setenv("RESERVATION_TTL", "")
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if cfg.ReservationTTL != DefaultReservationTTL {
+		t.Fatalf("expected default %s, got %s", DefaultReservationTTL, cfg.ReservationTTL)
+	}
+}
+
+func TestLoadRejectsInvalidReservationTTL(t *testing.T) {
+	for _, value := range []string{"not-a-duration", "0s", "-1m"} {
+		t.Run(value, func(t *testing.T) {
+			t.Setenv("ENV", "development")
+			t.Setenv("DATABASE_URL", "postgres://test")
+			t.Setenv("JWT_SECRET", "dev-secret")
+			t.Setenv("RESERVATION_TTL", value)
+
+			if _, err := Load(); err == nil {
+				t.Fatalf("expected RESERVATION_TTL=%q to fail", value)
+			}
+		})
 	}
 }
