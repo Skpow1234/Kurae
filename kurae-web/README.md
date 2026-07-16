@@ -15,16 +15,17 @@ Frontend for Kurae — public drop pages, buyer checkout, and the seller dashboa
 
 ## Development
 
-**Prerequisites:** kurae-api running in Docker on port 8080 (see [kurae-api README](../kurae-api/README.md)).
+**Prerequisites:** kurae-api running in Docker on port 8080 — [kurae-api Development (Docker)](../kurae-api/README.md#development-docker).
 
 ```bash
-# Terminal 1 — API (Docker)
+# Terminal 1 — API (Docker) — if not already up
 cd ../kurae-api
 cp .env.example .env
-docker compose up -d --build
+make docker-up
 make docker-seed   # optional demo seller + test catalog
 
 # Terminal 2 — Web
+cd ../kurae-web
 cp .env.example .env.local
 npm install
 npm run dev
@@ -32,11 +33,24 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000).
 
-Useful scripts: `npm run lint`, `npm run typecheck`, `npm run build`.
+### Useful npm commands
 
-### Local test accounts (after `make docker-seed`)
+All commands assume you are in `kurae-web/`.
 
-These credentials are local seed data only. Do not use them in production.
+| Command | What it does |
+|---------|----------------|
+| `npm install` | Install dependencies |
+| `npm run dev` | Next.js dev server (http://localhost:3000) |
+| `npm run build` | Production build |
+| `npm run start` | Serve the production build locally |
+| `npm run lint` | ESLint |
+| `npm run typecheck` | TypeScript check (`tsc --noEmit`) |
+
+Copy env from `.env.example` → `.env.local`. Production builds require `NEXT_PUBLIC_API_URL` (see [Environment variables](#environment-variables)).
+
+### Local test accounts
+
+After `make docker-seed` in `kurae-api`. These credentials are local seed data only — do not use them in production.
 
 | Role | Login | Entry point |
 |------|-------|-------------|
@@ -69,7 +83,7 @@ Add Stripe **test** keys to both repos:
 
 Rebuild API after changing keys: `cd ../kurae-api && make docker-restart-api`
 
-Automated API test: see [kurae-api Stripe Block A](../kurae-api/README.md#stripe-block-a-e2e-pre-ship).
+Automated API test: see [kurae-api Stripe Block A](../kurae-api/README.md#stripe-block-a-e2e).
 
 **Browser checkout (no Stripe CLI needed):** pay with test card `4242 4242 4242 4242`. The pending page polls the API; in development the API can sync from Stripe and mark the order paid.
 

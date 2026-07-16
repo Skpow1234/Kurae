@@ -26,21 +26,15 @@ Backend for Kurae — REST API, payment webhooks, background workers, and databa
 - Docker + Docker Compose
 - Go 1.24+ (for tests and optional host-side `go run`)
 
-## Development (Docker — recommended)
+## Development (Docker)
 
 The full stack runs in Docker: **Postgres, Redis, migrations, API, and worker**.
 
 ```bash
 cd kurae-api
 cp .env.example .env
-docker compose up -d --build
-# or: make docker-up
-```
-
-First-time demo data:
-
-```bash
-make docker-seed
+make docker-up      # or: docker compose up -d --build
+make docker-seed    # first-time (or refresh) demo + test catalog
 ```
 
 The seed is idempotent and creates local-only test credentials (never use against production):
@@ -61,20 +55,31 @@ The test seller owns 32 catalog drops spanning live, upcoming, scheduled, draft,
 
 Smoke check: `curl http://localhost:8080/health` → `{"status":"ok","checks":{"postgres":"ok","redis":"ok"}}` (redis may be `"skipped"` in dev without Redis).
 
-### Restarting services (Docker)
+### Useful Docker commands
 
-```bash
-# Rebuild and restart API after code changes
-make docker-restart-api
+All commands assume you are in `kurae-api/` with a `.env` present.
 
-# Restart worker / full stack / logs / stop
-make docker-restart-worker
-make docker-up
-make docker-logs
-make docker-down
-```
+| Command | What it does |
+|---------|----------------|
+| `make docker-up` | Build and start postgres, redis, migrate, api, worker |
+| `make docker-down` | Stop containers (`docker compose down`) |
+| `make docker-restart-api` | Rebuild and restart **api** after Go changes |
+| `make docker-restart-worker` | Rebuild and restart **worker** |
+| `make docker-logs` | Tail API + worker logs |
+| `make docker-seed` | Rebuild seed binary and load demo/test data (idempotent) |
+| `make deps-up` | Start only postgres + redis |
+| `make deps-restart` | Restart postgres + redis |
+| `make deps-down` | Stop the compose stack |
+| `docker compose ps` | Show container status |
+| `docker compose logs -f api` | Tail API only |
+| `docker compose logs -f worker` | Tail worker only |
+| `docker compose exec -T postgres psql -U kurae -d kurae` | Postgres shell |
+| `curl http://localhost:8080/health` | Deep health check |
+| `curl http://localhost:8080/swagger/` | OpenAPI UI |
 
-### Stripe Block A E2E (pre-ship)
+Host-side (Go on the machine, deps still in Docker): `make migrate-up`, `make migrate-down`, `make seed`, `make run-api`, `make run-worker`, `make test`, `make build`, `make stripe-block-a`. See [Optional: run API on the host](#optional-run-api-on-the-host).
+
+### Stripe Block A E2E
 
 1. Add Stripe **test** keys to `.env`:
    - `STRIPE_SECRET_KEY=sk_test_...`
