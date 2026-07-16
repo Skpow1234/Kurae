@@ -57,7 +57,12 @@ npm install && npm run dev
 
 Open http://localhost:3000 — API at http://localhost:8080.
 
-After seeding, the seller demo account is `demo@hana.studio` / `demo1234`. See the repository READMEs for seeded-data details.
+After seeding, use these local-only test accounts:
+
+- Seller: `test.seller@kurae.dev` / `KuraeTest123!`
+- Buyer: `test.buyer@kurae.dev` / `KuraeTest123!`
+
+The original Hana Studio demo remains available at `demo@hana.studio` / `demo1234`. See the repository READMEs for seeded-data details.
 
 ### Restarting the API (Docker)
 

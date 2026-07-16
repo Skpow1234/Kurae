@@ -11,6 +11,14 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+const (
+	TestSellerEmail    = "test.seller@kurae.dev"
+	TestSellerPassword = "KuraeTest123!"
+	TestSellerSlug     = "kurae-test-store"
+	TestBuyerEmail     = "test.buyer@kurae.dev"
+	TestBuyerPassword  = "KuraeTest123!"
+)
+
 // Demo account: demo@hana.studio / demo1234
 // Storefront: /hana-studio/{drop-slug}
 func Run(ctx context.Context, s *store.Store) error {
@@ -38,8 +46,8 @@ func Run(ctx context.Context, s *store.Store) error {
 	demos := []store.CreateDropInput{
 		{
 			SellerID: seller.ID, Slug: "sakura-hoodie", Title: "Sakura Hoodie — Drop 001",
-			Description: "Heavyweight fleece. Embroidered petal mark. Limited to 120 units.",
-			Story:       "Inspired by late-season sakura — dusty blush on warm stone. Cut wide, dropped shoulder, woven label at hem.",
+			Description:  "Heavyweight fleece. Embroidered petal mark. Limited to 120 units.",
+			Story:        "Inspired by late-season sakura — dusty blush on warm stone. Cut wide, dropped shoulder, woven label at hem.",
 			PromoMessage: &promo, PriceCents: 8900, InventoryTotal: 120,
 			HeroImageURL: "https://images.unsplash.com/photo-1556821840-3a63f95609a7?w=1600&q=80",
 			GalleryImageURLs: []string{
@@ -73,7 +81,7 @@ func Run(ctx context.Context, s *store.Store) error {
 			SellerID: seller.ID, Slug: "winter-bloom", Title: "Winter Bloom Jacket",
 			Description: "Insulated jacket. Limited run.",
 			Story:       "Past season drop.",
-			PriceCents: 12000, InventoryTotal: 50,
+			PriceCents:  12000, InventoryTotal: 50,
 			HeroImageURL:     "https://images.unsplash.com/photo-1544022613-e87ca75a784a?w=1600&q=80",
 			GalleryImageURLs: []string{},
 			StartsAt:         now.Add(-30 * 24 * time.Hour), EndsAt: now.Add(-2 * 24 * time.Hour),
@@ -111,7 +119,68 @@ func Run(ctx context.Context, s *store.Store) error {
 		return err
 	}
 
-	return seedOrders(ctx, s, seller.ID, dropIDs)
+	if err := seedOrders(ctx, s, seller.ID, dropIDs); err != nil {
+		return err
+	}
+	return seedTestAccounts(ctx, s)
+}
+
+func seedTestAccounts(ctx context.Context, s *store.Store) error {
+	sellerHash, err := bcrypt.GenerateFromPassword(
+		[]byte(TestSellerPassword),
+		bcrypt.DefaultCost,
+	)
+	if err != nil {
+		return err
+	}
+
+	testSeller, err := s.Sellers().Create(
+		ctx,
+		TestSellerEmail,
+		string(sellerHash),
+		"Kurae Test Store",
+		TestSellerSlug,
+	)
+	if err != nil && err != store.ErrConflict {
+		return err
+	}
+	if err == store.ErrConflict {
+		testSeller, err = s.Sellers().GetBySlug(ctx, TestSellerSlug)
+		if err != nil {
+			return fmt.Errorf("get test seller: %w", err)
+		}
+	}
+	if err := s.Sellers().UpdatePasswordHash(ctx, testSeller.ID, string(sellerHash)); err != nil {
+		return fmt.Errorf("reset test seller password: %w", err)
+	}
+
+	buyerHash, err := bcrypt.GenerateFromPassword(
+		[]byte(TestBuyerPassword),
+		bcrypt.DefaultCost,
+	)
+	if err != nil {
+		return err
+	}
+	testBuyer, err := s.Buyers().Create(
+		ctx,
+		TestBuyerEmail,
+		string(buyerHash),
+		"Kurae Test Buyer",
+	)
+	if err != nil && err != store.ErrConflict {
+		return err
+	}
+	if err == store.ErrConflict {
+		testBuyer, err = s.Buyers().GetByEmail(ctx, TestBuyerEmail)
+		if err != nil {
+			return fmt.Errorf("get test buyer: %w", err)
+		}
+	}
+	if err := s.Buyers().UpdatePasswordHash(ctx, testBuyer.ID, string(buyerHash)); err != nil {
+		return fmt.Errorf("reset test buyer password: %w", err)
+	}
+
+	return nil
 }
 
 func patchDropStats(ctx context.Context, s *store.Store, dropID string, remaining, waitlist int) error {

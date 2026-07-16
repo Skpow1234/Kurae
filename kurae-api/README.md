@@ -44,6 +44,15 @@ First-time demo data:
 make docker-seed
 ```
 
+The seed is idempotent and creates local-only test credentials:
+
+| Role | Email | Password |
+|------|-------|----------|
+| Seller | `test.seller@kurae.dev` | `KuraeTest123!` |
+| Buyer | `test.buyer@kurae.dev` | `KuraeTest123!` |
+
+It also preserves the original Hana Studio demo seller (`demo@hana.studio` / `demo1234`). Running the seed again resets the explicit test-account passwords above. Never run development seed data against production.
+
 | Service | URL / port |
 |---------|------------|
 | API | http://localhost:8080 |

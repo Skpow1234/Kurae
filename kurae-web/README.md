@@ -35,7 +35,16 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000).
 
-### Demo seller (after `make seed`)
+### Local test accounts (after `make seed`)
+
+These credentials are local seed data only. Do not use them in production.
+
+| Role | Login | Entry point |
+|------|-------|-------------|
+| **Seller** | `test.seller@kurae.dev` / `KuraeTest123!` | http://localhost:3000/dashboard/login |
+| **Buyer** | `test.buyer@kurae.dev` / `KuraeTest123!` | http://localhost:3000/login |
+
+The original Hana Studio demo seller is also available:
 
 | | |
 |--|--|
