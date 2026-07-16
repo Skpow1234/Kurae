@@ -15,21 +15,30 @@ import (
 	"github.com/kurae/kurae-api/internal/service"
 	"github.com/kurae/kurae-api/internal/storage"
 	"github.com/kurae/kurae-api/internal/store"
+	"github.com/redis/go-redis/v9"
 )
 
 type Server struct {
 	router *chi.Mux
 }
 
-func NewServer(cfg config.Config, s *store.Store, q *queue.RedisQueue) *Server {
+func NewServer(cfg config.Config, s *store.Store, q *queue.RedisQueue, rdb *redis.Client) *Server {
 	authSvc := service.NewAuthService(s, cfg.JWTSecret)
 	waitlistNotify := service.NewWaitlistNotifyService(s, q, cfg.PublicWebURL, cfg.WaitlistSoonNotifyBefore)
 	inventoryAlerts := service.NewInventoryAlertService(s, q, cfg.PublicWebURL)
 	dropSvc := service.NewDropService(s, waitlistNotify, inventoryAlerts)
 
-	authLimiter := ratelimit.NewIP(10, time.Minute)
-	checkoutLimiter := ratelimit.NewIP(20, time.Minute)
-	waitlistLimiter := ratelimit.NewIP(config.DefaultWaitlistRatePerMinute, time.Minute)
+	failClosed := cfg.IsProduction()
+	newLimiter := func(scope string, limit int) *ratelimit.Limiter {
+		if rdb != nil {
+			return ratelimit.NewDistributed(rdb, scope, limit, time.Minute, failClosed)
+		}
+		return ratelimit.NewIP(limit, time.Minute)
+	}
+
+	authLimiter := newLimiter("auth", 10)
+	checkoutLimiter := newLimiter("checkout", 20)
+	waitlistLimiter := newLimiter("waitlist", config.DefaultWaitlistRatePerMinute)
 
 	waitlistSvc := service.NewWaitlistService(s)
 	dashboardSvc := service.NewDashboardService(s)
@@ -93,9 +102,9 @@ func NewServer(cfg config.Config, s *store.Store, q *queue.RedisQueue) *Server {
 		buyerAuth.Get("/buyer/referrals", referralH.BuyerListProgress)
 	})
 
-	referralClickLimiter := ratelimit.NewIP(60, time.Minute)
+	referralClickLimiter := newLimiter("referral", 60)
 
-	viewLimiter := ratelimit.NewIP(120, time.Minute)
+	viewLimiter := newLimiter("view", 120)
 
 	r.Get("/public/drops", publicH.ListDrops)
 	r.Get("/public/sellers/{seller}", publicH.GetSeller)

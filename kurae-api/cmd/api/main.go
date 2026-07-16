@@ -14,6 +14,7 @@ import (
 	"github.com/kurae/kurae-api/internal/httpapi"
 	"github.com/kurae/kurae-api/internal/queue"
 	"github.com/kurae/kurae-api/internal/store"
+	"github.com/redis/go-redis/v9"
 )
 
 func main() {
@@ -29,22 +30,24 @@ func main() {
 	}
 	defer db.Close()
 
+	var redisClient *redis.Client
 	var redisQueue *queue.RedisQueue
 	if cfg.RedisURL != "" {
-		redisQueue, err = queue.NewRedisQueue(cfg.RedisURL)
+		redisClient, err = connectRedis(cfg.RedisURL)
 		if err != nil {
 			if cfg.IsProduction() {
 				log.Fatalf("redis: %v", err)
 			}
-			log.Printf("redis: %v (email queue disabled)", err)
+			log.Printf("redis: %v (email queue + distributed rate limits disabled)", err)
 		} else {
-			defer redisQueue.Close()
+			defer redisClient.Close()
+			redisQueue = queue.NewRedisQueueFromClient(redisClient)
 		}
 	} else if cfg.IsProduction() {
 		log.Fatalf("redis: REDIS_URL is required in production")
 	}
 
-	srv := httpapi.NewServer(cfg, db, redisQueue)
+	srv := httpapi.NewServer(cfg, db, redisQueue, redisClient)
 	server := &http.Server{
 		Addr:              ":" + cfg.Port,
 		Handler:           srv.Handler(),
@@ -68,4 +71,19 @@ func main() {
 		log.Printf("shutdown: %v", err)
 	}
 	fmt.Println("kurae-api stopped")
+}
+
+func connectRedis(redisURL string) (*redis.Client, error) {
+	opts, err := redis.ParseURL(redisURL)
+	if err != nil {
+		return nil, err
+	}
+	client := redis.NewClient(opts)
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	if err := client.Ping(ctx).Err(); err != nil {
+		_ = client.Close()
+		return nil, err
+	}
+	return client, nil
 }

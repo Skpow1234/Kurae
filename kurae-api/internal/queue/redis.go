@@ -62,9 +62,23 @@ func NewRedisQueue(redisURL string) (*RedisQueue, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 	if err := client.Ping(ctx).Err(); err != nil {
+		_ = client.Close()
 		return nil, err
 	}
-	return &RedisQueue{client: client}, nil
+	return NewRedisQueueFromClient(client), nil
+}
+
+// NewRedisQueueFromClient wraps an existing Redis client (shared with rate limiting).
+func NewRedisQueueFromClient(client *redis.Client) *RedisQueue {
+	return &RedisQueue{client: client}
+}
+
+// Client returns the underlying Redis client, or nil when the queue is disabled.
+func (q *RedisQueue) Client() *redis.Client {
+	if q == nil {
+		return nil
+	}
+	return q.client
 }
 
 func (q *RedisQueue) EnqueueEmail(ctx context.Context, job EmailJob) error {

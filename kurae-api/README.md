@@ -171,7 +171,8 @@ Set `NEXT_PUBLIC_API_URL` in `kurae-web` to point at this API. Seller routes exp
 
 ## Security
 
-- Per-IP rate limits on auth (10/min), checkout (20/min), and waitlist (5/min)
+- Per-IP rate limits on auth (10/min), checkout (20/min), waitlist (5/min), referrals (60/min), and analytics views (120/min)
+- Rate limits use Redis when `REDIS_URL` is set (shared across API instances); in-memory fallback in development if Redis is down
 - Security headers (HSTS when TLS), 1 MiB request body cap
 - Input validation for slugs, emails, and inventory edits
 - Production env guards for JWT and Stripe secrets
