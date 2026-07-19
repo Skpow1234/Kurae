@@ -27,19 +27,6 @@ Kurae is split into two independent repos. **Both are required for local develop
 - **kurae-api** runs in **Docker** locally (Postgres, Redis, API, worker). Business logic, payment-provider webhooks, inventory reservations, distributed rate limits, email jobs, and reservation expiry live here.
 - Contract: OpenAPI spec at `kurae-api/internal/httpapi/openapi.yaml` (Swagger UI at `/swagger/`).
 
-## Product status
-
-The MVP and Phase 2 feature set are implemented:
-
-- Seller and buyer authentication, profiles, buyer order history, and seller team RBAC
-- Seller storefronts and a drop builder with products, variants, inventory, schedules, cloning, and previews
-- Public drop pages with countdowns, live inventory, waitlists, referral links, campaign tracking, and OG metadata
-- Guest or account checkout with shipping, discounts, referrals, atomic reservations, and webhook-confirmed payments
-- Stripe Elements plus redirect checkout through Mercado Pago, Wompi, and PayU
-- Seller orders with pagination, CSV export, shipment tracking, fulfillment, refunds, and payment-event history
-- Branding, referral rewards, inventory alerts, waitlist email campaigns, first-party analytics, and PostHog
-- Redis-backed email jobs, distributed rate limits, reservation expiry, and JWT revocation
-
 ## Getting started
 
 Run **both** sides. Quick path below; deep docs live in each folder README.
